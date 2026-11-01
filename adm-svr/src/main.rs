@@ -1,5 +1,5 @@
-use adm_svr::config::{AppConfig, setup_app_config};
-use adm_svr::utils::setup_adm_config;
+use adm_svr::config::{AppConfig, get_adm_config, setup_app_config};
+use adm_svr::utils::{setup_adm_config, setup_adm_option_cache};
 // `db_migrate!` 展开后会用到 `anyhow!`，必须在调用点可见
 use anyhow::anyhow;
 use config::Value;
@@ -44,7 +44,17 @@ async fn setup(
     setup_redis_conn(app_config.redis.clone(), changed).await?;
     setup_db_conn(app_config.db.clone(), changed).await?;
     setup_adm_config(app_config.adm.clone(), changed).await?;
+    // 选项缓存要查库，必须排在 setup_db_conn 之后
+    setup_adm_option_cache(changed).await?;
     setup_web_server(app_config.web.clone(), port, old_pid, changed).await?;
+
+    // 默认令牌密钥写在代码里，谁都能伪造令牌：不拦住，但必须吵
+    if get_adm_config()
+        .map(|config| config.is_jwt_secret_default())
+        .unwrap_or(false)
+    {
+        tracing::warn!("[adm] jwt-secret 使用默认值，只能用于开发环境！");
+    }
 
     Ok(())
 }

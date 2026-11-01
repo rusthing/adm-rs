@@ -5,14 +5,29 @@ profile = "dev"
 url = "postgresql://admrs:admrs@localhost:5432/admrs"
 
 [redis]
+# 令牌黑名单存在这里（登出即失效）；Redis 不可用时登出会失败而不是静默放行
 url = "redis://:xxxxxxxx@redis:6379"
 
 # 管理后台业务配置
 [adm]
-# 口令加盐用的盐值（生产环境务必替换，且改动后旧口令全部失效）
-password-salt = "adm"
 # 重置口令时使用的默认口令
 default-password = "123456"
+# 令牌签名密钥：HS256 对称密钥，换掉它等于让所有已发令牌立即失效
+# 生产环境必须替换，留默认值启动时会打 warn
+jwt-secret = "adm-change-me-in-production"
+# 令牌有效期（毫秒），默认 2 小时；服务端不续期，到期要重新登录
+token-ttl-ms = 7200000
+# 选项缓存兜底刷新间隔（毫秒）：本进程改完立即生效，这里管的是其它节点的改动
+option-refresh-ms = 60000
+
+# 登录策略不在这里配，配在 adm_option 表（改完不用重启）：
+#   insert into adm_option (id, code, name, value, remark, creater_id, create_ms, updater_id, update_ms)
+#   values (1, 'login_fail_limit', '登录失败锁定阈值', '5', '连续失败几次后锁定',
+#           0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8);
+#   insert into adm_option (id, code, name, value, remark, creater_id, create_ms, updater_id, update_ms)
+#   values (2, 'login_lock_ms', '登录锁定时长', '3600000', '锁定时长（毫秒），默认 1 小时',
+#           0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8);
+# 表里没这两行时用代码里的默认值（5 次 / 1 小时）。
 
 [micro-svc.consul]
 base-url = "http://consul:8500"

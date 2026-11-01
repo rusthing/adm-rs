@@ -1,174 +1,143 @@
-//! # 用户服务
+//! # 用户（账号）服务
 //!
-//! 用户是唯一涉及口令的实体，业务逻辑集中在三个地方：
+//! 除了框架生成的 CRUD，这里只做一件事：**写库前把三套口令封成最终摘要**。
 //!
-//! * **口令摘要**：新增必须给口令，落库前加盐摘要；修改时留空表示「不改口令」，
-//!   避免改个昵称也要把口令重打一遍。
-//! * **角色校验**：`role_id` 是外键，提前确认角色存在，把外键错误换成可读提示。
-//! * **账号规整**：账号与昵称去掉首尾空白。
+//! ## 为什么必须在这里做
 //!
-//! 口令只进不出：VO 里没有 `password`，所以检测、登录这类需要摘要的路径读实体，
-//! 不走 VO。
+//! 模型约定库里存的是 `SM3(小写(SM3(明文)) + 小写(密码组合码))`：内层摘要由前端
+//! 算（明文不过网），外层摘要与组合码必须由服务端生成。如果原样落库，存进去的
+//! 就只是内层摘要，登录时再算一遍外层永远对不上——「写得进、登不进」。
+//!
+//! 组合码由服务端随机生成而不是接收调用方传的：组合码一旦由客户端指定，它就
+//! 失去了「同一口令在不同行产生不同摘要」的作用。
+//!
+//! ## 覆盖范围
+//!
+//! `add` / `modify` / `save` 三个写入口都挂上了。`save` 是 upsert，绕过它等于
+//! 留一条「用 save 写明文摘要」的后门。
+//!
+//! ## 读不回来
+//!
+//! `AdmUserVo` 里没有口令列，所以前端拿不到已存的口令摘要，也就不存在「把
+//! 原值再提交一次」被二次摘要的机会；要改口令就重新输一次。
+//!
+//! ## 与登录的关系
+//!
+//! 登录（`AdmAuthSvc::login`）用同一个 [`AdmPasswordUtils::verify`] 校验，
+//! 两边口径一致，改算法只改那一处。
 
-use crate::config::get_adm_config;
-use crate::dao::AdmRoleDao;
+use crate::dto::{AdmUserAddDto, AdmUserModifyDto, AdmUserSaveDto};
 use crate::utils::AdmPasswordUtils;
-use anyhow::anyhow;
-use robotech::db::get_db_conn;
 use robotech::macros::svc;
-use sea_orm::DatabaseConnection;
-use wheel_rs::time_utils::now_ms;
+use robotech::svc::SvcError;
+use sea_orm::ConnectionTrait;
+use std::borrow::Cow;
+use validator::ValidationError;
 
+/// # 用户（账号）服务
+///
+/// 三个写方法都先过口令封存钩子，再走框架的 CRUD。
 #[svc(
-    before_add = AdmUserSvc::before_add_hook,
-    before_modify = AdmUserSvc::before_modify_hook
+    before_add = seal_passwords_on_add,
+    before_modify = seal_passwords_on_modify,
+    before_save = seal_passwords_on_save,
 )]
 pub struct AdmUserSvc;
 
-// SvcError 由框架定义且体积较大，而钩子的返回类型必须与宏约定一致
+/// # 封存一对「口令 + 组合码」
+///
+/// ## 参数
+/// * `pswd` - 调用方传的口令，约定是 `SM3(明文)` 的 64 位十六进制
+/// * `salt` - 调用方传的组合码，**会被忽略**（服务端自己生成）
+///
+/// ## 返回值
+/// * `Ok((Some(摘要), Some(组合码)))` - 传了口令：返回最终的库内值
+/// * `Ok((None, None))` - 没传口令：两列都不写，保留库里原值
+/// * `Err(SvcError)` - 传了但不是一次摘要（多半是直接传了明文）
+///
+/// ## 为什么「没传」要连同组合码一起置空
+///
+/// 只换组合码不换口令，会让原本正确的口令当场失效——这是最容易踩的坑，
+/// 所以两列要么一起写，要么一起不写。
 #[allow(clippy::result_large_err)]
-impl AdmUserSvc {
-    /// # 新增前钩子：规整账号、摘要口令、校验角色
-    async fn before_add_hook<C: ConnectionTrait>(
-        mut add_dto: AdmUserAddDto,
-        _db: &C,
-    ) -> Result<AdmUserAddDto, SvcError> {
-        add_dto.username = Some(Self::trim_required(
-            add_dto.username.as_deref(),
-            "登录账号",
-        )?);
-        add_dto.nickname = Some(Self::trim_required(add_dto.nickname.as_deref(), "昵称")?);
-        // 可空列在 AddDto 里是 Option<Option<String>>，读写都要拆一层
-        if let Some(remark) = add_dto.remark.clone().flatten() {
-            add_dto.remark = Some(Some(remark.trim().to_string()));
+fn seal_pswd_pair(
+    pswd: Option<String>,
+    _salt: Option<String>,
+) -> Result<(Option<String>, Option<String>), SvcError> {
+    match pswd {
+        None => Ok((None, None)),
+        Some(first_hash) => {
+            let first_hash = first_hash.trim().to_string();
+            if !AdmPasswordUtils::is_first_hash(&first_hash) {
+                return Err(invalid_first_hash());
+            }
+            let generated = AdmPasswordUtils::gen_salt();
+            let sealed = AdmPasswordUtils::seal(&first_hash, &generated);
+            Ok((Some(sealed), Some(generated)))
         }
-
-        // 新增必须给口令：库里这一列可空（外部认证用户），但不能由接口留空进来
-        let raw = add_dto
-            .password
-            .clone()
-            .flatten()
-            .unwrap_or_default()
-            .trim()
-            .to_string();
-        if raw.is_empty() {
-            return Err(anyhow!("新增用户必须设置登录口令").into());
-        }
-        add_dto.password = Some(Some(Self::hash_password(&raw)?));
-
-        if let Some(role_id) = add_dto.role_id {
-            Self::ensure_role_exists(role_id).await?;
-        }
-        Ok(add_dto)
     }
+}
 
-    /// # 修改前钩子：口令留空表示不修改，其余同新增
-    async fn before_modify_hook<C: ConnectionTrait>(
-        mut modify_dto: AdmUserModifyDto,
-        _db: &C,
-    ) -> Result<AdmUserModifyDto, SvcError> {
-        if modify_dto.username.is_some() {
-            modify_dto.username = Some(Self::trim_required(
-                modify_dto.username.as_deref(),
-                "登录账号",
-            )?);
-        }
-        if modify_dto.nickname.is_some() {
-            modify_dto.nickname =
-                Some(Self::trim_required(modify_dto.nickname.as_deref(), "昵称")?);
-        }
-        if let Some(remark) = modify_dto.remark.clone().flatten() {
-            modify_dto.remark = Some(Some(remark.trim().to_string()));
-        }
+/// # 一次摘要格式不对
+///
+/// 归到 `SvcError::Validation`：控制器映射成 400，消息直接说明期望的形态，
+/// 免得调用方以为是密码策略拒绝。
+fn invalid_first_hash() -> SvcError {
+    let mut error = ValidationError::new("invalid_password_hash");
+    error.message = Some(Cow::Owned(
+        "口令必须是 SM3(明文) 的 64 位小写十六进制，不能直接传明文".to_string(),
+    ));
+    SvcError::Validation(error)
+}
 
-        // 口令留空表示「沿用旧口令」：字段是 Option<Option<String>>，
-        // 置成 None 才会让 ActiveModel 走 NotSet 而不是 Set(NULL)
-        let raw = modify_dto
-            .password
-            .clone()
-            .flatten()
-            .unwrap_or_default()
-            .trim()
-            .to_string();
-        if raw.is_empty() {
-            modify_dto.password = None;
-        } else {
-            modify_dto.password = Some(Some(Self::hash_password(&raw)?));
-        }
+/// # 新增时封存三套口令
+///
+/// 挂在 `before_add` 上：钩子在同一个事务里、`validate` 之前执行，
+/// 生成值本身仍然要过校验（长度 64 / 组合码长度 6）。
+///
+/// ## 参数
+/// * `dto` - 新增请求
+/// * `_db` - 事务连接（本钩子不查库，保留参数是为了对上框架的钩子签名）
+#[allow(clippy::result_large_err)]
+pub async fn seal_passwords_on_add<C>(
+    mut dto: AdmUserAddDto,
+    _db: &C,
+) -> Result<AdmUserAddDto, SvcError>
+where
+    C: ConnectionTrait,
+{
+    (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
+    (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;
+    (dto.pay_pswd, dto.pay_pswd_salt) = seal_pswd_pair(dto.pay_pswd, dto.pay_pswd_salt)?;
+    Ok(dto)
+}
 
-        if let Some(role_id) = modify_dto.role_id {
-            Self::ensure_role_exists(role_id).await?;
-        }
-        Ok(modify_dto)
-    }
+/// # 修改时封存三套口令
+///
+/// 没传口令的字段保持 `None`，DAO 不会写这两列，库里的口令原样保留。
+#[allow(clippy::result_large_err)]
+pub async fn seal_passwords_on_modify<C>(
+    mut dto: AdmUserModifyDto,
+    _db: &C,
+) -> Result<AdmUserModifyDto, SvcError>
+where
+    C: ConnectionTrait,
+{
+    (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
+    (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;
+    (dto.pay_pswd, dto.pay_pswd_salt) = seal_pswd_pair(dto.pay_pswd, dto.pay_pswd_salt)?;
+    Ok(dto)
+}
 
-    /// # 把口令重置为配置里的默认值
-    ///
-    /// 管理端的「重置口令」按钮走这里：不接收新口令，只把库里换成一个已知的默认值，
-    /// 再要求用户下次登录时自行修改。这样管理员不需要知道用户的新口令。
-    ///
-    /// ## 参数
-    /// * `id` - 用户ID
-    ///
-    /// ## 返回值
-    /// * `Ok(Ro<()>)` - 重置成功
-    /// * `Err(SvcError)` - 用户不存在或写库失败
-    #[log_call]
-    pub async fn reset_password(id: U64) -> Result<Ro<()>, SvcError> {
-        let config = get_adm_config().map_err(|e| anyhow!("获取业务配置失败: {e}"))?;
-        let hashed = AdmPasswordUtils::hash(&config.password_salt, &config.default_password);
-
-        let mut modify_dto = AdmUserModifyDto::builder()
-            .id(id)
-            ._current_user_id(U64(1))
-            ._current_ms(U64(now_ms()))
-            .build();
-        // 直接赋值：字段是 Option<Option<String>>，Some(Some(..)) 才是「写入新摘要」
-        modify_dto.password = Some(Some(hashed));
-
-        Self::modify::<DatabaseConnection>(modify_dto, None).await?;
-        Ok(Ro::success("口令已重置为默认值".to_string()))
-    }
-
-    /// # 按配置的盐值计算口令摘要
-    fn hash_password(raw: &str) -> Result<String, anyhow::Error> {
-        let config = get_adm_config().map_err(|e| anyhow!("获取业务配置失败: {e}"))?;
-        Ok(AdmPasswordUtils::hash(&config.password_salt, raw))
-    }
-
-    /// # 确认角色存在
-    ///
-    /// ## 参数
-    /// * `role_id` - 角色ID
-    ///
-    /// ## 返回值
-    /// * `Ok(())` - 角色存在
-    /// * `Err(SvcError)` - 角色不存在或读库失败
-    async fn ensure_role_exists(role_id: U64) -> Result<(), SvcError> {
-        let db = get_db_conn().map_err(|e| anyhow!("获取数据库连接失败: {e}"))?;
-        let role = AdmRoleDao::get_by_id::<_, crate::mo::adm_role::Model>(role_id, db.as_ref())
-            .await
-            .map_err(|e| anyhow!("查询角色({})失败: {e}", role_id.value()))?;
-        if role.is_none() {
-            return Err(anyhow!("角色({})不存在", role_id.value()).into());
-        }
-        Ok(())
-    }
-
-    /// # 取首尾空白后的必填字段
-    ///
-    /// ## 参数
-    /// * `value` - 原值
-    /// * `label` - 字段中文名，用于报错
-    ///
-    /// ## 返回值
-    /// * `Ok(String)` - 规整后的值
-    /// * `Err(anyhow::Error)` - 值为空
-    fn trim_required(value: Option<&str>, label: &str) -> Result<String, anyhow::Error> {
-        let trimmed = value.unwrap_or_default().trim();
-        if trimmed.is_empty() {
-            return Err(anyhow!("{label}不能为空"));
-        }
-        Ok(trimmed.to_string())
-    }
+/// # 保存（upsert）时封存三套口令
+///
+/// `save` 的钩子不带连接（框架给的签名如此），本钩子也不需要。
+#[allow(clippy::result_large_err)]
+pub async fn seal_passwords_on_save(
+    mut dto: AdmUserSaveDto,
+) -> Result<AdmUserSaveDto, SvcError> {
+    (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
+    (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;
+    (dto.pay_pswd, dto.pay_pswd_salt) = seal_pswd_pair(dto.pay_pswd, dto.pay_pswd_salt)?;
+    Ok(dto)
 }

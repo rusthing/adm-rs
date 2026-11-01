@@ -2,15 +2,15 @@ use robotech::macros::dao;
 
 /// # 角色
 ///
-/// `code` 与 `name` 都做唯一键：编码重了会让授权含义含糊，名称重了会让运维在界面上
-/// 分不清两个角色。两者都要在报错时给出字段中文名，所以都登记在 `unique_keys` 里。
+/// 权限的集合，按分组管理；角色与用户的关联见 role_user，与权限的关联见 role_perm
+///
+/// 唯一键名与数据库里的约束名对齐（`ak_{列名_and_连接}_{表名}`），
+/// 对不上就会把「重复键」的错误退化成 500。
 #[dao(
     unique_keys: [
-        ("code", "角色编码"),
-        ("name", "角色名称"),
+        ("group_id_and_name", "分组ID与名称"),
     ],
     like_columns: [
-        Column::Code,
         Column::Name,
         Column::Remark,
     ],

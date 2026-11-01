@@ -39,8 +39,11 @@ utoipa-swagger-ui = { workspace = true, features = ["axum", "vendored"] }
 async-trait = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
+jsonwebtoken = { workspace = true }
+rand = { workspace = true }
 
 wheel-rs = { workspace = true }
 idworker = { workspace = true, features = ["utils"] }
-robotech = { workspace = true, features = ["db", "config-center", "registry-center", "macros", "redis"] }
+# distributed-cache：令牌黑名单走 RedisCache（登出即失效），隐含 redis
+robotech = { workspace = true, features = ["db", "config-center", "registry-center", "macros", "redis", "distributed-cache"] }
 adm-api = { workspace = true, features = ["server"] }

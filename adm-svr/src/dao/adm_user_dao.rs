@@ -1,24 +1,27 @@
 use robotech::macros::dao;
 
-/// # 用户
+/// # 用户（账号）
 ///
-/// `username` 是登录凭据，必须唯一；`mobile` 在库里是唯一键，但**允许多行为空**
-/// （PostgreSQL 的唯一约束不约束 NULL），所以没填手机号的用户不会互相顶掉。
+/// 回答「哪个标识能登进哪个账号」：登录名、登录用手机/邮箱、实名信息（姓名 + 身份证）、三套密码、状态
 ///
-/// `role_id` 是外键，删除角色时由服务侧提前拦一道，把数据库的约束错误换成可读提示。
+/// 实名信息与核验位放在本表：登录时的实名校验以账号为单位，person 只存人员档案、不记核验状态
+///
+/// 唯一键名与数据库里的约束名对齐（`ak_{列名_and_连接}_{表名}`），
+/// 对不上就会把「重复键」的错误退化成 500。
 #[dao(
     unique_keys: [
-        ("username", "登录账号"),
+        ("name", "名称"),
         ("mobile", "手机号"),
-    ],
-    foreign_keys: [
-        ("role_id", "adm_role", "角色"),
+        ("email", "电子邮箱"),
+        ("id_card", "身份证号"),
     ],
     like_columns: [
-        Column::Username,
-        Column::Nickname,
+        Column::Name,
+        Column::NickName,
         Column::Mobile,
         Column::Email,
+        Column::IdCard,
+        Column::RealName,
         Column::Remark,
     ],
 )]

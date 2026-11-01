@@ -1,44 +1,75 @@
-use crate::dic::MenuType;
+//! # 菜单 VO
+//!
+//! 前端动态路由的数据源：一棵树 + 组件路径 + 权限点
+//! 目录与菜单的区别由 component 是否为空推导，不用单独的类型列
+
 use robotech::macros::vo;
 
-/// # 菜单
-///
-/// 平铺返回，`parent_id` 交给前端组装成树 —— 服务端做树要额外定义一套带 `children`
-/// 的 VO，而 `#[vo]` 只能映射实体，树形 VO 得手写，骨架阶段不引入这份复杂度。
 #[vo]
 pub struct AdmMenuVo {
-    /// ID
+    /// 主键
     pub id: u64,
-    /// 父菜单ID（空表示根节点）
-    pub parent_id: Option<u64>,
-    /// 菜单编码
+    /// 所属应用 ID
+    /// 关联 app；菜单树按应用隔离，tree_code 只在本应用内唯一
+    pub app_id: u64,
+    /// 树编码
+    /// 路径枚举存树：字典序即树的前序，子节点紧跟在父节点之后，排序直接用 ORDER BY tree_code，不需要额外排序列
+    /// 每层固定 3 位数字（不足左补 0），不加分隔符：001 → 001002 → 001002003
+    /// 总长 = 层数 × 3（必须是 3 的倍数）；列宽 30 即最多 10 层，每层最多 999 个兄弟
+    /// 中间插入按 010、020、030 递增留空位；调整顺序 = 改编码，会级联该节点整棵子树
+    /// @len 3..=30
+    /// @check is_tree_code
+    pub tree_code: String,
+    /// 编码
+    /// 同一应用内唯一（AK）；前端用作路由 name（编程式跳转、keep-alive 的 include 键）
+    /// 不能用 tree_code 代替：菜单一移动编码就变，书签与 router.push({name}) 会断
+    /// @len 1..=50
+    /// @check is_code
     pub code: String,
-    /// 菜单名称
+    /// 名称
+    /// 同一应用内唯一（AK），展示用
+    /// @len 1..=50
     pub name: String,
-    /// 菜单类型
-    pub menu_type: MenuType,
-    /// 前端路由路径
-    pub path: Option<String>,
-    /// 前端组件路径
+    /// 路径
+    /// 内链存路由路径（以 / 开头）；外链与 iframe 存完整 URL
+    /// 目录节点同样存自己的路由前缀，用于拼子节点路径
+    /// @len 1..=100
+    pub path: String,
+    /// 组件路径
+    /// 内链菜单的前端组件相对路径；为空表示目录节点（不产出组件路由，只用于分组）
+    /// @len 0..=200
     pub component: Option<String>,
-    /// 权限标识
-    pub perm: Option<String>,
+    /// 链接类型
+    /// 1-内链（默认，path 存路由路径，component 存组件路径）
+    /// 2-外链（path 存完整 URL，component 为空）
+    /// 3-内嵌 iframe（path 存完整 URL，component 为空）
+    /// @range 1..=3
+    /// link_type 为 2/3 时 path 存完整 URL，此时对 path 校验
+    pub link_type: i16,
     /// 图标
+    /// 前端图标名（如 SettingOutlined），目录与菜单使用
+    /// @len 0..=50
     pub icon: Option<String>,
-    /// 排序
-    pub sort: i32,
+    /// 是否缓存
+    /// 前端页面是否 keep-alive，列表页一般 true，详情/编辑页 false
+    pub keep_alive: bool,
     /// 是否显示
+    /// false 时不在导航中渲染，但路由仍然可访问（详情页、编辑页等隐藏页）
+    /// 与 enabled 的区别：enabled=false 是整节点（含子节点）下架
     pub visible: bool,
-    /// 启用
-    pub enabled: bool,
     /// 备注
+    /// @len 0..=50
     pub remark: Option<String>,
-    /// 创建者ID
+    /// 是否启用
+    /// false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与关联全部保留
+    /// 与删除的区别：删除是物理删除（外键 restrict 会挡住），停用只影响后续使用
+    pub enabled: bool,
+    /// 创建人 ID
     pub creater_id: u64,
-    /// 创建时间
+    /// 创建时间戳（毫秒）
     pub create_ms: u64,
-    /// 更新者ID
+    /// 最后修改人 ID
     pub updater_id: u64,
-    /// 更新时间
+    /// 最后修改时间戳（毫秒）
     pub update_ms: u64,
 }

@@ -1,0 +1,51 @@
+//! # 组织 VO
+//!
+//! 树形结构由 tree_code 表达；与领域、用户都是多对多（realm_org / org_user），组织本身不自带领域列
+
+use robotech::macros::vo;
+
+#[vo]
+pub struct AdmOrgVo {
+    /// 主键
+    pub id: u64,
+    /// 组织编码
+    /// 全局唯一（AK），业务上用于对接外部系统
+    /// @len 1..=50
+    /// @check is_code
+    pub code: Option<String>,
+    /// 树编码
+    /// 路径枚举存树：字典序即树的前序，子节点紧跟在父节点之后，排序直接用 ORDER BY tree_code，不需要额外排序列
+    /// 每层固定 3 位数字（不足左补 0），不加分隔符：001 → 001002 → 001002003
+    /// 总长 = 层数 × 3（必须是 3 的倍数）；列宽 30 即最多 10 层，每层最多 999 个兄弟
+    /// 中间插入按 010、020、030 递增留空位；调整顺序 = 改编码，会级联该节点整棵子树
+    /// @len 3..=30
+    /// @check is_tree_code
+    pub tree_code: String,
+    /// 名称
+    /// 同一父节点下的兄弟名称不做唯一约束（同名部门很常见），只靠 tree_code 区分
+    /// @len 1..=50
+    pub name: String,
+    /// 全名
+    /// 从根到当前节点的名称拼接，层间用 "." 分隔（如 集团.分厂.车间）
+    /// 全局唯一（AK）；由 tree_code 维护时同步生成，只用于展示与模糊搜索
+    /// @len 0..=200
+    pub full_name: Option<String>,
+    /// 组织类型 ID
+    /// 关联 org_type；为空表示未分类
+    pub org_type_id: Option<u64>,
+    /// 备注
+    /// @len 0..=50
+    pub remark: Option<String>,
+    /// 是否启用
+    /// false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与关联全部保留
+    /// 与删除的区别：删除是物理删除（外键 restrict 会挡住），停用只影响后续使用
+    pub enabled: bool,
+    /// 创建人 ID
+    pub creater_id: u64,
+    /// 创建时间戳（毫秒）
+    pub create_ms: u64,
+    /// 最后修改人 ID
+    pub updater_id: u64,
+    /// 最后修改时间戳（毫秒）
+    pub update_ms: u64,
+}

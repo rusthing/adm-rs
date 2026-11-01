@@ -2,21 +2,25 @@ use robotech::macros::dao;
 
 /// # 菜单
 ///
-/// `code` 是权限编码的唯一来源，做唯一键。`parent_id` 是自关联外键，删除父节点时
-/// 由服务侧先检查有没有子节点 —— 数据库侧是 `on delete restrict`，不检查会直接
-/// 抛约束错误。
+/// 前端动态路由的数据源：一棵树 + 组件路径 + 权限点
+///
+/// 目录与菜单的区别由 component 是否为空推导，不用单独的类型列
+///
+/// 唯一键名与数据库里的约束名对齐（`ak_{列名_and_连接}_{表名}`），
+/// 对不上就会把「重复键」的错误退化成 500。
 #[dao(
     unique_keys: [
-        ("code", "菜单编码"),
-    ],
-    foreign_keys: [
-        ("parent_id", "adm_menu", "父菜单"),
+        ("app_id_and_tree_code", "应用ID与树编码"),
+        ("app_id_and_name", "应用ID与名称"),
+        ("app_id_and_code", "应用ID与编码"),
     ],
     like_columns: [
+        Column::TreeCode,
         Column::Code,
         Column::Name,
         Column::Path,
-        Column::Perm,
+        Column::Component,
+        Column::Icon,
         Column::Remark,
     ],
 )]

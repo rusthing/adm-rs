@@ -24,6 +24,6 @@ use robotech::macros::api_doc;
     search_ex_by_id,
     search_ex_by_condition,
     search_list_ex,
-    search_page_ex
+    search_page_ex,
 )]
 pub struct AdmMenuApiDoc;
