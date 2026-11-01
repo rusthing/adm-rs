@@ -3,36 +3,37 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// # 角色
-///
-/// 权限的容器。`code` 是程序内标识（授权判断用它），`name` 是展示名，两者都唯一。
-/// 数据范围只落在 `data_scope` 一个枚举上，具体翻译成什么查询条件由业务侧决定 ——
-/// 骨架阶段不引入部门表，所以「指定部门」暂时没有可引用的部门集合。
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "adm_role")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, unique)]
     pub id: i64,
-    /// 角色编码
-    #[sea_orm(unique)]
-    pub code: String,
-    /// 角色名称
-    #[sea_orm(unique)]
+    #[sea_orm(unique_key = "ak_group_id_and_name_adm_role")]
+    pub group_id: i64,
+    #[sea_orm(unique_key = "ak_group_id_and_name_adm_role")]
     pub name: String,
-    /// 数据范围，见 `DataScope`
-    pub data_scope: i16,
-    /// 排序（升序）
-    pub sort: i32,
-    /// 启用
-    pub enabled: bool,
+    pub sort_order: i32,
     pub remark: Option<String>,
+    pub enabled: bool,
     pub creater_id: i64,
     pub create_ms: i64,
     pub updater_id: i64,
     pub update_ms: i64,
+    #[sea_orm(
+        belongs_to,
+        from = "group_id",
+        to = "id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    pub adm_role_group: BelongsTo<super::adm_role_group::Entity>,
     #[sea_orm(has_many)]
-    pub adm_users: HasMany<super::adm_user::Entity>,
+    pub adm_role_menus: HasMany<super::adm_role_menu::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_role_perms: HasMany<super::adm_role_perm::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_role_users: HasMany<super::adm_role_user::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

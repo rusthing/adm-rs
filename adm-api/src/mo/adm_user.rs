@@ -3,54 +3,64 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// # 用户
-///
-/// 一个用户只挂一个角色（`role_id` 非空）：骨架阶段先按「单角色」建模，改成多角色
-/// 需要额外的 `adm_user_role` 关联表，属于下一步。
-///
-/// `password` 存的是加盐摘要，不是明文；写入由 `AdmUserSvc` 的写前钩子负责，
-/// 查询侧（VO）不暴露这一列。
-///
-/// 这一列**可空**：`NULL` 表示「没有口令」，用于纯外部认证（SSO / OAuth）的用户。
-/// 校验逻辑对 `NULL` 一律判为不通过，所以它不会变成绕过口令的后门。
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "adm_user")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, unique)]
     pub id: i64,
-    /// 角色ID
-    pub role_id: i64,
-    /// 登录账号
+    pub person_id: Option<i64>,
     #[sea_orm(unique)]
-    pub username: String,
-    /// 昵称
-    pub nickname: String,
-    /// 加盐后的口令摘要（`NULL` 表示未设置口令）
-    pub password: Option<String>,
-    /// 手机号
+    pub name: String,
+    pub nick_name: Option<String>,
+    #[sea_orm(unique)]
     pub mobile: Option<String>,
-    /// 邮箱
+    pub mobile_verified: bool,
+    #[sea_orm(unique)]
     pub email: Option<String>,
-    /// 头像地址
-    pub avatar: Option<String>,
-    /// 用户状态，见 `UserStatus`
+    pub email_verified: bool,
+    #[sea_orm(unique)]
+    pub id_card: Option<String>,
+    pub real_name: Option<String>,
+    pub real_name_verified: bool,
+    pub login_pswd: String,
+    pub login_pswd_salt: String,
+    pub login_pswd_default: bool,
+    pub audit_pswd: String,
+    pub audit_pswd_salt: String,
+    pub pay_pswd: String,
+    pub pay_pswd_salt: String,
+    pub expire_ms: Option<i64>,
     pub status: i16,
-    /// 最近登录时间戳
+    pub fail_count: i16,
+    pub lock_until_ms: Option<i64>,
     pub last_login_ms: Option<i64>,
     pub remark: Option<String>,
+    pub enabled: bool,
     pub creater_id: i64,
     pub create_ms: i64,
     pub updater_id: i64,
     pub update_ms: i64,
+    #[sea_orm(has_many)]
+    pub adm_lock_logs: HasMany<super::adm_lock_log::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_login_logs: HasMany<super::adm_login_log::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_op_logs: HasMany<super::adm_op_log::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_org_users: HasMany<super::adm_org_user::Entity>,
     #[sea_orm(
         belongs_to,
-        from = "role_id",
+        from = "person_id",
         to = "id",
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    pub adm_role: BelongsTo<super::adm_role::Entity>,
+    pub adm_person: BelongsTo<Option<super::adm_person::Entity>>,
+    #[sea_orm(has_many)]
+    pub adm_realm_users: HasMany<super::adm_realm_user::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_role_users: HasMany<super::adm_role_user::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

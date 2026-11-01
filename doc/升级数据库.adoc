@@ -60,7 +60,7 @@ sqlx migrate add <版本名称> --source migrations/pgsql
 
 [source,bash]
 ----
-sea-orm-cli generate entity --entity-format dense --model-extra-derives Default --with-serde both --ignore-tables _sqlx_migrations --database-url postgres://adm:adm@pgsql/adm -o src/mo
+sea-orm-cli generate entity --entity-format dense --model-extra-derives Default --with-serde both --ignore-tables _sqlx_migrations --database-url postgres://admrs:admrs@pgsql/admrs -o src/mo
 ----
 
 - `--entity-format dense`：生成 `#[sea_orm::model]` 形式的紧凑实体（自动带出 `ModelEx`）

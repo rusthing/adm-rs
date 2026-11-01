@@ -2,6 +2,27 @@
 
 pub mod prelude;
 
+pub mod adm_app;
+pub mod adm_lock_log;
+pub mod adm_login_log;
 pub mod adm_menu;
+pub mod adm_menu_perm;
+pub mod adm_op_log;
+pub mod adm_op_type;
+pub mod adm_option;
+pub mod adm_org;
+pub mod adm_org_type;
+pub mod adm_org_user;
+pub mod adm_perm;
+pub mod adm_perm_group;
+pub mod adm_person;
+pub mod adm_person_code_type;
+pub mod adm_realm;
+pub mod adm_realm_org;
+pub mod adm_realm_user;
 pub mod adm_role;
+pub mod adm_role_group;
+pub mod adm_role_menu;
+pub mod adm_role_perm;
+pub mod adm_role_user;
 pub mod adm_user;

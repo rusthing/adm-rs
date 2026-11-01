@@ -3,48 +3,44 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// # 菜单
-///
-/// 目录 / 菜单 / 按钮三种节点共用一张表，`parent_id` 自关联成树，`parent_id` 为空
-/// 表示根节点。
-///
-/// 这里**没有**声明 `BelongsTo` / `HasMany`：自关联会让 `ModelEx` 的加载路径变成
-/// 递归结构，而骨架阶段菜单只在管理端平铺读写，树的组装交给前端按 `parent_id` 做。
-/// 数据库侧仍有 `fk_parent_id__from__adm_menu` 保证父节点存在。
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize, Default)]
 #[sea_orm(table_name = "adm_menu")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, unique)]
     pub id: i64,
-    /// 父菜单ID（空表示根节点）
-    pub parent_id: Option<i64>,
-    /// 菜单编码
-    #[sea_orm(unique)]
+    #[sea_orm(unique_key = "ak_app_id_and_code_adm_menu")]
+    pub app_id: i64,
+    #[sea_orm(unique_key = "ak_app_id_and_tree_code_adm_menu")]
+    pub tree_code: String,
+    #[sea_orm(unique_key = "ak_app_id_and_code_adm_menu")]
     pub code: String,
-    /// 菜单名称
+    #[sea_orm(unique_key = "ak_app_id_and_name_adm_menu")]
     pub name: String,
-    /// 菜单类型，见 `MenuType`
-    pub menu_type: i16,
-    /// 前端路由路径
-    pub path: Option<String>,
-    /// 前端组件路径
+    pub path: String,
     pub component: Option<String>,
-    /// 权限标识
-    pub perm: Option<String>,
-    /// 图标
+    pub link_type: i16,
     pub icon: Option<String>,
-    /// 排序（升序）
-    pub sort: i32,
-    /// 是否在侧边栏显示
+    pub keep_alive: bool,
     pub visible: bool,
-    /// 启用
-    pub enabled: bool,
     pub remark: Option<String>,
+    pub enabled: bool,
     pub creater_id: i64,
     pub create_ms: i64,
     pub updater_id: i64,
     pub update_ms: i64,
+    #[sea_orm(
+        belongs_to,
+        from = "app_id",
+        to = "id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    pub adm_app: BelongsTo<super::adm_app::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_menu_perms: HasMany<super::adm_menu_perm::Entity>,
+    #[sea_orm(has_many)]
+    pub adm_role_menus: HasMany<super::adm_role_menu::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
