@@ -1,0 +1,80 @@
+= 常用命令
+:scripts: cjk
+:toc: left
+:toclevels: 3
+:toc-title: 目录
+:numbered:
+:sectnums:
+:sectnum-depth: 3
+:source-highlighter: coderay
+
+== 生成建表语句
+
+在 PowerDesigner 中完成逻辑模型（命名约定 `model/adm.ldm`）后生成物理模型
+（`model/adm-pgsql.pdm`），再用 `Database` → `Generate Database` 导出到
+`model/create-table-pgsql.sql`。建模步骤见
+`doc/PowerDesigner建模指南/PowerDesigner建模指南.adoc`。
+
+[NOTE]
+====
+骨架阶段 `model/` 下只有建表脚本，`*.pdm` / `*.ldm` / `*.prj` 尚未建模。模型文件建好后
+一并提交（`*.pdb` / `*.ldb` / `*.pjb` 已在 `.gitignore` 中排除）。
+====
+
+== 生成建表语句后，修改建表语句
+
+如果是 MySQL 的脚本，将 bool 替换为 bit(1)，否则 MySQL 默认会转成 tinyint(1)。
+
+== 新增数据库版本
+
+. 进入 adm-svr 的项目目录
+. 执行新增数据库版本
++
+[source,bash]
+----
+# pgsql
+sqlx migrate add <版本名称> --source migrations/pgsql
+# mysql
+# sqlx migrate add <版本名称> --source migrations/mysql
+----
++
+[NOTE]
+====
+版本名称：例如 `create-table`、`alter-table`、`init-data`、`update-data`。
+====
+. 上面的命令会在 `migrations/[mysql或pgsql]` 目录下生成一个文件，文件名格式为
+  `<版本号>_<版本名称>.sql`，例如 `20261027081500_create-table.sql`
+. 在生成的文件中编写 SQL 语句，并保存
+. 每次运行程序都会自动判断是否需要执行数据库迁移，如果需要则执行迁移
+
+[IMPORTANT]
+====
+`migrations/` 下必须同时存在 `pgsql`、`mysql`、`sqlite` 三个目录：`db_migrate!` 在**编译期**
+就要把三个目录的迁移文件都编进二进制，缺目录会直接编译失败。暂不使用的目录放一个
+空的 `.gitkeep` 即可（Git 不跟踪空目录）。
+====
+
+== 生成 sea-orm 的 Model
+
+进入 adm-api 的项目目录，执行下面的命令：
+
+[source,bash]
+----
+sea-orm-cli generate entity --entity-format dense --model-extra-derives Default --with-serde both --ignore-tables _sqlx_migrations --database-url postgres://adm:adm@pgsql/adm -o src/mo
+----
+
+- `--entity-format dense`：生成 `#[sea_orm::model]` 形式的紧凑实体（自动带出 `ModelEx`）
+- `--model-extra-derives`：模型文件添加的 trait，例如 `Default`
+- `--with-serde`：是否生成 serde 的代码，`both` 表示生成正反序列化的代码，还有
+  `deserialize` 和 `serialize` 可以选择
+- `--ignore-tables`：忽略的表，多个表用逗号分隔
+- `--database-url`：数据库连接字符串
+- `-o`：输出目录，模型文件将生成到 `src/mo` 目录下
+
+[NOTE]
+====
+生成的是裸实体，落库前还需要人工补两件事：
+
+. 关系字段（`BelongsTo` / `HasMany`）是否齐全，缺失会导致 `ExVo` 拿不到关联数据
+. 审计字段与字典列的类型：`INT2` 对应 `i16`，由 `#[dic]` 枚举在 DTO/VO 层转换
+====

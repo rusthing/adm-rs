@@ -1,0 +1,30 @@
+use robotech::macros::api_doc;
+
+/// # 用户接口文档
+///
+/// Swagger 地址：`/adm/user/openapi.json`。「重置口令」是手写接口，见
+/// [`AdmUserPasswordApiDoc`](crate::web::api_doc::AdmUserPasswordApiDoc)。
+#[api_doc(
+    add,
+    modify,
+    save,
+    del_by_id,
+    del_by_query_dto,
+    get_by_id,
+    get_ex_by_id,
+    get_by_query_dto,
+    get_ex_by_query_dto,
+    list_by_query_dto,
+    list_ex_by_query_dto,
+    page_by_query_dto,
+    page_ex_by_query_dto,
+    search_by_id,
+    search_by_condition,
+    search_list,
+    search_page,
+    search_ex_by_id,
+    search_ex_by_condition,
+    search_list_ex,
+    search_page_ex
+)]
+pub struct AdmUserApiDoc;

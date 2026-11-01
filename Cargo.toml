@@ -1,0 +1,50 @@
+[workspace]
+members = ["adm-api", "adm-api-client", "adm-svr"]
+resolver = "3"
+
+[workspace.dependencies]
+anyhow = "1.0.104"
+log = "0.4.34"
+tracing = "0.1.44"
+clap = "4.6.7"
+chrono = "0.4.45"
+config = "0.15.27"
+derive_setters = "0.1.9"
+typed-builder = "0.23.2"
+arc-swap = "1.9.2"
+async-trait = "0.1.92"
+serde = "1.0.229"
+serde_with = "3.24.0"
+serde_json = "1.0.151"
+reqwest = "0.13.5"
+tokio = "1.53.2"
+tokio-util = "0.7.19"
+axum = "0.8.9"
+sqlx = "0.9.0"
+sea-orm = "2.0.4"
+linkme = "0.3.37"
+regex = "1.13.1"
+o2o = "0.5.5"
+validator = "0.21.0"
+strum = "0.28.0"
+utoipa = "6.0.0"
+utoipa-swagger-ui = "10.0.1"
+humantime = "2.4.0"
+redis = "1.7.1"
+# 口令摘要：骨架阶段先用「加盐 SHA-256」，正式接入认证时应换成慢哈希（argon2 / bcrypt）
+sha2 = "0.11.0"
+hex = "0.4.3"
+
+adm-api = { version = "1.0.0", path = "./adm-api" }
+adm-api-client = { version = "1.0.0", path = "./adm-api-client" }
+idworker = "1.4.0"
+wheel-rs = "1.14.0"
+robotech = "1.17.0"
+robotech-macros = "1.17.0"
+
+[patch.crates-io]
+wheel-rs = { path = "../wheel-rs" }
+robotech = { path = "../robotech-rs/robotech" }
+robotech-macros = { path = "../robotech-rs/robotech-macros" }
+adm-api = { path = "./adm-api" }
+adm-api-client = { path = "./adm-api-client" }

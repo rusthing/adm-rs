@@ -1,0 +1,22 @@
+# adm-svr 配置文件
+profile = "dev"
+
+[db]
+url = "postgresql://admrs:admrs@localhost:5432/admrs"
+
+[redis]
+url = "redis://:xxxxxxxx@redis:6379"
+
+# 管理后台业务配置
+[adm]
+# 口令加盐用的盐值（生产环境务必替换，且改动后旧口令全部失效）
+password-salt = "adm"
+# 重置口令时使用的默认口令
+default-password = "123456"
+
+[micro-svc.consul]
+base-url = "http://consul:8500"
+[micro-svc.consul.registry]
+
+[web]
+port = 9007
