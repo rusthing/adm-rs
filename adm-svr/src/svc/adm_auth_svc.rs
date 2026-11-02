@@ -31,12 +31,15 @@ use crate::cst::{
 };
 use crate::dao::{AdmLockLogDao, AdmLoginLogDao, AdmUserDao};
 use crate::dic::UserStatus;
-use crate::dto::AdmLoginDto;
-use crate::mo::{adm_lock_log, adm_login_log, adm_user};
+use crate::dto::{AdmChangePasswordDto, AdmLoginDto};
+use crate::mo::{
+    adm_lock_log, adm_login_log, adm_menu, adm_perm, adm_role, adm_role_menu, adm_role_perm,
+    adm_role_user, adm_user,
+};
 use crate::utils::{
     AdmPasswordUtils, AdmTokenUtils, get_login_fail_limit, get_login_lock_ms,
 };
-use crate::vo::{AdmLoginVo, AdmLogoutVo};
+use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo, AdmUserVo};
 use robotech::api::{Ro, U64};
 use robotech::dao::{begin_transaction, commit_transaction};
 use robotech::db::get_db_conn;
@@ -161,6 +164,168 @@ impl AdmAuthSvc {
                 login_log_id,
             })),
         )
+    }
+
+    /// # 当前用户聚合信息
+    ///
+    /// 一次返回「用户资料 + 角色 + 权限 + 可见菜单」，前端登录后只需要调这一个
+    /// 接口就能完成侧栏渲染与按钮级鉴权，不再自己拼 role-user / role-menu /
+    /// role-perm 三次查询。
+    ///
+    /// ## 过滤规则
+    /// * 角色、权限只取 `enabled = true` 的
+    /// * 菜单只取 `enabled = true AND visible = true` 的
+    /// * 三组关联都按角色 ID 的并集去重
+    ///
+    /// ## 返回值
+    /// * `Ok(Ro<AdmMeVo>)` - 聚合结果
+    /// * `Ok(Ro::warn + ADM00003)` - 账号已停用
+    /// * `Err(SvcError)` - 数据库故障
+    #[allow(clippy::result_large_err)]
+    pub async fn me(user_id: u64) -> Result<Ro<AdmMeVo>, SvcError> {
+        let db = get_db_conn()?;
+        let user = AdmUserDao::get_by_id::<_, adm_user::Model>(U64(user_id), db.as_ref())
+            .await?
+            .ok_or_else(|| SvcError::NotFound(format!("用户 {user_id} 不存在")))?;
+
+        if !user.enabled || user.status == UserStatus::Disabled as i16 {
+            return Ok(Ro::warn("账号已停用，请联系管理员".to_string())
+                .code(Some(ADM_CODE_ACCOUNT_DISABLED.to_string())));
+        }
+
+        // 角色：先按 role_user 拿到角色 ID，再过滤启用的角色
+        let role_ids: Vec<i64> = adm_role_user::Entity::find()
+            .filter(adm_role_user::Column::UserId.eq(user.id))
+            .all(db.as_ref())
+            .await
+            .map_err(robotech::dao::DaoError::parse_db_err)?
+            .into_iter()
+            .map(|link| link.role_id)
+            .collect();
+
+        let roles = if role_ids.is_empty() {
+            Vec::new()
+        } else {
+            adm_role::Entity::find()
+                .filter(adm_role::Column::Id.is_in(role_ids.clone()))
+                .filter(adm_role::Column::Enabled.eq(true))
+                .order_by_asc(adm_role::Column::SortOrder)
+                .order_by_asc(adm_role::Column::Id)
+                .all(db.as_ref())
+                .await
+                .map_err(robotech::dao::DaoError::parse_db_err)?
+        };
+        let active_role_ids: Vec<i64> = roles.iter().map(|role| role.id).collect();
+
+        // 菜单：role_menu 取菜单 ID，再过滤启用且可见的
+        let menu_ids: Vec<i64> = if active_role_ids.is_empty() {
+            Vec::new()
+        } else {
+            adm_role_menu::Entity::find()
+                .filter(adm_role_menu::Column::RoleId.is_in(active_role_ids.clone()))
+                .all(db.as_ref())
+                .await
+                .map_err(robotech::dao::DaoError::parse_db_err)?
+                .into_iter()
+                .map(|link| link.menu_id)
+                .collect()
+        };
+        let menus = if menu_ids.is_empty() {
+            Vec::new()
+        } else {
+            adm_menu::Entity::find()
+                .filter(adm_menu::Column::Id.is_in(menu_ids))
+                .filter(adm_menu::Column::Enabled.eq(true))
+                .filter(adm_menu::Column::Visible.eq(true))
+                .order_by_asc(adm_menu::Column::TreeCode)
+                .all(db.as_ref())
+                .await
+                .map_err(robotech::dao::DaoError::parse_db_err)?
+        };
+
+        // 权限：role_perm 取权限 ID，再过滤启用的
+        let perm_ids: Vec<i64> = if active_role_ids.is_empty() {
+            Vec::new()
+        } else {
+            adm_role_perm::Entity::find()
+                .filter(adm_role_perm::Column::RoleId.is_in(active_role_ids))
+                .all(db.as_ref())
+                .await
+                .map_err(robotech::dao::DaoError::parse_db_err)?
+                .into_iter()
+                .map(|link| link.perm_id)
+                .collect()
+        };
+        let perms = if perm_ids.is_empty() {
+            Vec::new()
+        } else {
+            adm_perm::Entity::find()
+                .filter(adm_perm::Column::Id.is_in(perm_ids))
+                .filter(adm_perm::Column::Enabled.eq(true))
+                .order_by_asc(adm_perm::Column::SortOrder)
+                .order_by_asc(adm_perm::Column::Id)
+                .all(db.as_ref())
+                .await
+                .map_err(robotech::dao::DaoError::parse_db_err)?
+        };
+
+        let perm_urns = perms.iter().map(|perm| perm.urn.clone()).collect();
+
+        Ok(Ro::success("获取当前用户信息成功".to_string()).extra(Some(AdmMeVo {
+            user: AdmUserVo::from(user),
+            roles: roles.into_iter().map(Into::into).collect(),
+            perms: perms.into_iter().map(Into::into).collect(),
+            menus: menus.into_iter().map(Into::into).collect(),
+            perm_urns,
+        })))
+    }
+
+    /// # 修改当前用户登录口令
+    ///
+    /// 与 `PUT /adm/user` 分开口令字段：这条路径只能改自己的登录口令，
+    /// 且必须提供旧口令，避免令牌被盗后直接被换掉口令。
+    ///
+    /// ## 参数
+    /// * `user_id` - 令牌里的用户 ID
+    /// * `dto` - 旧 / 新口令的一次摘要（`SM3(明文)`）
+    ///
+    /// ## 返回值
+    /// * `Ok(Ro<()>)` - 修改成功
+    /// * `Ok(Ro::warn + ADM00001)` - 旧口令不正确
+    /// * `Err(SvcError)` - 用户不存在或数据库故障
+    #[allow(clippy::result_large_err)]
+    pub async fn change_password(
+        user_id: u64,
+        dto: AdmChangePasswordDto,
+    ) -> Result<Ro<()>, SvcError> {
+        dto.validate()?;
+
+        let db = get_db_conn()?;
+        let user = AdmUserDao::get_by_id::<_, adm_user::Model>(U64(user_id), db.as_ref())
+            .await?
+            .ok_or_else(|| SvcError::NotFound(format!("用户 {user_id} 不存在")))?;
+
+        if !AdmPasswordUtils::verify(&dto.old_pswd, &user.login_pswd_salt, &user.login_pswd) {
+            return Ok(Ro::warn("旧口令不正确".to_string())
+                .code(Some(ADM_CODE_LOGIN_FAILED.to_string())));
+        }
+        if !AdmPasswordUtils::is_first_hash(&dto.new_pswd) {
+            return Ok(Ro::illegal_argument(
+                "新口令必须是 SM3(明文) 的 64 位十六进制".to_string(),
+            ));
+        }
+
+        let salt = AdmPasswordUtils::gen_salt();
+        let sealed = AdmPasswordUtils::seal(&dto.new_pswd, &salt);
+        let mut active: adm_user::ActiveModel = user.clone().into();
+        active.login_pswd = Set(sealed);
+        active.login_pswd_salt = Set(salt);
+        active.login_pswd_default = Set(false);
+        active.updater_id = Set(user.id);
+        active.update_ms = ActiveValue::NotSet;
+        AdmUserDao::update(active, db.as_ref()).await?;
+
+        Ok(Ro::success("口令修改成功".to_string()))
     }
 
     /// # 登录（事务内）

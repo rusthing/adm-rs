@@ -4,6 +4,7 @@
 //! （那个宏要配套的 `mo::Xxx`），手写保持与其它 Vo 一致的序列化形态：
 //! `u64` 走 `u64_serde` 序列化成字符串，避免 JS 丢精度。
 
+use crate::vo::{AdmMenuVo, AdmPermVo, AdmRoleVo, AdmUserVo};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
@@ -55,4 +56,28 @@ pub struct AdmLogoutVo {
     /// 会话 ID（`adm_login_log.id`）
     #[serde(with = "u64_serde")]
     pub login_log_id: u64,
+}
+
+/// # 当前用户聚合信息
+///
+/// `/adm/auth/me` 的响应：一次把「我是谁、我的角色、我的权限、我的菜单」拿全，
+/// 前端不再需要自己拼 role-user / role-menu / role-perm 三次查询。
+///
+/// 只包含启用状态的角色、权限与可见菜单，按角色并集去重。
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmMeVo {
+    /// 当前用户资料（不含三套口令与盐值）
+    pub user: AdmUserVo,
+    /// 当前用户绑定的角色（仅启用的角色）
+    pub roles: Vec<AdmRoleVo>,
+    /// 当前用户拥有的权限（仅启用的权限，按角色并集去重）
+    pub perms: Vec<AdmPermVo>,
+    /// 当前用户可见的菜单（仅启用的可见菜单，按 `treeCode` 升序）
+    pub menus: Vec<AdmMenuVo>,
+    /// 权限 URN 列表
+    ///
+    /// 与 `perms` 的内容重复，单独给出是为了前端按前缀匹配时不用再 map 一次。
+    pub perm_urns: Vec<String>,
 }

@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Adm 管理后台 · 设计令牌
+   中性灰纸面 + 纯白面板 + 墨色文字，强调色是深蓝。
+   ID / 时间戳 / URN 一律等宽，便于纵向比对。
+   ========================================================================== */
+@theme {
+  --font-sans:
+    ui-sans-serif, -apple-system, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  --color-canvas: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-sunken: #fafbfc;
+  --color-line: #e3e6eb;
+  --color-line-strong: #cbd1da;
+
+  --color-ink: #191c21;
+  --color-ink-soft: #4a505a;
+  --color-muted: #7c828d;
+
+  --color-accent: #1f4f9e;
+  --color-accent-strong: #143a7a;
+  --color-accent-soft: #eaf0fb;
+
+  --color-success: #157a4a;
+  --color-success-soft: #e7f4ec;
+
+  --color-danger: #b3392e;
+  --color-danger-soft: #fbebe9;
+
+  --color-warn: #a2670a;
+  --color-warn-soft: #fbf1e0;
+
+  --color-info: #2a5bd7;
+  --color-info-soft: #eaeffd;
+
+  --color-violet: #6344c6;
+  --color-violet-soft: #efeafc;
+
+  --radius-panel: 14px;
+
+  --shadow-panel: 0 1px 2px rgb(25 28 33 / 4%), 0 8px 24px -16px rgb(25 28 33 / 18%);
+  --shadow-float: 0 2px 6px rgb(25 28 33 / 6%), 0 24px 48px -24px rgb(25 28 33 / 28%);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: #cfdcf6;
+    color: var(--color-accent-strong);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(31 79 158 / 55%);
+    outline-offset: 2px;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d5d9e0;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #bcc3cd;
+    background-clip: content-box;
+  }
+}
+
+@layer utilities {
+  .hairline {
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .grid-paper {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgb(25 28 33 / 6%) 1px, transparent 0);
+    background-size: 16px 16px;
+  }
+
+  .animate-rise {
+    animation: rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-slide-left {
+    animation: slide-left 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade {
+    animation: fade 0.2s ease-out both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

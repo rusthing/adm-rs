@@ -12,13 +12,13 @@
 //! 要拿真实来源得先加「可信代理白名单」，属于网关侧的事。
 
 use crate::cst::ADM_CODE_TOKEN_INVALID;
-use crate::dto::AdmLoginDto;
+use crate::dto::{AdmChangePasswordDto, AdmLoginDto};
 use crate::svc::AdmAuthSvc;
-use crate::vo::{AdmLoginVo, AdmLogoutVo};
+use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo};
+use crate::web::auth::{bearer_token, verify_bearer};
 use axum::debug_handler;
 use axum::extract::ConnectInfo;
 use axum::http::HeaderMap;
-use axum::http::header::AUTHORIZATION;
 use axum::response::Json;
 use robotech::api::Ro;
 use robotech::web::CtrlError;
@@ -81,60 +81,70 @@ pub async fn logout(headers: HeaderMap) -> Result<Json<Ro<AdmLogoutVo>>, CtrlErr
     }
 }
 
-/// # 从 `Authorization` 头里取裸令牌
+/// # 当前用户聚合信息
 ///
-/// ## 参数
-/// * `headers` - 请求头
+/// 返回当前令牌对应账号的资料、角色、权限与可见菜单。前端登录后调用它完成
+/// 侧栏渲染与按钮级鉴权，不再依赖 `id=1 / name=admin` 之类的超管启发式。
+///
+/// ## 请求头
+/// * `Authorization` - `Bearer <登录拿到的令牌>`
 ///
 /// ## 返回值
-/// * `Some(&str)` - 形如 `Bearer xxx` 时返回 `xxx`（去掉前后空白）
-/// * `None` - 没有该头、方案不是 Bearer，或令牌为空
-///
-/// ## 说明
-/// 方案名按 RFC 7235 大小写不敏感，`bearer` / `BEARER` 都收。
-fn bearer_token(headers: &HeaderMap) -> Option<&str> {
-    let raw = headers.get(AUTHORIZATION)?.to_str().ok()?;
-    let (scheme, token) = raw.split_once(' ')?;
-    if !scheme.eq_ignore_ascii_case("bearer") {
-        return None;
+/// * `Ro<AdmMeVo>` - 聚合结果
+/// * `ADM00005` - 缺少令牌 / 令牌无效 / 已登出 / 已过期
+#[utoipa::path(
+    get,
+    path = "/adm/auth/me",
+    params(("Authorization" = String, Header, description = "Bearer <token>")),
+    responses((status = OK, body = Ro<AdmMeVo>))
+)]
+#[debug_handler]
+#[allow(clippy::result_large_err)]
+pub async fn me(headers: HeaderMap) -> Result<Json<Ro<AdmMeVo>>, CtrlError> {
+    match verify_bearer(&headers).await {
+        Ok(user_id) => Ok(Json(AdmAuthSvc::me(user_id).await?)),
+        Err(detail) => Ok(Json(
+            Ro::warn("未登录或令牌已失效".to_string())
+                .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))
+                .detail(Some(detail)),
+        )),
     }
-    let token = token.trim();
-    if token.is_empty() { None } else { Some(token) }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use axum::http::HeaderValue;
-
-    fn headers_with(value: &str) -> HeaderMap {
-        let mut headers = HeaderMap::new();
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(value).expect("header"));
-        headers
-    }
-
-    /// 标准形态
-    #[test]
-    fn parse_standard_bearer() {
-        assert_eq!(
-            bearer_token(&headers_with("Bearer abc.def.ghi")),
-            Some("abc.def.ghi")
-        );
-    }
-
-    /// 方案名大小写不敏感，前后空白忽略
-    #[test]
-    fn parse_case_insensitive_and_trimmed() {
-        assert_eq!(bearer_token(&headers_with("bearer  tok ")), Some("tok"));
-        assert_eq!(bearer_token(&headers_with("BEARER tok")), Some("tok"));
-    }
-
-    /// 缺头、方案不对、令牌为空都不算数
-    #[test]
-    fn reject_invalid_shapes() {
-        assert_eq!(bearer_token(&HeaderMap::new()), None);
-        assert_eq!(bearer_token(&headers_with("Basic abc")), None);
-        assert_eq!(bearer_token(&headers_with("Bearer ")), None);
-        assert_eq!(bearer_token(&headers_with("Bearer")), None);
+/// # 修改当前用户登录口令
+///
+/// 个人中心专用接口：只改自己的登录口令，必须带旧口令。
+/// 两个字段都是前端算好的一次摘要 `SM3(明文)`，与登录口令的既有约定一致。
+///
+/// ## 请求头
+/// * `Authorization` - `Bearer <登录拿到的令牌>`
+///
+/// ## 请求体
+/// * `AdmChangePasswordDto` - `oldPswd` / `newPswd`
+///
+/// ## 返回值
+/// * `Ro<()>` - 修改成功
+/// * `ADM00001` - 旧口令不正确
+/// * `ADM00005` - 令牌无效
+#[utoipa::path(
+    post,
+    path = "/adm/auth/change-password",
+    request_body = AdmChangePasswordDto,
+    params(("Authorization" = String, Header, description = "Bearer <token>")),
+    responses((status = OK, description = "口令修改成功"))
+)]
+#[debug_handler]
+#[allow(clippy::result_large_err)]
+pub async fn change_password(
+    headers: HeaderMap,
+    Json(dto): Json<AdmChangePasswordDto>,
+) -> Result<Json<Ro<()>>, CtrlError> {
+    match verify_bearer(&headers).await {
+        Ok(user_id) => Ok(Json(AdmAuthSvc::change_password(user_id, dto).await?)),
+        Err(detail) => Ok(Json(
+            Ro::warn("未登录或令牌已失效".to_string())
+                .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))
+                .detail(Some(detail)),
+        )),
     }
 }

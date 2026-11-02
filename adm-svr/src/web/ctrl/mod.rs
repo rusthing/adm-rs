@@ -23,3 +23,4 @@ pub mod adm_role_menu_ctrl;
 pub mod adm_role_perm_ctrl;
 pub mod adm_role_user_ctrl;
 pub mod adm_user_ctrl;
+pub mod adm_user_password_ctrl;

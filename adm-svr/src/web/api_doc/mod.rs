@@ -23,6 +23,7 @@ mod adm_role_menu_api_doc;
 mod adm_role_perm_api_doc;
 mod adm_role_user_api_doc;
 mod adm_user_api_doc;
+mod adm_user_password_api_doc;
 
 pub use adm_app_api_doc::*;
 pub use adm_auth_api_doc::*;
@@ -49,3 +50,4 @@ pub use adm_role_menu_api_doc::*;
 pub use adm_role_perm_api_doc::*;
 pub use adm_role_user_api_doc::*;
 pub use adm_user_api_doc::*;
+pub use adm_user_password_api_doc::*;

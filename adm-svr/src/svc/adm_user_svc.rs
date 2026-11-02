@@ -26,11 +26,16 @@
 //! 登录（`AdmAuthSvc::login`）用同一个 [`AdmPasswordUtils::verify`] 校验，
 //! 两边口径一致，改算法只改那一处。
 
+use crate::config::get_adm_config;
 use crate::dto::{AdmUserAddDto, AdmUserModifyDto, AdmUserSaveDto};
+use crate::mo::adm_user;
 use crate::utils::AdmPasswordUtils;
+use robotech::db::get_db_conn;
 use robotech::macros::svc;
+use sea_orm::{ActiveValue, Set};
 use std::borrow::Cow;
 use validator::ValidationError;
+use wheel_rs::sm3_utils::sm3_hex;
 
 // `SvcError`、`ConnectionTrait`、`Validate` 等由 `#[svc]` 注入，这里不能再 use
 // 一遍（E0252 重复引入）。
@@ -71,6 +76,9 @@ fn seal_pswd_pair(
 ) -> Result<(Option<String>, Option<String>), SvcError> {
     match pswd {
         None => Ok((None, None)),
+        // 空串与空白串按「没设置」处理：审核 / 支付口令允许留空，
+        // 前端清空输入框后提交空串不应该被当成非法摘要。
+        Some(first_hash) if first_hash.trim().is_empty() => Ok((None, None)),
         Some(first_hash) => {
             let first_hash = first_hash.trim().to_string();
             if !AdmPasswordUtils::is_first_hash(&first_hash) {
@@ -111,10 +119,78 @@ pub async fn seal_passwords_on_add<C>(
 where
     C: ConnectionTrait,
 {
-    (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
-    (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;
-    (dto.pay_pswd, dto.pay_pswd_salt) = seal_pswd_pair(dto.pay_pswd, dto.pay_pswd_salt)?;
+    let (login_pswd, login_pswd_salt) =
+        seal_pswd_pair(dto.login_pswd.take(), dto.login_pswd_salt.take())?;
+    // 新增时登录口令必须给出：库列 NOT NULL，缺了会在插入阶段报 500，
+    // 不如在这里明确拒绝
+    let (Some(login_pswd), Some(login_pswd_salt)) = (login_pswd, login_pswd_salt) else {
+        return Err(required_login_pswd());
+    };
+    dto.login_pswd = Some(login_pswd);
+    dto.login_pswd_salt = Some(login_pswd_salt);
+
+    // 审核 / 支付口令允许留空，但列是 NOT NULL：新增时用空串占位，
+    // 表示「能力尚未启用」，与「没传所以保留原值」区分开
+    let (audit_pswd, audit_pswd_salt) =
+        seal_pswd_pair(dto.audit_pswd.take(), dto.audit_pswd_salt.take())?;
+    dto.audit_pswd = Some(audit_pswd.unwrap_or_default());
+    dto.audit_pswd_salt = Some(audit_pswd_salt.unwrap_or_default());
+
+    let (pay_pswd, pay_pswd_salt) = seal_pswd_pair(dto.pay_pswd.take(), dto.pay_pswd_salt.take())?;
+    dto.pay_pswd = Some(pay_pswd.unwrap_or_default());
+    dto.pay_pswd_salt = Some(pay_pswd_salt.unwrap_or_default());
+
     Ok(dto)
+}
+
+/// # 新增用户缺少登录口令
+fn required_login_pswd() -> SvcError {
+    let mut error = ValidationError::new("login_password_required");
+    error.message = Some(Cow::Owned("新增用户必须设置登录口令".to_string()));
+    SvcError::Validation(error)
+}
+
+/// # 重置登录口令为配置里的默认值
+///
+/// ## 参数
+/// * `user_id` - 被重置的用户 ID
+/// * `operator_id` - 执行重置的当前用户 ID（写审计列）
+///
+/// ## 返回
+/// * `Ok(Ro<()>)` - 重置成功；库里的 `login_pswd_default` 置为 `true`
+/// * `Err(SvcError)` - 用户不存在或数据库故障
+///
+/// ## 默认值来源
+///
+/// `[adm] default-password`。它可以是明文（`123456`）也可以直接是
+/// `SM3(明文)`：前者由服务端算一次摘要，后者原样使用，避免重复摘要。
+impl AdmUserSvc {
+    pub async fn reset_password(user_id: u64, operator_id: u64) -> Result<Ro<()>, SvcError> {
+    let db = get_db_conn()?;
+    let user = AdmUserDao::get_by_id::<_, adm_user::Model>(U64(user_id), db.as_ref())
+        .await?
+        .ok_or_else(|| SvcError::NotFound(format!("用户 {user_id} 不存在")))?;
+
+    let config = get_adm_config()?;
+    let default_password = config.default_password.trim();
+    let first_hash = if AdmPasswordUtils::is_first_hash(default_password) {
+        default_password.to_lowercase()
+    } else {
+        sm3_hex(default_password)
+    };
+    let salt = AdmPasswordUtils::gen_salt();
+    let sealed = AdmPasswordUtils::seal(&first_hash, &salt);
+
+    let mut active: adm_user::ActiveModel = user.into();
+    active.login_pswd = Set(sealed);
+    active.login_pswd_salt = Set(salt);
+    active.login_pswd_default = Set(true);
+    active.updater_id = Set(operator_id as i64);
+    active.update_ms = ActiveValue::NotSet;
+    AdmUserDao::update(active, db.as_ref()).await?;
+
+    Ok(Ro::success("口令已重置为默认值".to_string()))
+    }
 }
 
 /// # 修改时封存三套口令

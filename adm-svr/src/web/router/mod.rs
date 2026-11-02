@@ -22,6 +22,7 @@ mod adm_role_menu_router;
 mod adm_role_perm_router;
 mod adm_role_router;
 mod adm_role_user_router;
+mod adm_user_password_router;
 mod adm_user_router;
 
 /// # 路由自检

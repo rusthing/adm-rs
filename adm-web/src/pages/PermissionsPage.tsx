@@ -1,0 +1,99 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { opTypeApi, permGroupApi } from "@/lib/api";
+import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
+import { CrudPage } from "@/components/crud/CrudPage";
+import { Badge } from "@/components/ui/primitives";
+import type { AdmPermVo, FormValues } from "@/lib/types";
+
+function optionalText(value: FormValues[string]): string | undefined {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text ? text : undefined;
+}
+
+export function PermissionsPage() {
+  const groupsQuery = useQuery({
+    queryKey: ["permGroup", "options"],
+    queryFn: () => permGroupApi.list({ _orderBy: "tree_code:asc" }),
+    staleTime: 30_000,
+  });
+  const opTypesQuery = useQuery({
+    queryKey: ["opType", "options"],
+    queryFn: () => opTypeApi.list({ _orderBy: "sort_order:asc" }),
+    staleTime: 30_000,
+  });
+
+  const groupName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of groupsQuery.data ?? []) map.set(group.id, group.name);
+    return map;
+  }, [groupsQuery.data]);
+
+  const columns: CrudColumn<AdmPermVo>[] = [
+    { key: "name", label: "权限", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
+    { key: "urn", label: "URN", render: (row) => <code className="font-mono text-[11.5px] text-accent-strong">{row.urn}</code> },
+    { key: "groupId", label: "权限分组", render: (row) => groupName.get(row.groupId) ?? `#${row.groupId}` },
+    { key: "opTypeCode", label: "操作类型", render: (row) => <code className="font-mono text-[11.5px] text-muted">{row.opTypeCode || "—"}</code> },
+    { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
+    { key: "enabled", label: "启用", render: (row) => <Badge tone={row.enabled ? "success" : "warn"}>{row.enabled ? "启用" : "停用"}</Badge> },
+  ];
+
+  const fields: CrudField[] = [
+    {
+      name: "groupId",
+      label: "权限分组",
+      type: "select",
+      required: true,
+      options: (groupsQuery.data ?? []).map((group) => ({ value: group.id, label: `${group.name}（${group.treeCode}）` })),
+      hint: groupsQuery.data?.length ? "权限按分组唯一（groupId + name）。" : "还没有权限分组，请先到「权限分组」创建。",
+    },
+    { name: "name", label: "名称", required: true, placeholder: "同一分组内唯一，1-50 字" },
+    { name: "urn", label: "URN", required: true, placeholder: "METHOD:路径，如 GET:/adm/user/page", hint: "全局唯一，鉴权时按前缀匹配；创建后不要改。" },
+    {
+      name: "opTypeCode",
+      label: "操作类型",
+      type: "select",
+      options: (opTypesQuery.data ?? []).map((opType) => ({ value: opType.code, label: `${opType.name}（${opType.code}）` })),
+      hint: "可留空；表示该权限与操作类型无关（如整页访问）。",
+    },
+    { name: "sortOrder", label: "排序", type: "number", required: true, defaultValue: "0" },
+    { name: "enabled", label: "启用", type: "switch", defaultValue: true },
+    { name: "remark", label: "备注", type: "textarea" },
+  ];
+
+  const toForm = (row: AdmPermVo): FormValues => ({
+    groupId: row.groupId,
+    name: row.name,
+    urn: row.urn,
+    opTypeCode: row.opTypeCode ?? "",
+    sortOrder: String(row.sortOrder ?? 0),
+    enabled: row.enabled,
+    remark: row.remark ?? "",
+  });
+
+  const toPayload = (values: FormValues) => ({
+    groupId: values.groupId,
+    name: String(values.name ?? "").trim(),
+    urn: String(values.urn ?? "").trim(),
+    opTypeCode: optionalText(values.opTypeCode),
+    sortOrder: Number(values.sortOrder ?? 0),
+    enabled: Boolean(values.enabled),
+    remark: optionalText(values.remark),
+  });
+
+  return (
+    <CrudPage<AdmPermVo>
+      title="权限管理"
+      subtitle="权限点是「HTTP 方法 + 路径」的 URN。后端当前只校验 Bearer 身份，接口级 URN 授权后续在 gatex-rs 实现；前端前缀匹配仅用于展示层门禁。"
+      prefix="/adm/perm"
+      columns={columns}
+      fields={fields}
+      itemLabel={(row) => row.name}
+      defaultOrderBy="sort_order:asc"
+      searchPlaceholder="搜索权限名 / URN / 备注"
+      emptyDescription="后端种子没有权限行。建议先建分组，再按接口逐个录入 URN。"
+      toForm={toForm}
+      toPayload={toPayload}
+    />
+  );
+}

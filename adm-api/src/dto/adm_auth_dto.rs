@@ -65,3 +65,38 @@ pub struct AdmLoginDto {
     #[serde(default)]
     pub login_pswd: String,
 }
+
+/// # 修改口令请求（服务端）
+///
+/// 个人中心专用。与 `PUT /adm/user` 的区别：
+/// * 只改当前登录人自己的登录口令，不接受 `id` 参数
+/// * 必须提供旧口令，防止令牌被借用后直接换掉口令
+/// * 不改审核 / 支付口令
+///
+/// `old_pswd` 与 `new_pswd` 都是前端算好的一次摘要 `SM3(明文)`。
+#[cfg(feature = "server")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema, validator::Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmChangePasswordDto {
+    /// 旧口令的一次摘要
+    #[serde(default)]
+    #[validate(length(min = 64, max = 64))]
+    pub old_pswd: String,
+    /// 新口令的一次摘要
+    #[serde(default)]
+    #[validate(length(min = 64, max = 64))]
+    pub new_pswd: String,
+}
+
+/// # 修改口令请求（客户端）
+#[cfg(not(feature = "server"))]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmChangePasswordDto {
+    /// 旧口令的一次摘要
+    #[serde(default)]
+    pub old_pswd: String,
+    /// 新口令的一次摘要
+    #[serde(default)]
+    pub new_pswd: String,
+}
