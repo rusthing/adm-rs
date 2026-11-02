@@ -31,11 +31,11 @@ utoipa = "6.0.0"
 utoipa-swagger-ui = "10.0.1"
 humantime = "2.4.0"
 redis = "1.7.1"
-# 口令摘要：模型约定两级 SM3，实现在 wheel-rs 的 sm3_utils（无第三方依赖）
-sha2 = "0.11.0"
-hex = "0.4.3"
+# 口令摘要：模型约定两级 SM3，用 wheel-rs 的 sm3_utils（RustCrypto 的 sm3 实现）
 # 访问令牌：HS256 签名的 JWT
-jsonwebtoken = "11.1.0"
+# 11.x 的 default 只剩 use_pem，crypto provider 必须显式二选一；选纯 Rust 实现，
+# 不引 aws-lc-rs 的 C 工具链
+jsonwebtoken = { version = "11.1.0", features = ["rust_crypto"] }
 # 口令组合码的随机源（线程本地 CSPRNG）
 rand = "0.9"
 

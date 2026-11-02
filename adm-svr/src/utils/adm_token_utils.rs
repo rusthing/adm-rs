@@ -50,6 +50,7 @@ pub struct AdmTokenClaims {
     pub exp: i64,
 }
 
+#[allow(clippy::result_large_err)]
 impl AdmTokenClaims {
     /// # 取用户 ID
     ///
@@ -83,6 +84,7 @@ impl AdmTokenClaims {
 /// # 令牌工具
 pub struct AdmTokenUtils;
 
+#[allow(clippy::result_large_err)]
 impl AdmTokenUtils {
     /// # 签发令牌
     ///

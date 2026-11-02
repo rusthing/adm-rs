@@ -44,6 +44,7 @@ use std::net::SocketAddr;
     responses((status = OK, body = Ro<AdmLoginVo>))
 )]
 #[debug_handler]
+#[allow(clippy::result_large_err)]
 pub async fn login(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(dto): Json<AdmLoginDto>,
@@ -69,6 +70,7 @@ pub async fn login(
     responses((status = OK, body = Ro<AdmLogoutVo>))
 )]
 #[debug_handler]
+#[allow(clippy::result_large_err)]
 pub async fn logout(headers: HeaderMap) -> Result<Json<Ro<AdmLogoutVo>>, CtrlError> {
     match bearer_token(&headers) {
         Some(token) => Ok(Json(AdmAuthSvc::logout(token).await?)),

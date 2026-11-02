@@ -37,8 +37,6 @@ strum = { workspace = true, features = ["derive"] }
 utoipa = { workspace = true, features = ["axum_extras"] }
 utoipa-swagger-ui = { workspace = true, features = ["axum", "vendored"] }
 async-trait = { workspace = true }
-sha2 = { workspace = true }
-hex = { workspace = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true }
 

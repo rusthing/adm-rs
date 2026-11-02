@@ -28,3 +28,6 @@ validator = { workspace = true, optional = true, features = ["derive"] }
 
 [features]
 server = ["sea-orm", "o2o", "validator", "robotech/macros", "robotech/orm"]
+
+[dev-dependencies]
+serde_json = { workspace = true }

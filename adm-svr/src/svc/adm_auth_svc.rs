@@ -74,6 +74,7 @@ enum LockState {
     Expired,
 }
 
+#[allow(clippy::result_large_err)]
 impl AdmAuthSvc {
     /// # 登录
     ///

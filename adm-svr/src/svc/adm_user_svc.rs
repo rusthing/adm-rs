@@ -29,18 +29,23 @@
 use crate::dto::{AdmUserAddDto, AdmUserModifyDto, AdmUserSaveDto};
 use crate::utils::AdmPasswordUtils;
 use robotech::macros::svc;
-use robotech::svc::SvcError;
-use sea_orm::ConnectionTrait;
 use std::borrow::Cow;
 use validator::ValidationError;
+
+// `SvcError`、`ConnectionTrait`、`Validate` 等由 `#[svc]` 注入，这里不能再 use
+// 一遍（E0252 重复引入）。
 
 /// # 用户（账号）服务
 ///
 /// 三个写方法都先过口令封存钩子，再走框架的 CRUD。
+///
+/// 批量查询返回 `AdmUserListVo`：手机号、邮箱、身份证、实名四个可定位个人的
+/// 字段只出遮蔽结果；单条详情继续用 `AdmUserVo` 回显原值。
 #[svc(
+    list_vo = AdmUserListVo,
     before_add = seal_passwords_on_add,
     before_modify = seal_passwords_on_modify,
-    before_save = seal_passwords_on_save,
+    before_save = seal_passwords_on_save
 )]
 pub struct AdmUserSvc;
 
