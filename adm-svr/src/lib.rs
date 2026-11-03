@@ -7,7 +7,7 @@ pub mod web;
 /// # 带鉴权的 CRUD 路由
 ///
 /// `robotech` 的 `#[router(crud)]` 不支持挂 `.layer(...)`，而 adm 的业务接口
-/// 又必须统一校验 Bearer 令牌。这里用宏复制它的 22 条路由，并在整棵路由树上
+/// 又必须统一校验 Bearer 令牌。这里用宏复制它的 23 条路由，并在整棵路由树上
 /// 挂 [`crate::web::auth::require_auth`]：中间件校验通过后把令牌里的用户 ID
 /// 写入 `X-User-Id`，控制器不需要改动。
 ///
@@ -54,6 +54,7 @@ macro_rules! adm_crud_router {
                 .route(concat!($prefix, "/search/{id}"), get(search_by_id))
                 .route(concat!($prefix, "/save"), post(save))
                 .route(concat!($prefix, "/upsert"), post(upsert))
+                .route(concat!($prefix, "/sync"), post(sync))
                 .route($prefix, post(add))
                 .route($prefix, put(modify))
                 .route($prefix, get(get_by_query_dto))

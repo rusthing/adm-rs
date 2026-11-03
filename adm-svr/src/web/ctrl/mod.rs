@@ -1,5 +1,6 @@
 pub mod adm_app_ctrl;
 pub mod adm_auth_ctrl;
+pub mod adm_dashboard_ctrl;
 pub mod adm_lock_log_ctrl;
 pub mod adm_login_log_ctrl;
 pub mod adm_menu_ctrl;

@@ -8,6 +8,7 @@ use robotech::macros::api_doc;
     modify,
     save,
     upsert,
+    sync,
     del_by_id,
     del_by_query_dto,
     get_by_id,
