@@ -167,6 +167,7 @@ export function MenusPage() {
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="tree_code:asc"
+      sortable={{ kind: "tree", treeCode: (row) => row.treeCode, scope: (row) => row.appId }}
       searchPlaceholder="搜索菜单名 / 编码 / 路径"
       filters={[
         {

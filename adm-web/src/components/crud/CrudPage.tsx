@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, KeyboardEvent, ReactNode } from "react";
+import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { crudApi } from "@/lib/api";
 import type { CrudApi } from "@/lib/api";
 import type { FormValues, PageQuery } from "@/lib/types";
@@ -28,11 +28,21 @@ import {
   keywordPlaceholder,
 } from "./filters";
 import type { CrudDateRange, CrudFilterDef, CrudFilterValue, CrudFilterValues } from "./filters";
+import {
+  applySortPreview,
+  buildSortOrderMap,
+  buildSortSequence,
+  moveSortIdTo,
+  sortGroupKey,
+  swapSortId,
+} from "./sort";
+import type { CrudSortable } from "./sort";
 
 export type FormMode = "create" | "edit";
 
 export type { CrudCellType } from "./cells";
 export type { CrudFilterDef, CrudFilterType, CrudFilterOption } from "./filters";
+export type { CrudSortable } from "./sort";
 
 export interface CrudColumn<T> {
   key: string;
@@ -90,6 +100,12 @@ interface CrudPageProps<T extends { id: string }> {
    * 类型与拼接规则见 `./filters.ts`；页面只声明 schema，不写查询参数拼装。
    */
   filters?: CrudFilterDef[];
+  /**
+   * 排序模式。声明后列表出现「排序」列：组内序号 + 上移/下移 + 拖拽。
+   * 排序值由服务端维护，前端只提交同组完整 id 顺序。
+   * 日志类实体不要声明。
+   */
+  sortable?: CrudSortable<T>;
 }
 
 /**
@@ -250,6 +266,7 @@ export function CrudPage<T extends { id: string }>({
   rowActions,
   emptyDescription,
   filters,
+  sortable,
 }: CrudPageProps<T>) {
   const api = useMemo<CrudApi<T>>(() => crudApi<T>(prefix), [prefix]);
   const queryClient = useQueryClient();
@@ -303,6 +320,209 @@ export function CrudPage<T extends { id: string }>({
 
   const rows = query.data?.list ?? [];
   const total = Number(query.data?.total ?? 0);
+  const hasActiveFilters = Boolean(appliedKeyword) || hasActiveFilterValues(filters, filterValues);
+
+  // ---- 统一排序模式（仅 sortable 页面启用） ----
+  const [sortPreview, setSortPreview] = useState<Record<string, string[]>>({});
+  const [sortSaving, setSortSaving] = useState(false);
+  const [dragState, setDragState] = useState<{
+    pointerId: number;
+    id: string;
+    group: string;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
+
+  const sortListQuery = useQuery({
+    queryKey: [prefix, "sort-all", sortable?.kind, sortable?.listOrderBy ?? defaultOrderBy],
+    queryFn: () => api.list({ _orderBy: sortable?.listOrderBy ?? defaultOrderBy }),
+    enabled: Boolean(sortable),
+    staleTime: 5_000,
+  });
+
+  const baseOrderMap = useMemo(
+    () => (sortable ? buildSortOrderMap(sortListQuery.data ?? [], sortable) : new Map<string, string[]>()),
+    [sortListQuery.data, sortable],
+  );
+
+  const sortSequence = useMemo(() => {
+    const effective = new Map(baseOrderMap);
+    for (const [key, ids] of Object.entries(sortPreview)) effective.set(key, ids);
+    return buildSortSequence(effective);
+  }, [baseOrderMap, sortPreview]);
+
+  const displayRows = useMemo(
+    () => (sortable ? applySortPreview(rows, sortable, sortPreview) : rows),
+    [rows, sortable, sortPreview],
+  );
+
+  // 有筛选条件时禁止排序：避免只对筛选后的子集提交完整顺序。
+  const sortEnabled = Boolean(sortable) && !hasActiveFilters && !sortSaving;
+
+  const orderOf = (group: string): string[] => sortPreview[group] ?? baseOrderMap.get(group) ?? [];
+
+  const submitSort = async (group: string, ids: string[]) => {
+    setSortSaving(true);
+    try {
+      await api.reorder(ids);
+      await sortListQuery.refetch();
+      await query.refetch();
+      setSortPreview((current) => {
+        const next = { ...current };
+        delete next[group];
+        return next;
+      });
+      toast.success("排序已保存");
+    } catch (error) {
+      // 失败回滚：丢弃乐观顺序并重新拉取服务端真实顺序
+      setSortPreview((current) => {
+        const next = { ...current };
+        delete next[group];
+        return next;
+      });
+      await sortListQuery.refetch();
+      await query.refetch();
+      toast.error(error instanceof Error ? error.message : "排序保存失败，已恢复");
+    } finally {
+      setSortSaving(false);
+    }
+  };
+
+  const moveRow = (row: T, delta: number) => {
+    if (!sortable || !sortEnabled) return;
+    const group = sortGroupKey(row, sortable);
+    const ids = orderOf(group);
+    const next = swapSortId(ids, row.id, delta);
+    if (!next) return;
+    setSortPreview((current) => ({ ...current, [group]: next }));
+    void submitSort(group, next);
+  };
+
+  const beginDrag = (row: T, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!sortable || !sortEnabled) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragState({
+      pointerId: event.pointerId,
+      id: row.id,
+      group: sortGroupKey(row, sortable),
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+    });
+  };
+
+  const dragOver = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!sortable || !dragState || event.pointerId !== dragState.pointerId) return;
+    if (!dragState.moved && Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY) < 6) {
+      return;
+    }
+    const targetElement = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-sort-row-id]");
+    const targetId = targetElement?.getAttribute("data-sort-row-id");
+    if (!targetId || targetId === dragState.id) {
+      setDragState((current) => (current ? { ...current, moved: true } : current));
+      return;
+    }
+    const targetRow = displayRows.find((row) => row.id === targetId);
+    if (!targetRow || sortGroupKey(targetRow, sortable) !== dragState.group) return;
+    const ids = orderOf(dragState.group);
+    const targetIndex = ids.indexOf(targetId);
+    if (targetIndex < 0) return;
+    const next = moveSortIdTo(ids, dragState.id, targetIndex);
+    if (!next) return;
+    setSortPreview((current) => ({ ...current, [dragState.group]: next }));
+    setDragState((current) => (current ? { ...current, moved: true } : current));
+  };
+
+  const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    const { group, moved } = dragState;
+    setDragState(null);
+    if (!moved) return;
+    const next = sortPreview[group];
+    const base = baseOrderMap.get(group) ?? [];
+    if (!next || next.join(",") === base.join(",")) {
+      setSortPreview((current) => {
+        const copy = { ...current };
+        delete copy[group];
+        return copy;
+      });
+      return;
+    }
+    setSortPreview((current) => ({ ...current, [group]: next }));
+    void submitSort(group, next);
+  };
+
+  const cancelDrag = () => {
+    setDragState(null);
+    setSortPreview({});
+  };
+
+  /**
+   * 排序单元格：组内序号 + 拖拽手柄 + 上移/下移。
+   * 排序值不在这里编辑，只提交顺序；拖拽使用 Pointer Events，鼠标与触摸都可用。
+   */
+  const renderSortCell = (row: T) => {
+    if (!sortable) return null;
+    const group = sortGroupKey(row, sortable);
+    const ids = orderOf(group);
+    const index = ids.indexOf(row.id);
+    const fallback =
+      sortable.kind === "number"
+        ? sortable.orderValue?.(row)
+        : Number((sortable.treeCode?.(row) ?? "").slice(-3));
+    const seq = sortSequence.get(row.id) ?? fallback;
+    const disabledTitle = hasActiveFilters ? "清除搜索与筛选条件后可调整排序" : "排序数据加载中";
+    return (
+      <td className="w-[112px] whitespace-nowrap px-3 py-2.5 align-middle">
+        <div className="flex items-center justify-end gap-1">
+          <span className="inline-flex h-5 min-w-7 items-center justify-center rounded bg-sunken px-1 text-[11px] tabular-nums text-muted">
+            {Number.isFinite(seq) ? seq : "--"}
+          </span>
+          <button
+            type="button"
+            aria-label="拖拽调整排序"
+            title={sortEnabled ? "按住拖拽到同组目标位置" : disabledTitle}
+            disabled={!sortEnabled}
+            onPointerDown={(event) => beginDrag(row, event)}
+            onPointerMove={dragOver}
+            onPointerUp={endDrag}
+            onPointerCancel={cancelDrag}
+            className={cn(
+              "touch-none rounded p-1 text-muted transition-colors",
+              sortEnabled ? "cursor-grab hover:bg-sunken hover:text-ink" : "cursor-not-allowed opacity-40",
+              dragState?.id === row.id && "bg-sunken text-ink",
+            )}
+          >
+            <GripVertical size={13} />
+          </button>
+          <span className="flex flex-col leading-none">
+            <button
+              type="button"
+              aria-label="上移"
+              title={sortEnabled ? "上移一位" : disabledTitle}
+              disabled={!sortEnabled || index <= 0}
+              onClick={() => moveRow(row, -1)}
+              className="rounded p-0.5 text-muted transition-colors hover:bg-sunken hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ArrowUp size={10} />
+            </button>
+            <button
+              type="button"
+              aria-label="下移"
+              title={sortEnabled ? "下移一位" : disabledTitle}
+              disabled={!sortEnabled || index < 0 || index >= ids.length - 1}
+              onClick={() => moveRow(row, 1)}
+              className="rounded p-0.5 text-muted transition-colors hover:bg-sunken hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ArrowDown size={10} />
+            </button>
+          </span>
+        </div>
+      </td>
+    );
+  };
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: [prefix] });
@@ -418,8 +638,6 @@ export function CrudPage<T extends { id: string }>({
       })
     : [];
 
-  const hasActiveFilters = Boolean(appliedKeyword) || hasActiveFilterValues(filters, filterValues);
-
   return (
     <div>
       <PageHeader
@@ -523,6 +741,11 @@ export function CrudPage<T extends { id: string }>({
             <table className="w-full min-w-[720px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-line bg-sunken/70">
+                  {sortable && (
+                    <th className="w-[112px] whitespace-nowrap px-3 py-2 text-right text-[11.5px] font-medium text-muted">
+                      排序
+                    </th>
+                  )}
                   {columns.map((column) => (
                     <th
                       key={column.key}
@@ -542,8 +765,16 @@ export function CrudPage<T extends { id: string }>({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-b border-line/80 last:border-b-0 hover:bg-sunken/50">
+                {displayRows.map((row) => (
+                  <tr
+                    key={row.id}
+                    data-sort-row-id={row.id}
+                    className={cn(
+                      "border-b border-line/80 last:border-b-0 hover:bg-sunken/50",
+                      dragState?.id === row.id && "bg-sunken/70 opacity-70",
+                    )}
+                  >
+                    {renderSortCell(row)}
                     {columns.map((column) => (
                       <td
                         key={column.key}

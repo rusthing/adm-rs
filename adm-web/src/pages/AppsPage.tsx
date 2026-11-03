@@ -27,7 +27,6 @@ export function AppsPage() {
     { key: "name", label: "应用", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
     { key: "realmId", label: "领域", render: (row) => (row.realmId ? realmName.get(row.realmId) ?? `#${row.realmId}` : "--") },
-    { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
     { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
   ];
 
@@ -41,7 +40,6 @@ export function AppsPage() {
     },
     { name: "code", label: "应用编码", required: true, placeholder: "全局唯一，如 adm-console" },
     { name: "name", label: "名称", required: true, placeholder: "全局唯一" },
-    { name: "sortOrder", label: "排序", type: "number", required: true, defaultValue: "0" },
     { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea" },
   ];
@@ -50,7 +48,6 @@ export function AppsPage() {
     realmId: row.realmId ?? "",
     code: row.code,
     name: row.name,
-    sortOrder: String(row.sortOrder ?? 0),
     enabled: row.enabled,
     remark: row.remark ?? "",
   });
@@ -59,7 +56,6 @@ export function AppsPage() {
     realmId: optionalText(values.realmId),
     code: String(values.code ?? "").trim(),
     name: String(values.name ?? "").trim(),
-    sortOrder: Number(values.sortOrder ?? 0),
     enabled: Boolean(values.enabled),
     remark: optionalText(values.remark),
   });
@@ -73,6 +69,7 @@ export function AppsPage() {
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="sort_order:asc"
+      sortable={{ kind: "number", orderValue: (row) => row.sortOrder, scope: (row) => row.realmId ?? "__none__" }}
       searchPlaceholder="搜索应用名 / 编码"
       filters={[
         {

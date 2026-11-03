@@ -33,7 +33,6 @@ export function PermissionsPage() {
     { key: "urn", label: "URN", render: (row) => <code className="font-mono text-[11.5px] text-accent-strong">{row.urn}</code> },
     { key: "groupId", label: "权限分组", render: (row) => groupName.get(row.groupId) ?? `#${row.groupId}` },
     { key: "opTypeCode", label: "操作类型", type: "code" },
-    { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
     { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
   ];
 
@@ -55,7 +54,6 @@ export function PermissionsPage() {
       options: (opTypesQuery.data ?? []).map((opType) => ({ value: opType.code, label: `${opType.name}（${opType.code}）` })),
       hint: "可留空；表示该权限与操作类型无关（如整页访问）。",
     },
-    { name: "sortOrder", label: "排序", type: "number", required: true, defaultValue: "0" },
     { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea" },
   ];
@@ -65,7 +63,6 @@ export function PermissionsPage() {
     name: row.name,
     urn: row.urn,
     opTypeCode: row.opTypeCode ?? "",
-    sortOrder: String(row.sortOrder ?? 0),
     enabled: row.enabled,
     remark: row.remark ?? "",
   });
@@ -75,7 +72,6 @@ export function PermissionsPage() {
     name: String(values.name ?? "").trim(),
     urn: String(values.urn ?? "").trim(),
     opTypeCode: optionalText(values.opTypeCode),
-    sortOrder: Number(values.sortOrder ?? 0),
     enabled: Boolean(values.enabled),
     remark: optionalText(values.remark),
   });
@@ -89,6 +85,7 @@ export function PermissionsPage() {
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="sort_order:asc"
+      sortable={{ kind: "number", orderValue: (row) => row.sortOrder, scope: (row) => row.groupId }}
       searchPlaceholder="搜索权限名 / URN / 备注"
       filters={[
         {

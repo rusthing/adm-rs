@@ -110,6 +110,7 @@ export function RoleGroupsPage() {
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="tree_code:asc"
+      sortable={{ kind: "tree", treeCode: (row) => row.treeCode, scope: (row) => row.realmId }}
       searchPlaceholder="搜索分组名 / 备注"
       filters={[
         {

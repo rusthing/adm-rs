@@ -44,6 +44,11 @@ export interface CrudApi<T> {
   /** 与 `save` 只差一步：有 id 但记录不存在时按该 id 补建，而不是报错 */
   upsert: (body: Payload) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
+  /**
+   * 统一重排：提交同组完整 id 顺序，服务端整体重算为连续序号。
+   * 对应 `POST {prefix}/reorder`，请求体为 `{ ids }`。
+   */
+  reorder: (ids: string[]) => Promise<unknown>;
 }
 
 /** 22 个宏生成接口里前端实际用到的 8 个。 */
@@ -65,6 +70,7 @@ export function crudApi<T>(prefix: string): CrudApi<T> {
     save: (body) => request(`${prefix}/save`, { method: "POST", body }),
     upsert: (body) => request(`${prefix}/upsert`, { method: "POST", body }),
     remove: (id) => request(`${prefix}/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    reorder: (ids) => request(`${prefix}/reorder`, { method: "POST", body: { ids } }),
   };
 }
 

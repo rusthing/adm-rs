@@ -196,7 +196,6 @@ export function RolesPage() {
   const columns: CrudColumn<AdmRoleVo>[] = [
     { key: "name", label: "角色", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "groupId", label: "角色分组", render: (row) => groupName.get(row.groupId) ?? `#${row.groupId}` },
-    { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
     { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
     { key: "remark", label: "备注" },
   ];
@@ -211,7 +210,6 @@ export function RolesPage() {
       hint: groupsQuery.data?.length ? "角色按分组唯一（groupId + name）。" : "还没有角色分组，请先到「角色分组」创建。",
     },
     { name: "name", label: "名称", required: true, placeholder: "同一分组内唯一，1-50 字" },
-    { name: "sortOrder", label: "排序", type: "number", required: true, defaultValue: "0", hint: "0-9999，越小越靠前。" },
     { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea", placeholder: "0-50 字" },
   ];
@@ -219,7 +217,6 @@ export function RolesPage() {
   const toForm = (row: AdmRoleVo): FormValues => ({
     groupId: row.groupId,
     name: row.name,
-    sortOrder: String(row.sortOrder ?? 0),
     enabled: row.enabled,
     remark: row.remark ?? "",
   });
@@ -227,7 +224,6 @@ export function RolesPage() {
   const toPayload = (values: FormValues) => ({
     groupId: values.groupId,
     name: String(values.name ?? "").trim(),
-    sortOrder: Number(values.sortOrder ?? 0),
     enabled: Boolean(values.enabled),
     remark: optionalText(values.remark),
   });
@@ -251,6 +247,7 @@ export function RolesPage() {
         fields={fields}
         itemLabel={(row) => row.name}
         defaultOrderBy="sort_order:asc"
+        sortable={{ kind: "number", orderValue: (row) => row.sortOrder, scope: (row) => row.groupId }}
         searchPlaceholder="搜索角色名 / 备注"
         filters={[
           {
