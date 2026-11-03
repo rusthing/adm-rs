@@ -20,8 +20,9 @@ pub struct AdmOpTypeDto {
     /// @len 1..=50
     pub name: String,
     /// 排序值
-    /// 越小越靠前
+    /// 越小越靠前；由服务端自动分配，前端不可提交
     /// @range 0..=9999
+    #[fill_by_svc]
     pub sort_order: i32,
     /// 备注
     /// @len 0..=50

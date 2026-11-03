@@ -1,17 +1,20 @@
-use crate::dto::AdmOrgAddDto;
+use crate::dto::{AdmOrgAddDto, AdmOrgModifyDto};
 use robotech::dao::next_tree_code;
 use robotech::macros::svc;
 use wheel_rs::tree_utils;
 
 /// # 组织服务
 ///
-/// 框架 CRUD 之外只做一件事：**新增时生成树编码**。
+/// 框架 CRUD 之外做两件事：**新增时生成树编码**、**修改时忽略客户端传入的树编码**。
 ///
 /// 新增请求带 `parentCode`（根节点不带），服务端算出该父下下一个可用编码；
-/// 显式传了 `treeCode` 的（导入/预置数据）原样落库。组织树全局一棵，没有隔离条件。
+/// 即使显式传了 `treeCode` 也忽略。组织树全局一棵，没有隔离条件。
 ///
-/// 移动节点 = 改编码，会级联整棵子树，暂不提供接口；真要做也是在这里挂钩子。
-#[svc(before_add = gen_org_tree_code_on_add)]
+/// 移动节点 = 改编码，会级联整棵子树，暂不提供接口；调整同级顺序走重排接口。
+#[svc(
+    before_add = gen_org_tree_code_on_add,
+    before_modify = ignore_org_tree_code_on_modify
+)]
 pub struct AdmOrgSvc;
 
 /// # 新增时生成树编码
@@ -27,10 +30,6 @@ pub async fn gen_org_tree_code_on_add<C>(
 where
     C: ConnectionTrait + Sync,
 {
-    // 显式给了编码就不生成（导入/预置数据走这条路），传空串当没传
-    if dto.tree_code.as_deref().is_some_and(|v| !v.is_empty()) {
-        return Ok(dto);
-    }
     let parent = dto.parent_code.clone().flatten().unwrap_or_default();
     let code = next_tree_code(
         db,
@@ -42,5 +41,17 @@ where
     )
     .await?;
     dto.tree_code = Some(code);
+    Ok(dto)
+}
+
+/// # 修改时忽略树编码
+pub async fn ignore_org_tree_code_on_modify<C>(
+    mut dto: AdmOrgModifyDto,
+    _db: &C,
+) -> Result<AdmOrgModifyDto, SvcError>
+where
+    C: ConnectionTrait + Sync,
+{
+    dto.tree_code = None;
     Ok(dto)
 }

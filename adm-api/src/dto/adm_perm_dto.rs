@@ -27,8 +27,9 @@ pub struct AdmPermDto {
     /// @len 1..=100
     pub urn: String,
     /// 排序值
-    /// 同一分组内排序，越小越靠前
+    /// 同一分组内排序，越小越靠前；由服务端自动分配，前端不可提交
     /// @range 0..=9999
+    #[fill_by_svc]
     pub sort_order: i32,
     /// 备注
     /// @len 0..=50
