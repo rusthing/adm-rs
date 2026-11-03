@@ -1,5 +1,6 @@
 pub mod adm_app_vo;
 pub mod adm_auth_vo;
+pub mod adm_dashboard_vo;
 pub mod adm_lock_log_vo;
 pub mod adm_login_log_vo;
 pub mod adm_menu_perm_vo;
@@ -28,6 +29,7 @@ pub mod adm_user_list_vo;
 
 pub use adm_app_vo::*;
 pub use adm_auth_vo::*;
+pub use adm_dashboard_vo::*;
 pub use adm_lock_log_vo::*;
 pub use adm_login_log_vo::*;
 pub use adm_menu_perm_vo::*;

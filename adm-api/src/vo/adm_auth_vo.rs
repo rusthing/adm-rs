@@ -4,7 +4,7 @@
 //! （那个宏要配套的 `mo::Xxx`），手写保持与其它 Vo 一致的序列化形态：
 //! `u64` 走 `u64_serde` 序列化成字符串，避免 JS 丢精度。
 
-use crate::vo::{AdmMenuVo, AdmPermVo, AdmRoleVo, AdmUserVo};
+use crate::vo::{AdmDashboardVo, AdmMenuVo, AdmPermVo, AdmRoleScopeVo, AdmRoleVo, AdmUserVo};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
@@ -80,4 +80,13 @@ pub struct AdmMeVo {
     ///
     /// 与 `perms` 的内容重复，单独给出是为了前端按前缀匹配时不用再 map 一次。
     pub perm_urns: Vec<String>,
+    /// 当前用户的数据范围（adm_role_scope）
+    ///
+    /// 本轮只下发、不强制过滤；前端据此如实标注「当前为全局数据」。
+    pub scopes: Vec<AdmRoleScopeVo>,
+    /// 当前生效的首页配置
+    ///
+    /// 多角色按角色 `sort_order` 取第一份启用配置；都没有时回落全局模板。
+    /// 已按 widget 的 `permUrn` 过滤，停用的 widget 不下发。
+    pub dashboard: Option<AdmDashboardVo>,
 }

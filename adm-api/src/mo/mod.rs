@@ -3,6 +3,8 @@
 pub mod prelude;
 
 pub mod adm_app;
+pub mod adm_dashboard;
+pub mod adm_dashboard_widget;
 pub mod adm_lock_log;
 pub mod adm_login_log;
 pub mod adm_menu;
@@ -24,5 +26,8 @@ pub mod adm_role;
 pub mod adm_role_group;
 pub mod adm_role_menu;
 pub mod adm_role_perm;
+pub mod adm_role_scope;
 pub mod adm_role_user;
 pub mod adm_user;
+pub mod adm_widget_endpoint;
+pub mod adm_widget_type;

@@ -1,139 +1,248 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { Component, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
-import { menuApi, permApi, roleApi, userApi } from "@/lib/api";
+import { dashboardApi } from "@/lib/api";
+import { fetchWidget } from "@/lib/widget-fetch";
+import { Badge, EmptyState, PageHeader, Panel, Spinner } from "@/components/ui/primitives";
+import { WidgetRenderer } from "@/components/dashboard/WidgetRenderer";
 import { formatMs } from "@/lib/utils";
-import { Badge, PageHeader, Panel, Spinner } from "@/components/ui/primitives";
-import {
-  ArrowUpRight,
-  BookOpenCheck,
-  KeyRound,
-  LayoutDashboard,
-  Menu as MenuIcon,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import type { DashboardWidgetView } from "@/lib/types";
+import { Globe, LayoutDashboard, RefreshCw, Settings2 } from "lucide-react";
 
-function StatCard({
-  label,
-  value,
-  hint,
-  icon,
-  to,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  icon: typeof Users;
-  to: string;
-}) {
-  const Icon = icon;
-  return (
-    <Link
-      to={to}
-      className="group flex flex-col justify-between rounded-[14px] border border-line bg-surface p-4 shadow-panel transition-colors hover:border-line-strong"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[11.5px] text-muted">{label}</div>
-          <div className="tnum mt-1.5 text-[26px] font-semibold leading-none tracking-[-0.02em] text-ink">
-            {value}
-          </div>
-        </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">
-          <Icon size={16} />
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between text-[11.5px] text-muted">
-        <span>{hint}</span>
-        <ArrowUpRight size={13} className="opacity-0 transition-opacity group-hover:opacity-100" />
-      </div>
-    </Link>
-  );
+/**
+ * 首页完全由后端下发的 dashboard 配置驱动。
+ *
+ * 配置（哪些 widget、顺序、标题、service/endpoint、权限要求）来自 adm-svr；
+ * widget 数据由前端按 `service` 经网关并行直连各服务，单卡片失败只降级自身。
+ * 这里不写角色分支，也不感知具体服务来源。
+ */
+/**
+ * 单卡片渲染兜底：某个 widget 渲染异常时只替换这一张卡片，
+ * 其余卡片与整页布局保持不动。
+ */
+class CardBoundary extends Component<{ widgetKey: string; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  componentDidCatch(error: Error) {
+    console.error("[dashboard-widget]", this.props.widgetKey, error.message);
+    this.setState({ failed: true });
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <article className="flex h-full min-h-[120px] flex-col items-center justify-center rounded-[14px] border border-line bg-surface p-4 text-center shadow-panel">
+          <p className="text-[12.5px] font-medium text-ink">暂不可用</p>
+          <p className="mt-1 text-[11.5px] text-muted">该卡片渲染失败，其余卡片不受影响。</p>
+        </article>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export function DashboardPage() {
   const { session, authz, authzError, authzLoading, refreshAuthz, hasPerm } = useAuth();
 
-  const usersQuery = useQuery({
-    queryKey: ["dashboard", "users"],
-    queryFn: () => userApi.page({ _page: 1, _size: 1 }),
-    enabled: hasPerm("GET:/adm/user"),
-  });
-  const rolesQuery = useQuery({
-    queryKey: ["dashboard", "roles"],
-    queryFn: () => roleApi.page({ _page: 1, _size: 1 }),
-    enabled: hasPerm("GET:/adm/role"),
-  });
-  const menusQuery = useQuery({
-    queryKey: ["dashboard", "menus"],
-    queryFn: () => menuApi.page({ _page: 1, _size: 1 }),
-    enabled: hasPerm("GET:/adm/menu"),
-  });
-  const permsQuery = useQuery({
-    queryKey: ["dashboard", "perms"],
-    queryFn: () => permApi.page({ _page: 1, _size: 1 }),
-    enabled: hasPerm("GET:/adm/perm"),
+  const effectiveQuery = useQuery({
+    queryKey: ["dashboard", "effective"],
+    queryFn: () => dashboardApi.effective(),
+    staleTime: 30_000,
   });
 
-  const count = (value?: { total: string }) => (value ? value.total : "—");
+  // 配置接口尚未返回时先用 /me 下发的快照，避免首屏空白
+  const dashboard = effectiveQuery.isSuccess ? (effectiveQuery.data ?? null) : (authz?.dashboard ?? null);
+  const configWidgets = dashboard?.widgets ?? [];
+  const authzReady = authz !== null;
+
+  const widgetQueries = useQueries({
+    queries: configWidgets.map((widget) => ({
+      queryKey: [
+        "dashboard-widget",
+        widget.id,
+        widget.service,
+        widget.endpoint,
+        JSON.stringify(widget.params ?? {}),
+      ],
+      queryFn: () =>
+        fetchWidget({
+          service: widget.service,
+          endpoint: widget.endpoint,
+          params: widget.params,
+          title: widget.title,
+          widgetType: widget.widgetType,
+        }),
+      // 后端已按权限过滤配置；这里只对本地可见权限做一次兜底
+      enabled:
+        widget.enabled &&
+        (!widget.permUrn || !authzReady || hasPerm(widget.permUrn)),
+      retry: false,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    })),
+  });
+
+  const views: DashboardWidgetView[] = configWidgets.map((widget, index) => {
+    const base = {
+      key: widget.id || `w-${index}`,
+      widgetType: widget.widgetType,
+      title: widget.title,
+      scopeAware: widget.scopeAware,
+      sortOrder: widget.sortOrder,
+    };
+    if (!widget.enabled) {
+      return { ...base, status: "disabled" as const };
+    }
+    if (authzReady && widget.permUrn && !hasPerm(widget.permUrn)) {
+      return { ...base, status: "forbidden" as const, error: `需要权限 ${widget.permUrn}` };
+    }
+    const result = widgetQueries[index];
+    if (!result || result.isLoading || !result.data) {
+      return { ...base, status: "loading" as const };
+    }
+    return {
+      ...base,
+      status: result.data.status,
+      data: result.data.data,
+      error: result.data.error,
+      generatedMs: result.data.generatedMs,
+    };
+  });
+
+  const scopeNames = (authz?.scopes ?? [])
+    .map((scope) => scope.roleName || scope.scopeType)
+    .filter(Boolean);
+  const anyScopeAware = configWidgets.some((widget) => widget.scopeAware);
+  const sourceText =
+    dashboard?.source === "global"
+      ? "全局兜底模板"
+      : dashboard?.roleName
+        ? `角色首页 · ${dashboard.roleName}`
+        : dashboard?.name;
+  const generatedMs = views.reduce<string | undefined>((latest, view) => {
+    if (!view.generatedMs) return latest;
+    return !latest || Number(view.generatedMs) > Number(latest) ? view.generatedMs : latest;
+  }, undefined);
+
+  const refreshAll = () => {
+    void effectiveQuery.refetch();
+    for (const query of widgetQueries) void query.refetch();
+  };
 
   return (
     <div>
       <PageHeader
         title={`你好，${session?.nickName || session?.name || "管理员"}`}
-        subtitle="这是 adm-web。左侧菜单与页面权限都来自 /adm/auth/me 返回的真实 RBAC 数据（角色 → 菜单 / 权限）。"
+        subtitle={
+          dashboard
+            ? `${sourceText ?? dashboard.name}，共 ${configWidgets.length} 个 widget；数据由各服务按统一契约返回，前端经网关并行获取。`
+            : "正在根据你的角色加载首页配置。"
+        }
         actions={
           <>
             {authz && <Badge tone="neutral">{authz.roles.length} 个角色</Badge>}
             {session?.loginPswdDefault && <Badge tone="warn">初始口令</Badge>}
+            {hasPerm("GET:/adm/dashboard/config") && (
+              <Link
+                to="/dashboard-config"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-sunken"
+              >
+                <Settings2 size={14} /> 首页配置
+              </Link>
+            )}
+            <button
+              type="button"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3.5 text-[13px] font-medium text-ink hover:bg-sunken"
+              onClick={refreshAll}
+            >
+              <RefreshCw size={14} /> 刷新
+            </button>
           </>
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {(authzLoading || usersQuery.isLoading) && !authz && (
-          <div className="col-span-full">
-            <Spinner label="正在加载权限与统计…" />
-          </div>
-        )}
-        {hasPerm("GET:/adm/user") && (
-          <StatCard
-            label="用户账号"
-            value={count(usersQuery.data)}
-            hint="登录名 / 状态 / 最近登录"
-            icon={Users}
-            to="/users"
+      {anyScopeAware && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-warn/25 bg-warn-soft px-3.5 py-3 text-[12px] leading-relaxed text-warn">
+          <Globe size={15} className="mt-0.5 shrink-0" />
+          <span>
+            当前为<strong className="font-semibold">全局数据</strong>：本轮只下发角色数据范围
+            （{scopeNames.length > 0 ? scopeNames.join("、") : "暂无范围配置"}），
+            widget 查询尚未按组织过滤。卡片上的「全局数据」标记即为如实说明。
+          </span>
+        </div>
+      )}
+
+      {(authzLoading || effectiveQuery.isLoading) && !dashboard && (
+        <Panel>
+          <Spinner label="正在加载首页配置与 widget 数据…" />
+        </Panel>
+      )}
+
+      {effectiveQuery.isError && (
+        <Panel>
+          <EmptyState
+            title="首页配置加载失败"
+            description={
+              effectiveQuery.error instanceof Error
+                ? effectiveQuery.error.message
+                : "无法获取首页配置，请确认 adm-svr 已启动。"
+            }
+            action={
+              <button
+                type="button"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3.5 text-[13px] font-medium text-ink hover:bg-sunken"
+                onClick={() => void effectiveQuery.refetch()}
+              >
+                <RefreshCw size={14} /> 重试
+              </button>
+            }
           />
-        )}
-        {hasPerm("GET:/adm/role") && (
-          <StatCard
-            label="角色"
-            value={count(rolesQuery.data)}
-            hint="按角色分组维护"
-            icon={ShieldCheck}
-            to="/roles"
+        </Panel>
+      )}
+
+      {!effectiveQuery.isLoading && !effectiveQuery.isError && views.length === 0 && (
+        <Panel>
+          <EmptyState
+            title="当前配置没有可用 widget"
+            description={
+              dashboard
+                ? "配置存在，但所有 widget 都被停用，或当前账号缺少对应权限。"
+                : "后端没有返回任何首页配置，请检查全局兜底模板。"
+            }
+            action={
+              hasPerm("GET:/adm/dashboard/config") ? (
+                <Link to="/dashboard-config" className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3.5 text-[13px] font-medium text-white">
+                  <Settings2 size={14} /> 去配置首页
+                </Link>
+              ) : undefined
+            }
           />
-        )}
-        {hasPerm("GET:/adm/menu") && (
-          <StatCard
-            label="菜单节点"
-            value={count(menusQuery.data)}
-            hint="treeCode 路径枚举树"
-            icon={MenuIcon}
-            to="/menus"
-          />
-        )}
-        {hasPerm("GET:/adm/perm") && (
-          <StatCard
-            label="权限点"
-            value={count(permsQuery.data)}
-            hint="URN 前缀匹配"
-            icon={KeyRound}
-            to="/permissions"
-          />
-        )}
-      </div>
+        </Panel>
+      )}
+
+      {views.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {views.map((view) => (
+            <CardBoundary key={view.key} widgetKey={view.key}>
+              <WidgetRenderer widget={view} />
+            </CardBoundary>
+          ))}
+        </div>
+      )}
+
+      {dashboard && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <LayoutDashboard size={12} />
+            {dashboard.id ? `配置 #${dashboard.id}` : "无配置"} ·{" "}
+            {(authz?.scopes ?? []).length} 个数据范围 · 全局数据
+          </span>
+          <span className="tnum font-mono">
+            {generatedMs ? `生成于 ${formatMs(generatedMs)}` : "等待数据…"}
+          </span>
+        </div>
+      )}
 
       {authzError && (
         <div className="mt-3 rounded-xl border border-danger/25 bg-danger-soft px-3.5 py-3 text-[12px] leading-relaxed text-danger">
@@ -144,112 +253,6 @@ export function DashboardPage() {
           ，或先检查 adm-svr 是否已启动。
         </div>
       )}
-
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <Panel
-          title="当前会话"
-          description="令牌与账号信息来自登录接口的 extra；前端不做续期。"
-          actions={<Badge tone={session?.loginPswdDefault ? "warn" : "success"}>{session?.loginPswdDefault ? "初始口令" : "已登录"}</Badge>}
-        >
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-[12.5px] sm:grid-cols-2">
-            <div>
-              <dt className="text-muted">登录名</dt>
-              <dd className="mt-0.5 font-medium text-ink">{session?.name ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">用户 ID</dt>
-              <dd className="tnum mt-0.5 font-mono text-ink-soft">{session?.userId ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">令牌类型</dt>
-              <dd className="mt-0.5 font-mono text-ink-soft">{session?.tokenType ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">令牌到期</dt>
-              <dd className="mt-0.5 font-mono text-ink-soft">{formatMs(session?.expireMs)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">会话 ID</dt>
-              <dd className="mt-0.5 font-mono text-ink-soft">{session?.loginLogId ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">权限视图</dt>
-              <dd className="mt-0.5 text-ink-soft">
-                {authzLoading
-                  ? "加载中…"
-                  : authz
-                    ? `${authz.roles.length} 角色 / ${authz.perms.length} 权限 / ${authz.menus.length} 菜单`
-                    : "未加载"}
-              </dd>
-            </div>
-          </dl>
-        </Panel>
-
-        <Panel title="从这里开始" description="按依赖顺序维护数据，菜单与权限才能串起来。">
-          <ol className="flex flex-col gap-2.5 text-[12.5px] text-ink-soft">
-            {[
-              { step: "01", label: "领域与应用", text: "先建领域，再建应用；菜单挂在应用下。", to: "/apps" },
-              { step: "02", label: "权限分组与权限", text: "按分组维护 URN，如 GET:/adm/user/page。", to: "/permissions" },
-              { step: "03", label: "角色分组与角色", text: "角色按领域分组，再给角色授权。", to: "/roles" },
-              { step: "04", label: "用户与授权", text: "给用户挂角色，权限随角色生效。", to: "/users" },
-            ].map((item) => (
-              <li key={item.step}>
-                <Link
-                  to={item.to}
-                  className="flex items-start gap-3 rounded-lg border border-line px-3 py-2.5 transition-colors hover:border-line-strong hover:bg-sunken"
-                >
-                  <span className="tnum font-mono text-[11px] text-accent">{item.step}</span>
-                  <span className="min-w-0">
-                    <span className="block font-medium text-ink">{item.label}</span>
-                    <span className="mt-0.5 block text-[11.5px] text-muted">{item.text}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </Panel>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Panel
-          title="接口契约备注"
-          description="以下结论来自 adm-api / adm-svr 源码，不是推测。"
-          actions={<BookOpenCheck size={15} className="text-muted" />}
-        >
-          <ul className="flex flex-col gap-2 text-[12px] leading-relaxed text-ink-soft">
-            <li>· 统一信封 <code className="font-mono text-[11.5px]">Ro{"{"} result, msg, timestamp, extra {"}"}</code>；分页列表在 <code className="font-mono text-[11.5px]">extra</code> 里。</li>
-            <li>· ID 与毫秒时间戳都是字符串，前端全程不做 Number 转换。</li>
-            <li>· 业务接口要求 <code className="font-mono text-[11.5px]">Authorization: Bearer &lt;token&gt;</code>，中间件校验后注入 <code className="font-mono text-[11.5px]">X-User-Id</code>；登录/登出不要求。</li>
-            <li>· 登录口令是 <code className="font-mono text-[11.5px]">SM3(明文)</code> 的 64 位小写十六进制，明文不出浏览器。</li>
-            <li>· 菜单与权限完全来自 <code className="font-mono text-[11.5px]">GET /adm/auth/me</code>，前端不再有超管启发式。</li>
-          </ul>
-        </Panel>
-
-        <Panel
-          title="环境"
-          description="开发期通过 Vite 代理把 /api 转发到 adm-svr。"
-          actions={<LayoutDashboard size={15} className="text-muted" />}
-        >
-          <dl className="grid grid-cols-1 gap-3 text-[12.5px] sm:grid-cols-2">
-            <div>
-              <dt className="text-muted">API 前缀</dt>
-              <dd className="mt-0.5 font-mono text-ink-soft">{import.meta.env.VITE_API_BASE || "同源"}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">构建基路径</dt>
-              <dd className="mt-0.5 font-mono text-ink-soft">{import.meta.env.BASE_URL}</dd>
-            </div>
-            <div>
-              <dt className="text-muted">开发端口</dt>
-              <dd className="mt-0.5 font-mono text-ink-soft">5181</dd>
-            </div>
-            <div>
-              <dt className="text-muted">后端默认端口</dt>
-              <dd className="mt-0.5 font-mono text-ink-soft">9007（adm-svr.toml）</dd>
-            </div>
-          </dl>
-        </Panel>
-      </div>
     </div>
   );
 }

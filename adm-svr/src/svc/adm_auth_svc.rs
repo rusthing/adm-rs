@@ -269,7 +269,11 @@ impl AdmAuthSvc {
                 .map_err(robotech::dao::DaoError::parse_db_err)?
         };
 
-        let perm_urns = perms.iter().map(|perm| perm.urn.clone()).collect();
+        let perm_urns: Vec<String> = perms.iter().map(|perm| perm.urn.clone()).collect();
+
+        // 数据范围与当前生效的首页配置：复用首页服务的预置逻辑，
+        // 保证 /me 与 /adm/dashboard/summary 看到的是同一份配置
+        let (scopes, dashboard) = crate::svc::me_dashboard(&roles, &perm_urns).await?;
 
         Ok(Ro::success("获取当前用户信息成功".to_string()).extra(Some(AdmMeVo {
             user: AdmUserVo::from(user),
@@ -277,6 +281,8 @@ impl AdmAuthSvc {
             perms: perms.into_iter().map(Into::into).collect(),
             menus: menus.into_iter().map(Into::into).collect(),
             perm_urns,
+            scopes,
+            dashboard,
         })))
     }
 

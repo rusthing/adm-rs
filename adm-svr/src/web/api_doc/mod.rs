@@ -1,5 +1,6 @@
 mod adm_app_api_doc;
 mod adm_auth_api_doc;
+mod adm_dashboard_api_doc;
 mod adm_lock_log_api_doc;
 mod adm_login_log_api_doc;
 mod adm_menu_api_doc;
@@ -27,6 +28,7 @@ mod adm_user_password_api_doc;
 
 pub use adm_app_api_doc::*;
 pub use adm_auth_api_doc::*;
+pub use adm_dashboard_api_doc::*;
 pub use adm_lock_log_api_doc::*;
 pub use adm_login_log_api_doc::*;
 pub use adm_menu_api_doc::*;

@@ -1,5 +1,6 @@
 pub mod adm_app_dto;
 pub mod adm_auth_dto;
+pub mod adm_dashboard_dto;
 pub mod adm_lock_log_dto;
 pub mod adm_login_log_dto;
 pub mod adm_menu_dto;
@@ -26,6 +27,7 @@ pub mod adm_user_dto;
 
 pub use adm_app_dto::*;
 pub use adm_auth_dto::*;
+pub use adm_dashboard_dto::*;
 pub use adm_lock_log_dto::*;
 pub use adm_login_log_dto::*;
 pub use adm_menu_dto::*;

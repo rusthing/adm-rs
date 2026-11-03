@@ -6,6 +6,7 @@ import { RequireAuth, RequirePerm } from "@/auth/RequireAuth";
 import { AppShell } from "@/components/layout/AppShell";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { DashboardConfigPage } from "@/pages/DashboardConfigPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { RolesPage } from "@/pages/RolesPage";
 import { RoleGroupsPage } from "@/pages/RoleGroupsPage";
@@ -29,6 +30,7 @@ import { Puzzle } from "lucide-react";
  */
 const PAGE_COMPONENTS: Record<string, ComponentType> = {
   dashboard: DashboardPage,
+  "dashboard-config": DashboardConfigPage,
   users: UsersPage,
   roles: RolesPage,
   menus: MenusPage,
@@ -43,6 +45,7 @@ const PAGE_COMPONENTS: Record<string, ComponentType> = {
 /** 页面级权限前缀；后端菜单已经按角色过滤过，这里再做一层界面兜底。 */
 const PAGE_PERMS: Record<string, string> = {
   users: "GET:/adm/user",
+  "dashboard-config": "GET:/adm/dashboard/config",
   roles: "GET:/adm/role",
   menus: "GET:/adm/menu",
   permissions: "GET:/adm/perm",

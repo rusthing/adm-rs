@@ -1,5 +1,6 @@
 mod adm_app_router;
 mod adm_auth_router;
+mod adm_dashboard_router;
 mod adm_lock_log_router;
 mod adm_login_log_router;
 mod adm_menu_perm_router;

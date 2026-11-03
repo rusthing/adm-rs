@@ -35,6 +35,23 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
+        // 跨服务 widget 直连：gatex 的 Service matcher 按 `/{svc-name}` 寻址，
+        // 开发期用同名前缀直连各 svr，路径剥离方式与网关一致。
+        "/oss-svr": {
+          target: env.VITE_OSS_TARGET?.trim() || "http://127.0.0.1:9840",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/oss-svr/, ""),
+        },
+        "/msg-svr": {
+          target: env.VITE_MSG_TARGET?.trim() || "http://127.0.0.1:9002",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/msg-svr/, ""),
+        },
+        "/jobx-svr": {
+          target: env.VITE_JOBX_TARGET?.trim() || "http://127.0.0.1:9001",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/jobx-svr/, ""),
+        },
       },
     },
     preview: {

@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const current = readSession();
     const cached = readAuthz();
     // 旧版本缓存可能没有 menus 字段（曾用前端启发式拼权限），直接丢弃
-    return current && cached?.userId === current.userId && Array.isArray(cached.menus)
+    return current && cached?.userId === current.userId && Array.isArray(cached.menus) && Array.isArray(cached.scopes)
       ? cached
       : null;
   });

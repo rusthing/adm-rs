@@ -17,6 +17,8 @@ export async function loadAuthz(session: AuthSession): Promise<Authz> {
     perms: me.perms ?? [],
     menus: me.menus ?? [],
     permUrns: me.permUrns ?? [],
+    scopes: me.scopes ?? [],
+    dashboard: me.dashboard,
     loadedAt: String(Date.now()),
   };
 }
