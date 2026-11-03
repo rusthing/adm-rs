@@ -1,34 +1,27 @@
-use crate::dto::{AdmPersonCodeTypeAddDto, AdmPersonCodeTypeModifyDto};
-use crate::svc::next_sort_order;
+use crate::dto::{AdmPersonCodeTypeAddDto, AdmPersonCodeTypeModifyDto, AdmPersonCodeTypeQueryDto};
 use robotech::macros::svc;
+
+// 排序钩子：新增取全表末尾、删除后后续记录前移
+crate::flat_sort_hooks!(
+    "adm_person_code_type",
+    None,
+    AdmPersonCodeTypeAddDto,
+    AdmPersonCodeTypeModifyDto,
+    AdmPersonCodeTypeQueryDto,
+    AdmPersonCodeTypeVo,
+    |_dto: &AdmPersonCodeTypeAddDto| None,
+    |_dto: &AdmPersonCodeTypeModifyDto| None,
+    |_vo: &AdmPersonCodeTypeVo| None
+);
 
 /// # 人员编码类型服务
 ///
-/// 排序值由服务端维护：新增取全表 `max(sort_order) + 1`，修改时忽略客户端传入值。
+/// 排序值由服务端维护：新增取全表 `max(sort_order) + 1`；修改时忽略客户端传入值；
+/// 删除后后续记录前移，批量删除只对出现空洞的整组重算。
 #[svc(
-    before_add = fill_person_code_type_sort_order_on_add,
-    before_modify = ignore_person_code_type_sort_order_on_modify
+    before_add = sort_hooks_add,
+    before_modify = sort_hooks_modify,
+    after_del_by_id = sort_hooks_after_del_by_id,
+    after_del_by_query_dto = sort_hooks_after_del_by_query_dto
 )]
 pub struct AdmPersonCodeTypeSvc;
-
-pub async fn fill_person_code_type_sort_order_on_add<C>(
-    mut dto: AdmPersonCodeTypeAddDto,
-    db: &C,
-) -> Result<AdmPersonCodeTypeAddDto, SvcError>
-where
-    C: ConnectionTrait + Sync,
-{
-    dto.sort_order = Some(next_sort_order(db, "adm_person_code_type", None, None).await?);
-    Ok(dto)
-}
-
-pub async fn ignore_person_code_type_sort_order_on_modify<C>(
-    mut dto: AdmPersonCodeTypeModifyDto,
-    _db: &C,
-) -> Result<AdmPersonCodeTypeModifyDto, SvcError>
-where
-    C: ConnectionTrait + Sync,
-{
-    dto.sort_order = None;
-    Ok(dto)
-}

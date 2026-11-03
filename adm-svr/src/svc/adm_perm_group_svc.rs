@@ -1,57 +1,35 @@
-use crate::dto::{AdmPermGroupAddDto, AdmPermGroupModifyDto};
-use robotech::dao::next_tree_code;
+use crate::dto::{AdmPermGroupAddDto, AdmPermGroupModifyDto, AdmPermGroupQueryDto};
 use robotech::macros::svc;
-use wheel_rs::tree_utils;
+
+// 排序钩子：新增按父末尾生成编码、改父重算两组、删除后同父后续前移
+crate::tree_sort_hooks!(
+    "adm_perm_group",
+    Some("realm_id"),
+    AdmPermGroupAddDto,
+    AdmPermGroupModifyDto,
+    AdmPermGroupQueryDto,
+    AdmPermGroupVo,
+    |dto: &AdmPermGroupAddDto| dto.realm_id.map(|value| value.value() as i64),
+    |dto: &AdmPermGroupModifyDto| dto.realm_id.map(|value| value.value() as i64),
+    |dto: &AdmPermGroupModifyDto| dto
+        .parent_code
+        .as_ref()
+        .map(|value| value.clone().unwrap_or_default()),
+    |vo: &AdmPermGroupVo| Some(vo.realm_id.value() as i64)
+);
 
 /// # 权限分组服务
 ///
-/// 框架 CRUD 之外做两件事：**新增时生成树编码**、**修改时忽略客户端传入的树编码**。
+/// 框架 CRUD 之外维护树编码：**新增时生成树编码**（领域内皮父节点追加末位）、
+/// **修改时忽略客户端传入的树编码**，父节点或所属领域变化时旧父下后续兄弟前移、
+/// 新父下追加末位，整棵子树级联改编码；删除后同父后续兄弟前移。
 ///
 /// 分组树按领域隔离：`(realm_id, tree_code)` 唯一，生成编码时同样按领域取最大值。
 /// 排序值（tree_code）只由服务端维护，调整顺序走重排接口。
 #[svc(
-    before_add = gen_perm_group_tree_code_on_add,
-    before_modify = ignore_perm_group_tree_code_on_modify
+    before_add = sort_hooks_add,
+    before_modify = sort_hooks_modify,
+    after_del_by_id = sort_hooks_after_del_by_id,
+    after_del_by_query_dto = sort_hooks_after_del_by_query_dto
 )]
 pub struct AdmPermGroupSvc;
-
-/// # 新增时生成树编码（领域内）
-///
-/// `realm_id` 是必填项：缺了它不生成，让后面的校验去报「必填」，错误信息更准。
-/// 即使客户端显式传了 `treeCode` 也忽略，统一由服务端按父节点追加到末尾。
-#[allow(clippy::result_large_err)]
-pub async fn gen_perm_group_tree_code_on_add<C>(
-    mut dto: AdmPermGroupAddDto,
-    db: &C,
-) -> Result<AdmPermGroupAddDto, SvcError>
-where
-    C: ConnectionTrait + Sync,
-{
-    let Some(realm_id) = dto.realm_id else {
-        return Ok(dto);
-    };
-    let parent = dto.parent_code.clone().flatten().unwrap_or_default();
-    let code = next_tree_code(
-        db,
-        "adm_perm_group",
-        "tree_code",
-        &parent,
-        &[("realm_id", realm_id.to_db_value())],
-        tree_utils::DEFAULT_STEP,
-    )
-    .await?;
-    dto.tree_code = Some(code);
-    Ok(dto)
-}
-
-/// # 修改时忽略树编码
-pub async fn ignore_perm_group_tree_code_on_modify<C>(
-    mut dto: AdmPermGroupModifyDto,
-    _db: &C,
-) -> Result<AdmPermGroupModifyDto, SvcError>
-where
-    C: ConnectionTrait + Sync,
-{
-    dto.tree_code = None;
-    Ok(dto)
-}
