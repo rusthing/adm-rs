@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { permGroupApi, realmApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { Badge } from "@/components/ui/primitives";
 import type { AdmPermGroupVo, FormValues } from "@/lib/types";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -54,8 +53,8 @@ export function PermissionGroupsPage() {
       },
     },
     { key: "realmId", label: "领域", render: (row) => realmName.get(row.realmId) ?? `#${row.realmId}` },
-    { key: "enabled", label: "启用", render: (row) => <Badge tone={row.enabled ? "success" : "warn"}>{row.enabled ? "启用" : "停用"}</Badge> },
-    { key: "remark", label: "备注", render: (row) => <span className="text-[11.5px] text-muted">{row.remark || "—"}</span> },
+    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "remark", label: "备注" },
   ];
 
   const fields: CrudField[] = [
@@ -112,6 +111,15 @@ export function PermissionGroupsPage() {
       itemLabel={(row) => row.name}
       defaultOrderBy="tree_code:asc"
       searchPlaceholder="搜索分组名 / 备注"
+      filters={[
+        {
+          type: "select",
+          name: "realm_id",
+          label: "领域",
+          options: (realmsQuery.data ?? []).map((realm) => ({ value: realm.id, label: realm.name })),
+        },
+        { type: "boolean", name: "enabled", label: "启用" },
+      ]}
       createLabel="新建分组"
       emptyDescription="后端种子没有权限分组。先建领域，再建分组，然后到权限管理里录入 URN。"
       toForm={toForm}

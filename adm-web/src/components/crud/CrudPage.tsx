@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { crudApi } from "@/lib/api";
 import type { CrudApi } from "@/lib/api";
 import type { FormValues, PageQuery } from "@/lib/types";
@@ -19,13 +19,30 @@ import {
   Textarea,
 } from "@/components/ui/primitives";
 import { Modal, useToast } from "@/components/ui/overlay";
+import { CellValue } from "./cells";
+import type { BooleanCellLabels, CrudCellType } from "./cells";
+import {
+  buildFilterParams,
+  hasActiveFilterValues,
+  keywordParamName,
+  keywordPlaceholder,
+} from "./filters";
+import type { CrudDateRange, CrudFilterDef, CrudFilterValue, CrudFilterValues } from "./filters";
 
 export type FormMode = "create" | "edit";
+
+export type { CrudCellType } from "./cells";
+export type { CrudFilterDef, CrudFilterType, CrudFilterOption } from "./filters";
 
 export interface CrudColumn<T> {
   key: string;
   label: string;
+  /** 不写时走统一单元格渲染；需要自定义徽标/组合展示时再使用 render。 */
   render?: (row: T) => ReactNode;
+  /** 统一格式化类型，默认 text。日期毫秒、布尔、长 ID 一律声明类型，不要每页手写 formatMs。 */
+  type?: CrudCellType;
+  /** `type: "boolean"` 时的文案，默认「是 / 否」。 */
+  booleanLabels?: BooleanCellLabels;
   className?: string;
   align?: "left" | "right";
 }
@@ -68,6 +85,140 @@ interface CrudPageProps<T extends { id: string }> {
   toPayload: (values: FormValues, mode: FormMode, row?: T) => Record<string, unknown>;
   rowActions?: (row: T, helpers: { reload: () => void }) => ReactNode;
   emptyDescription?: string;
+  /**
+   * 搜索行的筛选 schema。声明后控件会与关键字搜索框排在同一行，并共享「重置」按钮。
+   * 类型与拼接规则见 `./filters.ts`；页面只声明 schema，不写查询参数拼装。
+   */
+  filters?: CrudFilterDef[];
+}
+
+/**
+ * 单个筛选控件的渲染。
+ *
+ * 扩展点：先在 `./filters.ts` 的 `CrudFilterDef` 增加类型，再在这里补一个控件分支。
+ * 关联实体（entity）静态选项与异步 `loadOptions` 都支持，异步结果按页面 prefix 缓存。
+ */
+function FilterControl({
+  def,
+  value,
+  prefix,
+  onChange,
+}: {
+  def: CrudFilterDef;
+  value: CrudFilterValue;
+  prefix: string;
+  onChange: (value: CrudFilterValue) => void;
+}) {
+  if (def.type === "date-range") {
+    const range = typeof value === "object" && value !== null ? value : {};
+    return (
+      <div className="flex items-center gap-1.5 text-[11.5px] text-muted">
+        <span className="whitespace-nowrap">{def.label}</span>
+        <Input
+          type="date"
+          aria-label={`${def.label}开始`}
+          value={range.start ?? ""}
+          max={range.end || undefined}
+          onChange={(event) => onChange({ ...range, start: event.target.value })}
+          className="h-8 w-[132px] text-[12px]"
+        />
+        <span>~</span>
+        <Input
+          type="date"
+          aria-label={`${def.label}结束`}
+          value={range.end ?? ""}
+          min={range.start || undefined}
+          onChange={(event) => onChange({ ...range, end: event.target.value })}
+          className="h-8 w-[132px] text-[12px]"
+        />
+      </div>
+    );
+  }
+
+  if (def.type === "boolean") {
+    return (
+      <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
+        <span className="whitespace-nowrap">{def.label}</span>
+        <Select
+          value={typeof value === "string" ? value : ""}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-8 w-auto min-w-[76px] text-[12.5px]"
+        >
+          <option value="">全部</option>
+          <option value="true">是</option>
+          <option value="false">否</option>
+        </Select>
+      </label>
+    );
+  }
+
+  if (def.type === "entity") {
+    return (
+      <EntityFilterControl def={def} value={value} prefix={prefix} onChange={onChange} />
+    );
+  }
+
+  if (def.type === "keyword") return null;
+
+  // def.type === "select"
+  return (
+    <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
+      <span className="whitespace-nowrap">{def.label}</span>
+      <Select
+        value={typeof value === "string" ? value : ""}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-8 w-auto min-w-[92px] text-[12.5px]"
+      >
+        <option value="">全部</option>
+        {def.options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+    </label>
+  );
+}
+
+/** 关联实体筛选：静态 options 优先，否则用 loadOptions 异步加载。 */
+function EntityFilterControl({
+  def,
+  value,
+  prefix,
+  onChange,
+}: {
+  def: Extract<CrudFilterDef, { type: "entity" }>;
+  value: CrudFilterValue;
+  prefix: string;
+  onChange: (value: CrudFilterValue) => void;
+}) {
+  const needsLoad = def.options === undefined && Boolean(def.loadOptions);
+  const optionsQuery = useQuery({
+    queryKey: ["crud-filter-options", prefix, def.name],
+    queryFn: () => (def.loadOptions ? def.loadOptions() : Promise.resolve([])),
+    enabled: needsLoad,
+    staleTime: 60_000,
+  });
+  const options = def.options ?? optionsQuery.data ?? [];
+
+  return (
+    <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
+      <span className="whitespace-nowrap">{def.label}</span>
+      <Select
+        value={typeof value === "string" ? value : ""}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={optionsQuery.isLoading}
+        className="h-8 w-auto min-w-[120px] text-[12.5px]"
+      >
+        <option value="">{optionsQuery.isLoading ? "加载中…" : "全部"}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </Select>
+    </label>
+  );
 }
 
 function defaultsOf(fields: CrudField[]): FormValues {
@@ -87,7 +238,7 @@ export function CrudPage<T extends { id: string }>({
   fields,
   itemLabel,
   defaultOrderBy,
-  searchPlaceholder = "按关键字搜索（后端按 QueryDto 的可检索字段匹配）",
+  searchPlaceholder = "按关键字搜索（后端按可检索字段模糊匹配）",
   createLabel = "新建",
   toolbarExtra,
   extraQuery,
@@ -98,6 +249,7 @@ export function CrudPage<T extends { id: string }>({
   toPayload,
   rowActions,
   emptyDescription,
+  filters,
 }: CrudPageProps<T>) {
   const api = useMemo<CrudApi<T>>(() => crudApi<T>(prefix), [prefix]);
   const queryClient = useQueryClient();
@@ -109,10 +261,15 @@ export function CrudPage<T extends { id: string }>({
   const [appliedKeyword, setAppliedKeyword] = useState("");
   const [reloadTick, setReloadTick] = useState(0);
 
+  const [filterValues, setFilterValues] = useState<CrudFilterValues>({});
+
   const [editing, setEditing] = useState<{ mode: FormMode; row?: T; values: FormValues } | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const keywordName = keywordParamName(filters);
+  const filterParams = useMemo(() => buildFilterParams(filters, filterValues), [filters, filterValues]);
+  const filterKey = JSON.stringify(filterParams);
   const extraKey = JSON.stringify(extraQuery ?? {});
 
   useEffect(() => {
@@ -123,16 +280,24 @@ export function CrudPage<T extends { id: string }>({
     return () => window.clearTimeout(timer);
   }, [keyword]);
 
+  useEffect(() => {
+    // 筛选器变化时回第一页
+    setPage(1);
+  }, [filterKey]);
+
+  const buildQuery = (): PageQuery => ({
+    _page: page,
+    _size: size,
+    [keywordName]: appliedKeyword || undefined,
+    _orderBy: defaultOrderBy,
+    ...(extraQuery ?? {}),
+    ...filterParams,
+  });
+
   const query = useQuery({
-    queryKey: [prefix, "page", page, size, appliedKeyword, defaultOrderBy, extraKey, reloadTick],
-    queryFn: () =>
-      api.page({
-        _page: page,
-        _size: size,
-        _keyword: appliedKeyword || undefined,
-        _orderBy: defaultOrderBy,
-        ...(extraQuery ?? {}),
-      }),
+    queryKey: [prefix, "page", page, size, appliedKeyword, defaultOrderBy, extraKey, filterKey, reloadTick],
+    // search/page 是后端已暴露的检索接口，支持 `字段-op` 运算符（日期范围等）。
+    queryFn: () => api.searchPage(buildQuery()),
     staleTime: 5_000,
   });
 
@@ -220,6 +385,31 @@ export function CrudPage<T extends { id: string }>({
     }
   };
 
+  /** 清空关键字并立即重置查询（不等待输入防抖）。 */
+  const clearKeyword = () => {
+    setKeyword("");
+    setAppliedKeyword("");
+    setPage(1);
+  };
+
+  /** 重置全部非关键字筛选。 */
+  const clearFilters = () => {
+    setFilterValues({});
+    setPage(1);
+  };
+
+  /** 更新单个筛选；空值从状态里删除，避免把 `""` / 空日期当成激活条件。 */
+  const updateFilter = (name: string, value: CrudFilterValue) => {
+    setFilterValues((current) => {
+      const next = { ...current };
+      const emptyRange =
+        typeof value === "object" && value !== null && !(value as CrudDateRange).start && !(value as CrudDateRange).end;
+      if (value === undefined || value === "" || emptyRange) delete next[name];
+      else next[name] = value;
+      return next;
+    });
+  };
+
   const visibleFields = editing
     ? fields.filter((field) => {
         if (field.createOnly && editing.mode !== "create") return false;
@@ -227,6 +417,8 @@ export function CrudPage<T extends { id: string }>({
         return true;
       })
     : [];
+
+  const hasActiveFilters = Boolean(appliedKeyword) || hasActiveFilterValues(filters, filterValues);
 
   return (
     <div>
@@ -249,17 +441,61 @@ export function CrudPage<T extends { id: string }>({
       />
 
       <section className="overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel">
-        <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
+        {/* 搜索 / 筛选区 */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
           <div className="relative min-w-[220px] max-w-[420px] flex-1">
             <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
             <Input
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="h-8 pl-8 text-[12.5px]"
+              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                if (event.key === "Escape") clearKeyword();
+              }}
+              placeholder={keywordPlaceholder(filters, searchPlaceholder)}
+              className="h-8 pl-8 pr-8 text-[12.5px]"
             />
+            {keyword && (
+              <button
+                type="button"
+                onClick={clearKeyword}
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted transition-colors hover:bg-sunken hover:text-ink"
+                aria-label="清除搜索"
+                title="清空关键字并立即重置查询"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
-          <span className="text-[11.5px] text-muted">共 {total} 条</span>
+
+          {/* 扩展筛选器：select / boolean / date-range / entity 均由 schema 驱动 */}
+          {filters
+            ?.filter((f) => f.type !== "keyword")
+            .map((def) => (
+              <FilterControl
+                key={def.name}
+                def={def}
+                value={filterValues[def.name]}
+                prefix={prefix}
+                onChange={(value) => updateFilter(def.name, value)}
+              />
+            ))}
+
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                clearKeyword();
+                clearFilters();
+              }}
+              title="清空关键字与全部筛选条件并回到第一页"
+            >
+              <X size={13} /> 重置
+            </Button>
+          )}
+
+          <span className="ml-auto text-[11.5px] text-muted">共 {total} 条</span>
         </div>
 
         {query.isLoading ? (
@@ -279,7 +515,7 @@ export function CrudPage<T extends { id: string }>({
             title="暂无数据"
             description={
               emptyDescription ??
-              (appliedKeyword ? `没有匹配「${appliedKeyword}」的记录。` : "后端还没有这类数据，或当前筛选条件下为空。")
+              (hasActiveFilters ? `没有匹配当前筛选条件的记录。` : "后端还没有这类数据，或当前筛选条件下为空。")
             }
           />
         ) : (
@@ -317,7 +553,15 @@ export function CrudPage<T extends { id: string }>({
                           column.className,
                         )}
                       >
-                        {column.render ? column.render(row) : String((row as Record<string, unknown>)[column.key] ?? "—")}
+                        {column.render
+                          ? column.render(row) // 自定义 render 自己决定
+                          : (
+                            <CellValue
+                              value={(row as Record<string, unknown>)[column.key]}
+                              type={column.type}
+                              booleanLabels={column.booleanLabels}
+                            />
+                          )}
                       </td>
                     ))}
                     {(canEdit || canDelete || rowActions) && (

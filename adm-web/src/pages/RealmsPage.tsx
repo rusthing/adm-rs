@@ -1,6 +1,5 @@
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { Badge } from "@/components/ui/primitives";
 import type { AdmRealmVo, FormValues } from "@/lib/types";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -12,8 +11,8 @@ const columns: CrudColumn<AdmRealmVo>[] = [
   { key: "name", label: "领域", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
   { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
   { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
-  { key: "enabled", label: "启用", render: (row) => <Badge tone={row.enabled ? "success" : "warn"}>{row.enabled ? "启用" : "停用"}</Badge> },
-  { key: "remark", label: "备注", render: (row) => <span className="text-[11.5px] text-muted">{row.remark || "—"}</span> },
+  { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+  { key: "remark", label: "备注" },
 ];
 
 const fields: CrudField[] = [
@@ -51,6 +50,7 @@ export function RealmsPage() {
       itemLabel={(row) => row.name}
       defaultOrderBy="sort_order:asc"
       searchPlaceholder="搜索领域名 / 编码"
+      filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
       emptyDescription="后端种子没有领域行。建议先建一个默认领域，再建应用与分组。"
       toForm={toForm}
       toPayload={toPayload}

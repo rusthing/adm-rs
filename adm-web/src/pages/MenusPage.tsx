@@ -60,8 +60,8 @@ export function MenusPage() {
       },
     },
     { key: "appId", label: "应用", render: (row) => appName.get(row.appId) ?? `#${row.appId}` },
-    { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
-    { key: "path", label: "路径", render: (row) => <code className="font-mono text-[11.5px] text-muted">{row.path}</code> },
+    { key: "code", label: "编码", type: "code" },
+    { key: "path", label: "路径", type: "code" },
     {
       key: "linkType",
       label: "类型",
@@ -168,6 +168,16 @@ export function MenusPage() {
       itemLabel={(row) => row.name}
       defaultOrderBy="tree_code:asc"
       searchPlaceholder="搜索菜单名 / 编码 / 路径"
+      filters={[
+        {
+          type: "select",
+          name: "app_id",
+          label: "应用",
+          options: (appsQuery.data ?? []).map((app) => ({ value: app.id, label: app.name })),
+        },
+        { type: "boolean", name: "visible", label: "显示" },
+        { type: "boolean", name: "enabled", label: "启用" },
+      ]}
       createLabel="新建菜单"
       emptyDescription="后端种子没有菜单行；先建应用，再建根菜单，最后建子菜单。"
       toForm={toForm}

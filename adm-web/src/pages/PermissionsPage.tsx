@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { opTypeApi, permGroupApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { Badge } from "@/components/ui/primitives";
 import type { AdmPermVo, FormValues } from "@/lib/types";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -33,9 +32,9 @@ export function PermissionsPage() {
     { key: "name", label: "权限", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "urn", label: "URN", render: (row) => <code className="font-mono text-[11.5px] text-accent-strong">{row.urn}</code> },
     { key: "groupId", label: "权限分组", render: (row) => groupName.get(row.groupId) ?? `#${row.groupId}` },
-    { key: "opTypeCode", label: "操作类型", render: (row) => <code className="font-mono text-[11.5px] text-muted">{row.opTypeCode || "—"}</code> },
+    { key: "opTypeCode", label: "操作类型", type: "code" },
     { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
-    { key: "enabled", label: "启用", render: (row) => <Badge tone={row.enabled ? "success" : "warn"}>{row.enabled ? "启用" : "停用"}</Badge> },
+    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
   ];
 
   const fields: CrudField[] = [
@@ -91,6 +90,15 @@ export function PermissionsPage() {
       itemLabel={(row) => row.name}
       defaultOrderBy="sort_order:asc"
       searchPlaceholder="搜索权限名 / URN / 备注"
+      filters={[
+        {
+          type: "select",
+          name: "group_id",
+          label: "权限分组",
+          options: (groupsQuery.data ?? []).map((group) => ({ value: group.id, label: group.name })),
+        },
+        { type: "boolean", name: "enabled", label: "启用" },
+      ]}
       emptyDescription="后端种子没有权限行。建议先建分组，再按接口逐个录入 URN。"
       toForm={toForm}
       toPayload={toPayload}

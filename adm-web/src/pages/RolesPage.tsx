@@ -11,7 +11,7 @@ import {
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { MenuCheckList, PermCheckList } from "@/components/crud/tree";
-import { Badge, Button, Spinner } from "@/components/ui/primitives";
+import { Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
 import type { AdmRoleVo, FormValues } from "@/lib/types";
 import { LockKeyhole, Menu as MenuIcon, ShieldCheck } from "lucide-react";
@@ -197,8 +197,8 @@ export function RolesPage() {
     { key: "name", label: "角色", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "groupId", label: "角色分组", render: (row) => groupName.get(row.groupId) ?? `#${row.groupId}` },
     { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
-    { key: "enabled", label: "启用", render: (row) => <Badge tone={row.enabled ? "success" : "warn"}>{row.enabled ? "启用" : "停用"}</Badge> },
-    { key: "remark", label: "备注", render: (row) => <span className="text-[11.5px] text-muted">{row.remark || "—"}</span> },
+    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "remark", label: "备注" },
   ];
 
   const fields: CrudField[] = [
@@ -252,6 +252,15 @@ export function RolesPage() {
         itemLabel={(row) => row.name}
         defaultOrderBy="sort_order:asc"
         searchPlaceholder="搜索角色名 / 备注"
+        filters={[
+          {
+            type: "select",
+            name: "group_id",
+            label: "角色分组",
+            options: (groupsQuery.data ?? []).map((group) => ({ value: group.id, label: group.name })),
+          },
+          { type: "boolean", name: "enabled", label: "启用" },
+        ]}
         toForm={toForm}
         toPayload={toPayload}
         rowActions={(row) => (

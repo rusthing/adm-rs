@@ -5,7 +5,6 @@ import type { CrudColumn, CrudField, FormMode } from "@/components/crud/CrudPage
 import { CrudPage } from "@/components/crud/CrudPage";
 import { Badge, Button, Checkbox, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
-import { formatMs } from "@/lib/utils";
 import { sm3 } from "@/lib/sm3";
 import type { AdmRoleVo, AdmUserVo, FormValues } from "@/lib/types";
 import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
@@ -174,12 +173,12 @@ export function UsersPage() {
       render: (row) => (
         <div>
           <div className="font-medium text-ink">{row.name}</div>
-          <div className="mt-0.5 text-[11px] text-muted">{row.nickName || "未设置昵称"}</div>
+          <div className="mt-0.5 text-[11px] text-muted">{row.nickName?.trim() || "--"}</div>
         </div>
       ),
     },
-    { key: "mobile", label: "手机号", render: (row) => row.mobile || "—" },
-    { key: "email", label: "邮箱", render: (row) => row.email || "—" },
+    { key: "mobile", label: "手机号" },
+    { key: "email", label: "邮箱" },
     {
       key: "status",
       label: "状态",
@@ -188,8 +187,9 @@ export function UsersPage() {
         return <Badge tone={status.tone}>{status.label}</Badge>;
       },
     },
-    { key: "enabled", label: "启用", render: (row) => <Badge tone={row.enabled ? "success" : "warn"}>{row.enabled ? "启用" : "停用"}</Badge> },
-    { key: "lastLoginMs", label: "最近登录", render: (row) => <span className="font-mono text-[11.5px] text-muted">{formatMs(row.lastLoginMs)}</span> },
+    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "lastLoginMs", label: "最近登录", type: "datetime" },
+    { key: "createMs", label: "创建时间", type: "datetime" },
   ];
 
   const fields: CrudField[] = [
@@ -330,7 +330,21 @@ export function UsersPage() {
         fields={fields}
         itemLabel={(row) => row.name}
         defaultOrderBy="update_ms:desc"
-        searchPlaceholder="搜索登录名 / 昵称 / 备注（后端 QueryDto 可检索字段）"
+        searchPlaceholder="搜索登录名 / 昵称 / 手机号 / 邮箱 / 备注"
+        filters={[
+          {
+            type: "select",
+            name: "status",
+            label: "账号状态",
+            options: [
+              { value: "1", label: "正常" },
+              { value: "2", label: "停用" },
+              { value: "3", label: "锁定" },
+            ],
+          },
+          { type: "boolean", name: "enabled", label: "启用" },
+          { type: "date-range", name: "create_ms", label: "创建时间" },
+        ]}
         emptyDescription="后端种子只有一个 admin 账号；可以在这里新增更多账号。"
         toForm={toForm}
         toPayload={toPayload}

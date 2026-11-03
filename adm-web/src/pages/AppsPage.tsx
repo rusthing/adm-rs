@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { realmApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { Badge } from "@/components/ui/primitives";
 import type { AdmAppVo, FormValues } from "@/lib/types";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -27,9 +26,9 @@ export function AppsPage() {
   const columns: CrudColumn<AdmAppVo>[] = [
     { key: "name", label: "应用", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
-    { key: "realmId", label: "领域", render: (row) => (row.realmId ? realmName.get(row.realmId) ?? `#${row.realmId}` : "跨领域") },
+    { key: "realmId", label: "领域", render: (row) => (row.realmId ? realmName.get(row.realmId) ?? `#${row.realmId}` : "--") },
     { key: "sortOrder", label: "排序", align: "right", render: (row) => <span className="tnum font-mono text-[11.5px]">{row.sortOrder}</span> },
-    { key: "enabled", label: "启用", render: (row) => <Badge tone={row.enabled ? "success" : "warn"}>{row.enabled ? "启用" : "停用"}</Badge> },
+    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
   ];
 
   const fields: CrudField[] = [
@@ -75,6 +74,15 @@ export function AppsPage() {
       itemLabel={(row) => row.name}
       defaultOrderBy="sort_order:asc"
       searchPlaceholder="搜索应用名 / 编码"
+      filters={[
+        {
+          type: "select",
+          name: "realm_id",
+          label: "领域",
+          options: (realmsQuery.data ?? []).map((realm) => ({ value: realm.id, label: realm.name })),
+        },
+        { type: "boolean", name: "enabled", label: "启用" },
+      ]}
       emptyDescription="后端种子没有应用行。先建应用，再到「菜单管理」建菜单树。"
       toForm={toForm}
       toPayload={toPayload}

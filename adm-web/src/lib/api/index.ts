@@ -1,6 +1,9 @@
 import { request, toQueryString } from "@/lib/http";
 import type {
   AdmAppVo,
+  AdmDashboardSaveInput,
+  AdmDashboardVo,
+  AdmDashboardWidgetVo,
   AdmLoginLogVo,
   AdmLoginVo,
   AdmLogoutVo,
@@ -16,6 +19,8 @@ import type {
   AdmRoleUserVo,
   AdmRoleVo,
   AdmUserVo,
+  AdmWidgetServiceVo,
+  AdmWidgetTypeVo,
   PageQuery,
   PageRx,
 } from "@/lib/types";
@@ -26,6 +31,11 @@ type Payload = Record<string, unknown>;
 export interface CrudApi<T> {
   prefix: string;
   page: (query?: PageQuery) => Promise<PageRx<T>>;
+  /**
+   * 检索分页：`{prefix}/search/page`，支持 Bean Searcher 字段运算符。
+   * 用于带日期范围（`字段-op=bt`）等非等值条件的搜索行。
+   */
+  searchPage: (query?: PageQuery) => Promise<PageRx<T>>;
   list: (query?: PageQuery) => Promise<T[]>;
   get: (id: string) => Promise<T | undefined>;
   add: (body: Payload) => Promise<unknown>;
@@ -42,6 +52,10 @@ export function crudApi<T>(prefix: string): CrudApi<T> {
     prefix,
     page: async (query) => {
       const data = await request<PageRx<T>>(`${prefix}/page${toQueryString(query)}`);
+      return data ?? { pageNum: "1", total: "0", list: [] };
+    },
+    searchPage: async (query) => {
+      const data = await request<PageRx<T>>(`${prefix}/search/page${toQueryString(query)}`);
       return data ?? { pageNum: "1", total: "0", list: [] };
     },
     list: async (query) => (await request<T[]>(`${prefix}/list${toQueryString(query)}`)) ?? [],
@@ -107,3 +121,30 @@ export const authApi = {
   changePassword: (body: ChangePasswordInput) =>
     request("/adm/auth/change-password", { method: "POST", body }),
 };
+
+/**
+ * 首页配置与 adm 域 widget 数据。
+ *
+ * adm-svr 只返回自己的配置与逻辑端点目录；跨服务数据由前端经 gatex
+ * 并行直连各服务（见 `lib/widget-fetch.ts`）。配置里绝不出现 URL。
+ */
+export const dashboardApi = {
+  /** 当前用户按角色优先级生效的首页配置 */
+  effective: () => request<AdmDashboardVo | null>("/adm/dashboard/effective"),
+  listConfigs: async () =>
+    (await request<AdmDashboardVo[]>("/adm/dashboard/config/list")) ?? [],
+  getConfig: (roleId?: string) =>
+    request<AdmDashboardVo | null>(`/adm/dashboard/config${toQueryString({ roleId })}`),
+  saveConfig: (body: AdmDashboardSaveInput) =>
+    request<AdmDashboardVo>("/adm/dashboard/config", { method: "PUT", body }),
+  deleteConfig: (roleId: string) =>
+    request<boolean>(`/adm/dashboard/config${toQueryString({ roleId })}`, { method: "DELETE" }),
+  widgetTypes: async () =>
+    (await request<AdmWidgetTypeVo[]>("/adm/dashboard/widget-type")) ?? [],
+  /** 逻辑 service/endpoint 目录；仅用于下拉与前端寻址，不含真实地址 */
+  endpoints: async () =>
+    (await request<AdmWidgetServiceVo[]>("/adm/dashboard/endpoints")) ?? [],
+};
+
+/** 供管理页在本地编辑时复用的控件类型。 */
+export type DashboardWidgetDraft = AdmDashboardWidgetVo;
