@@ -159,7 +159,8 @@ cargo run -- --signal kill       # 强制终止
 |------|------|------|
 | `POST` | `/adm/user` | 新增用户 |
 | `PUT` | `/adm/user/{id}` | 修改用户 |
-| `POST` | `/adm/user/save` | 存在则改、不存在则增 |
+| `POST` | `/adm/user/save` | 无 id 则新增；有 id 则修改（记录不存在直接报错） |
+| `POST` | `/adm/user/upsert` | 无 id 则新增；有 id 先改，记录不存在就按**同一个 id** 补建 |
 | `DELETE` | `/adm/user/{id}` | 按 ID 删除 |
 | `GET` | `/adm/user/{id}` | 按 ID 查询 |
 | `GET` | `/adm/user/list` | 条件查询列表 |

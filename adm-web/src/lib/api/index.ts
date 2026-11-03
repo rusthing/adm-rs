@@ -31,10 +31,12 @@ export interface CrudApi<T> {
   add: (body: Payload) => Promise<unknown>;
   modify: (body: Payload) => Promise<unknown>;
   save: (body: Payload) => Promise<unknown>;
+  /** 与 `save` 只差一步：有 id 但记录不存在时按该 id 补建，而不是报错 */
+  upsert: (body: Payload) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
 }
 
-/** 21 个宏生成接口里前端实际用到的 7 个。 */
+/** 22 个宏生成接口里前端实际用到的 8 个。 */
 export function crudApi<T>(prefix: string): CrudApi<T> {
   return {
     prefix,
@@ -47,6 +49,7 @@ export function crudApi<T>(prefix: string): CrudApi<T> {
     add: (body) => request(`${prefix}`, { method: "POST", body }),
     modify: (body) => request(`${prefix}`, { method: "PUT", body }),
     save: (body) => request(`${prefix}/save`, { method: "POST", body }),
+    upsert: (body) => request(`${prefix}/upsert`, { method: "POST", body }),
     remove: (id) => request(`${prefix}/${encodeURIComponent(id)}`, { method: "DELETE" }),
   };
 }
