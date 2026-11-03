@@ -2023,13 +2023,15 @@ comment on column adm_user.login_pswd is
 注意：
 1. 计算方法中的密码在前端传过来时推荐先进行 sm3 序列化，以避免在密码传递过程中使用明码被截获
 2. 密码组合码在生成密码时随机生成并保存下来，和密码组合起来使用，增加破解的难度
-@len 64..=64';
+@len 64..=64
+@secret';
 
 comment on column adm_user.login_pswd_salt is
 '登录密码组合码
 与密码组合加密用，详见登录密码备注
 6 位随机串
-@len 6..=6';
+@len 6..=6
+@secret';
 
 comment on column adm_user.login_pswd_default is
 '登录密码是否默认密码
@@ -2039,25 +2041,29 @@ comment on column adm_user.audit_pswd is
 '审核密码
 (小写(SM3(小写(SM3(密码明文))+小写(密码组合码))))
 固定 64 位小写十六进制（SM3 输出 32 字节）
-@len 64..=64';
+@len 64..=64
+@secret';
 
 comment on column adm_user.audit_pswd_salt is
 '审核密码组合码
 与密码组合加密用，详见审核密码备注
 6 位随机串
-@len 6..=6';
+@len 6..=6
+@secret';
 
 comment on column adm_user.pay_pswd is
 '支付密码
 (小写(SM3(小写(SM3(密码明文))+小写(密码组合码))))
 固定 64 位小写十六进制（SM3 输出 32 字节）
-@len 64..=64';
+@len 64..=64
+@secret';
 
 comment on column adm_user.pay_pswd_salt is
 '支付密码组合码
 与密码组合加密用，详见支付密码备注
 6 位随机串
-@len 6..=6';
+@len 6..=6
+@secret';
 
 comment on column adm_user.expire_ms is
 '过期时间戳

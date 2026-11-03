@@ -5997,7 +5997,8 @@ true 表示姓名（real_name）与身份证号（id_card）这一组已通过�
 注意：
 1. 计算方法中的密码在前端传过来时推荐先进行 sm3 序列化，以避免在密码传递过程中使用明码被截获
 2. 密码组合码在生成密码时随机生成并保存下来，和密码组合起来使用，增加破解的难度
-@len 64..=64</a:Comment>
+@len 64..=64
+@secret</a:Comment>
 <a:DataType>VA64</a:DataType>
 <a:Length>64</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -6014,7 +6015,8 @@ true 表示姓名（real_name）与身份证号（id_card）这一组已通过�
 <a:Comment>登录密码组合码
 与密码组合加密用，详见登录密码备注
 6 位随机串
-@len 6..=6</a:Comment>
+@len 6..=6
+@secret</a:Comment>
 <a:DataType>A6</a:DataType>
 <a:Length>6</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -6046,7 +6048,8 @@ true 表示仍是初始密码，前端应强制修改后才能继续操作</a:Co
 <a:Comment>审核密码
 (小写(SM3(小写(SM3(密码明文))+小写(密码组合码))))
 固定 64 位小写十六进制（SM3 输出 32 字节）
-@len 64..=64</a:Comment>
+@len 64..=64
+@secret</a:Comment>
 <a:DataType>VA64</a:DataType>
 <a:Length>64</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -6063,7 +6066,8 @@ true 表示仍是初始密码，前端应强制修改后才能继续操作</a:Co
 <a:Comment>审核密码组合码
 与密码组合加密用，详见审核密码备注
 6 位随机串
-@len 6..=6</a:Comment>
+@len 6..=6
+@secret</a:Comment>
 <a:DataType>A6</a:DataType>
 <a:Length>6</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -6080,7 +6084,8 @@ true 表示仍是初始密码，前端应强制修改后才能继续操作</a:Co
 <a:Comment>支付密码
 (小写(SM3(小写(SM3(密码明文))+小写(密码组合码))))
 固定 64 位小写十六进制（SM3 输出 32 字节）
-@len 64..=64</a:Comment>
+@len 64..=64
+@secret</a:Comment>
 <a:DataType>VA64</a:DataType>
 <a:Length>64</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -6097,7 +6102,8 @@ true 表示仍是初始密码，前端应强制修改后才能继续操作</a:Co
 <a:Comment>支付密码组合码
 与密码组合加密用，详见支付密码备注
 6 位随机串
-@len 6..=6</a:Comment>
+@len 6..=6
+@secret</a:Comment>
 <a:DataType>A6</a:DataType>
 <a:Length>6</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>

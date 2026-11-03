@@ -10756,7 +10756,8 @@ DAT 1793541529</a:History>
 注意：
 1. 计算方法中的密码在前端传过来时推荐先进行 sm3 序列化，以避免在密码传递过程中使用明码被截获
 2. 密码组合码在生成密码时随机生成并保存下来，和密码组合起来使用，增加破解的难度
-@len 64..=64</a:Comment>
+@len 64..=64
+@secret</a:Comment>
 <a:History>ORG {1C120969-0905-468C-BA1B-D91C2FD5189F}
 DAT 1793541529</a:History>
 <a:DataType>VARCHAR(64)</a:DataType>
@@ -10775,7 +10776,8 @@ DAT 1793541529</a:History>
 <a:Comment>登录密码组合码
 与密码组合加密用，详见登录密码备注
 6 位随机串
-@len 6..=6</a:Comment>
+@len 6..=6
+@secret</a:Comment>
 <a:History>ORG {70AD3433-D7F5-4C92-B48E-EC88854C5F8B}
 DAT 1793541529</a:History>
 <a:DataType>CHAR(6)</a:DataType>
@@ -10811,7 +10813,8 @@ DAT 1793541529</a:History>
 <a:Comment>审核密码
 (小写(SM3(小写(SM3(密码明文))+小写(密码组合码))))
 固定 64 位小写十六进制（SM3 输出 32 字节）
-@len 64..=64</a:Comment>
+@len 64..=64
+@secret</a:Comment>
 <a:History>ORG {CAF61394-7C1A-411F-9B94-DDBCF9B34CB2}
 DAT 1793541529</a:History>
 <a:DataType>VARCHAR(64)</a:DataType>
@@ -10830,7 +10833,8 @@ DAT 1793541529</a:History>
 <a:Comment>审核密码组合码
 与密码组合加密用，详见审核密码备注
 6 位随机串
-@len 6..=6</a:Comment>
+@len 6..=6
+@secret</a:Comment>
 <a:History>ORG {F6F9C485-7E1F-4E83-810E-C3FEFD9EDD21}
 DAT 1793541529</a:History>
 <a:DataType>CHAR(6)</a:DataType>
@@ -10849,7 +10853,8 @@ DAT 1793541529</a:History>
 <a:Comment>支付密码
 (小写(SM3(小写(SM3(密码明文))+小写(密码组合码))))
 固定 64 位小写十六进制（SM3 输出 32 字节）
-@len 64..=64</a:Comment>
+@len 64..=64
+@secret</a:Comment>
 <a:History>ORG {C33211EA-CC87-4F12-9936-C9F67C902F67}
 DAT 1793541529</a:History>
 <a:DataType>VARCHAR(64)</a:DataType>
@@ -10868,7 +10873,8 @@ DAT 1793541529</a:History>
 <a:Comment>支付密码组合码
 与密码组合加密用，详见支付密码备注
 6 位随机串
-@len 6..=6</a:Comment>
+@len 6..=6
+@secret</a:Comment>
 <a:History>ORG {74E35DF7-BAE7-43DD-9F53-C834A6305F23}
 DAT 1793541529</a:History>
 <a:DataType>CHAR(6)</a:DataType>
