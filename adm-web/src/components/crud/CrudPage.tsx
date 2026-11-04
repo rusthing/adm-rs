@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, GripVertical, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { crudApi } from "@/lib/api";
 import type { CrudApi } from "@/lib/api";
-import type { FormValues, PageQuery } from "@/lib/types";
+import type { FormValues, PageQuery, TreeDeletePreview } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   Button,
@@ -283,6 +283,14 @@ export function CrudPage<T extends { id: string }>({
   const [editing, setEditing] = useState<{ mode: FormMode; row?: T; values: FormValues } | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** 树形实体的删除确认：先查服务端预检，再让用户确认级联范围 */
+  const [deleteTarget, setDeleteTarget] = useState<{
+    row: T;
+    preview?: TreeDeletePreview;
+    loading: boolean;
+    error?: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const keywordName = keywordParamName(filters);
   const filterParams = useMemo(() => buildFilterParams(filters, filterValues), [filters, filterValues]);
@@ -593,15 +601,52 @@ export function CrudPage<T extends { id: string }>({
     }
   };
 
+  const doRemove = async (row: T) => {
+    await api.remove(row.id);
+    toast.success("已删除");
+    if (rows.length === 1 && page > 1) setPage(page - 1);
+    reload();
+  };
+
   const remove = async (row: T) => {
-    if (!window.confirm(`确定删除「${itemLabel(row)}」？此操作不可撤销。`)) return;
+    // 非树形实体沿用原来的同步确认；树形实体先查服务端预检，
+    // 由确认弹窗展示真实子孙数量与名单，避免前端估算。
+    if (sortable?.kind !== "tree") {
+      if (!window.confirm(`确定删除「${itemLabel(row)}」？此操作不可撤销。`)) return;
+      try {
+        await doRemove(row);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "删除失败");
+      }
+      return;
+    }
+
+    setDeleteTarget({ row, loading: true });
     try {
-      await api.remove(row.id);
-      toast.success("已删除");
-      if (rows.length === 1 && page > 1) setPage(page - 1);
-      reload();
+      const preview = await api.deletePreview(row.id);
+      if (!preview) throw new Error("删除预检未返回数据");
+      setDeleteTarget({ row, preview, loading: false });
+    } catch (error) {
+      setDeleteTarget({
+        row,
+        loading: false,
+        error: error instanceof Error ? error.message : "删除预检失败",
+      });
+    }
+  };
+
+  /** 树形删除确认：预检成功且未被引用阻塞时才真正调用删除接口。 */
+  const confirmRemove = async () => {
+    if (!deleteTarget || deleteTarget.loading || deleteTarget.error) return;
+    if (deleteTarget.preview?.blocked) return;
+    setDeleting(true);
+    try {
+      await doRemove(deleteTarget.row);
+      setDeleteTarget(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "删除失败");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -924,6 +969,71 @@ export function CrudPage<T extends { id: string }>({
           )}
           <button type="submit" className="hidden" />
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(deleteTarget)}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        title={`删除${title.replace(/管理$/, "")}`}
+        description={
+          deleteTarget
+            ? `确定删除「${itemLabel(deleteTarget.row)}」？此操作不可撤销。`
+            : undefined
+        }
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmRemove}
+              disabled={
+                deleting ||
+                Boolean(deleteTarget?.loading) ||
+                Boolean(deleteTarget?.error) ||
+                Boolean(deleteTarget?.preview?.blocked)
+              }
+            >
+              {deleting ? "删除中…" : "删除"}
+            </Button>
+          </>
+        }
+      >
+        {deleteTarget?.loading && (
+          <div className="rounded-lg border border-line bg-sunken px-3 py-2 text-[12.5px] text-muted">
+            正在检查子节点…
+          </div>
+        )}
+        {deleteTarget?.error && (
+          <div className="rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-[12.5px] text-danger">
+            删除预检失败：{deleteTarget.error}
+          </div>
+        )}
+        {deleteTarget && !deleteTarget.loading && !deleteTarget.error && deleteTarget.preview && (
+          <div className="space-y-2.5">
+            {deleteTarget.preview.blocked ? (
+              <div className="rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-[12.5px] leading-relaxed text-danger">
+                无法删除：{deleteTarget.preview.blockReason}
+              </div>
+            ) : deleteTarget.preview.count > 0 ? (
+              <>
+                <div className="rounded-lg border border-line bg-sunken px-3 py-2 text-[12.5px] text-ink">
+                  将同时删除 {deleteTarget.preview.count} 个子节点，它们也会一并移除。
+                </div>
+                <div className="max-h-40 overflow-auto rounded-lg border border-line px-3 py-2 text-[12px] leading-relaxed text-muted">
+                  {deleteTarget.preview.items.map((item) => item.name).join("、")}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-line bg-sunken px-3 py-2 text-[12.5px] text-muted">
+                该节点没有子节点，删除后同父节点下的后续兄弟会自动前移。
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

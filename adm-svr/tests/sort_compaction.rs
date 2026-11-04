@@ -7,6 +7,8 @@
 //! 覆盖场景：删除中间项后序号连续、批量删除整组重算、改分组后新组末尾 / 旧组前移、
 //! 跨组反方向并发（验证按 key 排序加锁不会死锁）、树形删中间项与改父节点。
 
+use adm_svr::svc::{menu_delete_guard, tree_delete_preview_with_db, AdmMenuSvc};
+use robotech::api::U64;
 use robotech::dao::sort::{
     compact_flat_after_delete, compact_flat_gaps, compact_tree_after_delete, compact_tree_gaps,
     flat_move_group, tree_move_node, FlatSort, TreeMoveArgs, TreeSort,
@@ -505,5 +507,199 @@ async fn tree_move_rejects_own_descendant_as_parent() {
     .await;
 
     assert!(result.is_err(), "不能把节点挂到自己的后代下");
+    tx.rollback().await.unwrap();
+}
+
+/// 建一对真实的领域与应用，供菜单树测试使用
+async fn seed_menu_scope<C: ConnectionTrait>(
+    db: &C,
+    realm_id: i64,
+    app_id: i64,
+    suffix: &str,
+) {
+    exec(
+        db,
+        &format!(
+            "INSERT INTO adm_realm (id, code, name, sort_order, creater_id, create_ms, updater_id, update_ms)
+             VALUES ({realm_id}, 'realm-{suffix}', '领域{suffix}', 1, 0, 0, 0, 0)"
+        ),
+    )
+    .await
+    .unwrap();
+    exec(
+        db,
+        &format!(
+            "INSERT INTO adm_app (id, realm_id, code, name, sort_order, creater_id, create_ms, updater_id, update_ms)
+             VALUES ({app_id}, {realm_id}, 'app-{suffix}', '应用{suffix}', 1, 0, 0, 0, 0)"
+        ),
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn menu_cascade_delete_preview_and_compaction() {
+    let Some(db) = connect().await else {
+        return;
+    };
+    let tx = db.begin().await.unwrap();
+    let realm_id = 910_000_000_000_000_001i64;
+    let app_id = 910_000_000_000_000_101i64;
+    let root_id = 910_000_000_000_000_111i64;
+    seed_menu_scope(&tx, realm_id, app_id, "cascade").await;
+    exec(
+        &tx,
+        &format!(
+            "INSERT INTO adm_menu
+             (id, app_id, tree_code, code, name, path, creater_id, create_ms, updater_id, update_ms) VALUES
+             ({root_id}, {app_id}, '001', 'root', '根菜单', '/root', 0, 0, 0, 0),
+             ({}, {app_id}, '001001', 'child1', '子菜单一', '/root/child1', 0, 0, 0, 0),
+             ({}, {app_id}, '001001001', 'grand', '孙菜单', '/root/child1/grand', 0, 0, 0, 0),
+             ({}, {app_id}, '001002', 'child2', '子菜单二', '/root/child2', 0, 0, 0, 0),
+             ({}, {app_id}, '002', 'sibling', '兄弟菜单', '/sibling', 0, 0, 0, 0),
+             ({}, {app_id}, '002001', 'sibling-child', '兄弟子菜单', '/sibling/child', 0, 0, 0, 0)",
+            root_id + 1,
+            root_id + 2,
+            root_id + 3,
+            root_id + 4,
+            root_id + 5,
+        ),
+    )
+    .await
+    .unwrap();
+
+    let preview = tree_delete_preview_with_db(&tx, "menu", root_id as u64)
+        .await
+        .unwrap();
+    assert_eq!(preview.count, 3, "子孙：子菜单一、孙菜单、子菜单二");
+    assert_eq!(
+        preview
+            .items
+            .iter()
+            .map(|item| item.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["子菜单一", "孙菜单", "子菜单二"]
+    );
+    assert!(!preview.blocked);
+
+    menu_delete_guard(&tx, root_id as u64).await.unwrap();
+    AdmMenuSvc::del_by_id(U64(root_id as u64), Some(&tx))
+        .await
+        .unwrap();
+
+    let rows = query(
+        &tx,
+        &format!(
+            "SELECT tree_code, name FROM adm_menu WHERE app_id = {app_id} ORDER BY tree_code"
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(rows.len(), 2, "根节点和整棵子树都已删除");
+    assert_eq!(
+        rows[0].try_get::<String>("", "tree_code").unwrap(),
+        "001",
+        "原 002 前移到 001"
+    );
+    assert_eq!(rows[0].try_get::<String>("", "name").unwrap(), "兄弟菜单");
+    assert_eq!(
+        rows[1].try_get::<String>("", "tree_code").unwrap(),
+        "001001",
+        "兄弟的子树跟着改码"
+    );
+    tx.rollback().await.unwrap();
+}
+
+#[tokio::test]
+async fn menu_cascade_delete_rejects_when_descendant_is_bound() {
+    let Some(db) = connect().await else {
+        return;
+    };
+    let tx = db.begin().await.unwrap();
+    let realm_id = 920_000_000_000_000_001i64;
+    let app_id = 920_000_000_000_000_101i64;
+    let root_id = 920_000_000_000_000_111i64;
+    let child_id = root_id + 1;
+    let group_id = root_id + 10;
+    let role_id = root_id + 20;
+    seed_menu_scope(&tx, realm_id, app_id, "guard").await;
+    exec(
+        &tx,
+        &format!(
+            "INSERT INTO adm_menu
+             (id, app_id, tree_code, code, name, path, creater_id, create_ms, updater_id, update_ms) VALUES
+             ({root_id}, {app_id}, '001', 'guard-root', '带绑定根', '/guard-root', 0, 0, 0, 0),
+             ({child_id}, {app_id}, '001001', 'guard-child', '被绑子菜单', '/guard-root/child', 0, 0, 0, 0)"
+        ),
+    )
+    .await
+    .unwrap();
+    exec(
+        &tx,
+        &format!(
+            "INSERT INTO adm_role_group
+             (id, realm_id, tree_code, name, creater_id, create_ms, updater_id, update_ms)
+             VALUES ({group_id}, {realm_id}, '001', '保护测试分组', 0, 0, 0, 0)"
+        ),
+    )
+    .await
+    .unwrap();
+    exec(
+        &tx,
+        &format!(
+            "INSERT INTO adm_role
+             (id, group_id, name, sort_order, creater_id, create_ms, updater_id, update_ms)
+             VALUES ({role_id}, {group_id}, '保护测试角色', 1, 0, 0, 0, 0)"
+        ),
+    )
+    .await
+    .unwrap();
+    exec(
+        &tx,
+        &format!(
+            "INSERT INTO adm_role_menu
+             (id, menu_id, role_id, creater_id, create_ms, updater_id, update_ms)
+             VALUES ({}, {child_id}, {role_id}, 0, 0, 0, 0)",
+            root_id + 30
+        ),
+    )
+    .await
+    .unwrap();
+
+    let preview = tree_delete_preview_with_db(&tx, "menu", root_id as u64)
+        .await
+        .unwrap();
+    assert!(preview.blocked);
+    assert_eq!(preview.count, 1);
+    assert!(
+        preview
+            .block_reason
+            .as_deref()
+            .unwrap_or_default()
+            .contains("角色菜单绑定"),
+        "预检应说明被角色菜单绑定：{:?}",
+        preview.block_reason
+    );
+
+    let err = menu_delete_guard(&tx, root_id as u64)
+        .await
+        .expect_err("子树被角色绑定时必须拒绝");
+    assert!(err.to_string().contains("角色菜单绑定"), "实际：{err}");
+    let err = AdmMenuSvc::del_by_id(U64(root_id as u64), Some(&tx))
+        .await
+        .expect_err("删除接口也必须拒绝");
+    assert!(err.to_string().contains("无法删除"), "实际：{err}");
+
+    let remaining = query(
+        &tx,
+        &format!("SELECT COUNT(*) AS cnt FROM adm_menu WHERE app_id = {app_id}"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        remaining[0].try_get::<i64>("", "cnt").unwrap(),
+        2,
+        "拒绝后节点和子节点都应保留"
+    );
     tx.rollback().await.unwrap();
 }

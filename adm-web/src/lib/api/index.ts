@@ -23,6 +23,7 @@ import type {
   AdmWidgetTypeVo,
   PageQuery,
   PageRx,
+  TreeDeletePreview,
 } from "@/lib/types";
 
 /** 业务接口要求 `Authorization: Bearer`；`X-User-Id` 由 http.ts 从会话里自动补，服务端中间件会覆盖成令牌里的用户。 */
@@ -45,13 +46,18 @@ export interface CrudApi<T> {
   upsert: (body: Payload) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
   /**
+   * 树形删除预检：返回将级联删除的子孙数量、名单与引用阻塞原因。
+   * 对应 `GET {prefix}/delete-preview/{id}`，仅树形实体提供。
+   */
+  deletePreview: (id: string) => Promise<TreeDeletePreview | undefined>;
+  /**
    * 统一重排：提交同组完整 id 顺序，服务端整体重算为连续序号。
    * 对应 `POST {prefix}/reorder`，请求体为 `{ ids }`。
    */
   reorder: (ids: string[]) => Promise<unknown>;
 }
 
-/** 22 个宏生成接口里前端实际用到的 8 个。 */
+/** 22 个宏生成接口里前端实际用到的 9 个（树形实体多一个删除预检）。 */
 export function crudApi<T>(prefix: string): CrudApi<T> {
   return {
     prefix,
@@ -70,6 +76,8 @@ export function crudApi<T>(prefix: string): CrudApi<T> {
     save: (body) => request(`${prefix}/save`, { method: "POST", body }),
     upsert: (body) => request(`${prefix}/upsert`, { method: "POST", body }),
     remove: (id) => request(`${prefix}/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    deletePreview: (id) =>
+      request<TreeDeletePreview>(`${prefix}/delete-preview/${encodeURIComponent(id)}`),
     reorder: (ids) => request(`${prefix}/reorder`, { method: "POST", body: { ids } }),
   };
 }

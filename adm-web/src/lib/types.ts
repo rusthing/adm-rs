@@ -17,6 +17,24 @@ export interface PageRx<T> {
   list: T[];
 }
 
+/** 树形删除预检中的一个子节点 */
+export interface TreeDeletePreviewItem {
+  /** 服务端按字符串返回，避免大整数精度丢失 */
+  id: string;
+  name: string;
+}
+
+/**
+ * 树形删除预检：服务端返回将级联删除的子孙数量与名单，
+ * 以及是否因外部引用被阻塞；前端不自行估算。
+ */
+export interface TreeDeletePreview {
+  count: number;
+  items: TreeDeletePreviewItem[];
+  blocked: boolean;
+  blockReason?: string;
+}
+
 export type QueryValue = string | number | boolean | null | undefined;
 
 export interface PageQuery {

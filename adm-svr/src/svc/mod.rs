@@ -24,6 +24,7 @@ mod adm_role_perm_svc;
 mod adm_role_svc;
 mod adm_role_user_svc;
 mod adm_sort_svc;
+mod adm_tree_delete_svc;
 mod adm_user_svc;
 mod adm_widget_data_svc;
 
@@ -53,5 +54,6 @@ pub use adm_role_perm_svc::*;
 pub use adm_role_svc::*;
 pub use adm_role_user_svc::*;
 pub use adm_sort_svc::*;
+pub use adm_tree_delete_svc::*;
 pub use adm_user_svc::*;
 pub use adm_widget_data_svc::*;
