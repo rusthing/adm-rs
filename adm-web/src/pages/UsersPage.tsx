@@ -7,6 +7,7 @@ import { Badge, Button, Checkbox, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
 import type { AdmRoleVo, AdmUserVo, FormValues } from "@/lib/types";
+import { shortId } from "@/lib/utils";
 import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -50,6 +51,11 @@ function UserRolesDrawer({
     queryFn: () => roleGroupApi.list(),
     enabled: open,
   });
+
+  // 切换用户时先清空勾选，避免在新用户的绑定还没返回前沿用上一位用户的选中状态。
+  useEffect(() => {
+    setSelected(new Set());
+  }, [user?.id]);
 
   useEffect(() => {
     if (!bindingsQuery.data) return;
@@ -100,7 +106,9 @@ function UserRolesDrawer({
       onSaved();
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "保存角色失败");
+      // 差异是逐条提交的，可能部分成功；回到服务端真实绑定，避免界面与库不一致。
+      await bindingsQuery.refetch();
+      toast.error(error instanceof Error ? error.message : "保存角色失败，已重新读取当前绑定");
     } finally {
       setSaving(false);
     }
@@ -135,7 +143,7 @@ function UserRolesDrawer({
             <section key={groupId}>
               <div className="mb-1.5 flex items-center gap-2 text-[11.5px] font-medium text-muted">
                 <ShieldCheck size={13} />
-                {groupName.get(groupId) ?? `分组 ${groupId}`}
+                {groupName.get(groupId) ?? `分组 ${shortId(groupId)}`}
               </div>
               <div className="flex flex-col gap-0.5 rounded-xl border border-line p-1.5">
                 {groupRoles.map((role) => (

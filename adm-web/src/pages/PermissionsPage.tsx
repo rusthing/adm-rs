@@ -4,6 +4,7 @@ import { opTypeApi, permGroupApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import type { AdmPermVo, FormValues } from "@/lib/types";
+import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | undefined {
   const text = typeof value === "string" ? value.trim() : "";
@@ -31,7 +32,11 @@ export function PermissionsPage() {
   const columns: CrudColumn<AdmPermVo>[] = [
     { key: "name", label: "权限", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "urn", label: "URN", render: (row) => <code className="font-mono text-[11.5px] text-accent-strong">{row.urn}</code> },
-    { key: "groupId", label: "权限分组", render: (row) => groupName.get(row.groupId) ?? `#${row.groupId}` },
+    {
+      key: "groupId",
+      label: "权限分组",
+      render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
+    },
     { key: "opTypeCode", label: "操作类型", type: "code" },
     { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
   ];

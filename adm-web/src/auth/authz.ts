@@ -1,6 +1,8 @@
 import { authApi } from "@/lib/api";
 import type { AuthSession, Authz } from "@/lib/types";
 
+export { matchPermUrn } from "@/auth/perm";
+
 /**
  * 拉取当前用户的鉴权视图。
  *

@@ -279,7 +279,20 @@ export function DashboardConfigPage() {
     });
   };
 
+  /** 配置尚未读完时禁止保存，避免把空草稿覆盖到目标角色/全局模板。 */
+  const configBusy = configQuery.isLoading || configQuery.isFetching;
+
+  const changeTarget = (next: string) => {
+    if (next === target) return;
+    if (dirty && !window.confirm("当前配置有未保存修改，切换目标后会丢弃这些修改。继续？")) return;
+    setTarget(next);
+  };
+
   const save = async () => {
+    if (configBusy) {
+      toast.error("配置仍在读取中，请稍后再保存");
+      return;
+    }
     if (!draft.name.trim()) {
       toast.error("配置名称不能为空");
       return;
@@ -391,7 +404,7 @@ export function DashboardConfigPage() {
                 <Trash2 size={14} /> 删除
               </Button>
             )}
-            <Button variant="primary" size="sm" onClick={() => void save()} disabled={saving}>
+            <Button variant="primary" size="sm" onClick={() => void save()} disabled={saving || configBusy}>
               <Save size={14} /> {saving ? "保存中…" : "保存配置"}
             </Button>
           </>
@@ -407,7 +420,7 @@ export function DashboardConfigPage() {
           <Field label="目标角色">
             <Select
               value={target}
-              onChange={(event) => setTarget(event.target.value)}
+              onChange={(event) => changeTarget(event.target.value)}
               disabled={saving}
             >
               <option value="">全局兜底模板</option>
@@ -495,7 +508,21 @@ export function DashboardConfigPage() {
       >
         {configQuery.isLoading && <Spinner label="正在读取配置…" />}
 
-        {!configQuery.isLoading && draft.widgets.length === 0 && (
+        {configQuery.isError && (
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-[12px] leading-relaxed text-danger">
+            <span className="flex-1">
+              读取配置失败：
+              {configQuery.error instanceof Error
+                ? configQuery.error.message
+                : "接口没有返回具体原因，请确认 adm-svr 已启动。"}
+            </span>
+            <Button variant="secondary" size="sm" onClick={() => void configQuery.refetch()}>
+              <RefreshCw size={13} /> 重试
+            </Button>
+          </div>
+        )}
+
+        {!configQuery.isLoading && !configQuery.isError && draft.widgets.length === 0 && (
           <EmptyState
             title="还没有 widget"
             description="从上方选择 widget 类型后点击「添加 widget」，或保存一份空配置。"

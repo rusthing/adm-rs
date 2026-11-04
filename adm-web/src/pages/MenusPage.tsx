@@ -5,6 +5,7 @@ import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { Badge } from "@/components/ui/primitives";
 import type { AdmMenuVo, FormValues } from "@/lib/types";
+import { shortId } from "@/lib/utils";
 
 const LINK_TYPE: Record<number, { label: string; tone: "info" | "warn" | "violet" }> = {
   1: { label: "内链", tone: "info" },
@@ -59,9 +60,13 @@ export function MenusPage() {
         );
       },
     },
-    { key: "appId", label: "应用", render: (row) => appName.get(row.appId) ?? `#${row.appId}` },
+    {
+      key: "appId",
+      label: "应用",
+      render: (row) => appName.get(row.appId) ?? shortId(row.appId),
+    },
     { key: "code", label: "编码", type: "code" },
-    { key: "path", label: "路径", type: "code" },
+    { key: "path", label: "路径", type: "code", truncate: true },
     {
       key: "linkType",
       label: "类型",
@@ -161,7 +166,7 @@ export function MenusPage() {
   return (
     <CrudPage<AdmMenuVo>
       title="菜单管理"
-      subtitle="菜单树用 treeCode（每层 3 位）表达；新增时传 parentCode，treeCode 由服务端生成。本前端不消费该数据生成路由，仅作为管理数据。"
+      subtitle="菜单树用 treeCode（每层 3 位）表达；新增时传 parentCode，treeCode 由服务端生成。登录后侧栏与路由按 /adm/auth/me 下发的可见菜单生成，未注册组件的菜单不会出现在侧栏。"
       prefix="/adm/menu"
       columns={columns}
       fields={fields}

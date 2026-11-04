@@ -197,7 +197,7 @@ export function AppShell() {
           </button>
           <button
             type="button"
-            className="text-muted hover:text-ink lg:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-sunken hover:text-ink lg:hidden"
             onClick={() => setMobileOpen(false)}
             aria-label="关闭菜单"
           >
@@ -226,7 +226,7 @@ export function AppShell() {
                     const active = matched?.item.id === item.id;
                     const Icon = item.icon;
                     const className = cn(
-                      "relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors",
+                      "relative flex min-h-[38px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors",
                       active
                         ? "bg-accent-soft text-accent-strong"
                         : "text-ink-soft hover:bg-sunken hover:text-ink",
@@ -353,7 +353,7 @@ export function AppShell() {
         <header className="sticky top-0 z-30 flex h-[58px] items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur">
           <button
             type="button"
-            className="rounded-md border border-line p-1.5 text-muted hover:text-ink lg:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-muted hover:text-ink lg:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="打开菜单"
           >
@@ -366,6 +366,12 @@ export function AppShell() {
                 <span>{matched.group.label}</span>
                 <ChevronRight size={12} />
                 <span className="font-medium text-ink">{matched.item.label}</span>
+              </nav>
+            ) : location.pathname === "/profile" ? (
+              <nav className="flex items-center gap-1.5 text-[12px] text-muted">
+                <span>账号</span>
+                <ChevronRight size={12} />
+                <span className="font-medium text-ink">个人中心</span>
               </nav>
             ) : (
               <div className="text-[12px] text-muted">Adm Console</div>
@@ -407,7 +413,8 @@ export function AppShell() {
         {authzError && (
           <div className="flex flex-wrap items-center gap-2 border-b border-danger/25 bg-danger-soft px-4 py-2 text-[12px] text-danger">
             <AlertTriangle size={14} />
-            权限信息加载失败：{authzError}。当前只显示无需权限的页面。
+            权限信息加载失败：{authzError}。
+            {authz ? "当前沿用上次缓存的菜单与权限，刷新成功后自动更新。" : "菜单与页面暂不可用，可重试或重新登录。"}
             <Button size="sm" variant="ghost" onClick={() => void refreshAuthz()}>
               重试
             </Button>

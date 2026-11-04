@@ -6,7 +6,7 @@ import { dashboardApi } from "@/lib/api";
 import { fetchWidget } from "@/lib/widget-fetch";
 import { Badge, EmptyState, PageHeader, Panel, Spinner } from "@/components/ui/primitives";
 import { WidgetRenderer } from "@/components/dashboard/WidgetRenderer";
-import { formatMs } from "@/lib/utils";
+import { formatMs, shortId } from "@/lib/utils";
 import type { DashboardWidgetView } from "@/lib/types";
 import { Globe, LayoutDashboard, RefreshCw, Settings2 } from "lucide-react";
 
@@ -45,8 +45,9 @@ class CardBoundary extends Component<{ widgetKey: string; children: ReactNode },
 export function DashboardPage() {
   const { session, authz, authzError, authzLoading, refreshAuthz, hasPerm } = useAuth();
 
+  // queryKey 带上 userId：切账号后即使缓存未被清空，也不会复用上一位用户的生效配置。
   const effectiveQuery = useQuery({
-    queryKey: ["dashboard", "effective"],
+    queryKey: ["dashboard", "effective", session?.userId],
     queryFn: () => dashboardApi.effective(),
     staleTime: 30_000,
   });
@@ -60,6 +61,7 @@ export function DashboardPage() {
     queries: configWidgets.map((widget) => ({
       queryKey: [
         "dashboard-widget",
+        session?.userId,
         widget.id,
         widget.service,
         widget.endpoint,
@@ -235,8 +237,13 @@ export function DashboardPage() {
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
           <span className="inline-flex items-center gap-1.5">
             <LayoutDashboard size={12} />
-            {dashboard.id ? `配置 #${dashboard.id}` : "无配置"} ·{" "}
-            {(authz?.scopes ?? []).length} 个数据范围 · 全局数据
+            {dashboard.id ? (
+              <span title={dashboard.id}>配置 {shortId(dashboard.id)}</span>
+            ) : (
+              "无配置"
+            )}{" "}
+            · {(authz?.scopes ?? []).length} 个数据范围 ·{" "}
+            {anyScopeAware ? "全局数据" : "未启用数据范围"}
           </span>
           <span className="tnum font-mono">
             {generatedMs ? `生成于 ${formatMs(generatedMs)}` : "等待数据…"}

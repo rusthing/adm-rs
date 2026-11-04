@@ -19,15 +19,17 @@ import {
   Users,
 } from "lucide-react";
 import type { AdmMenuVo } from "@/lib/types";
+import { isRegisteredComponent } from "@/pages/registry";
 
 /**
  * 菜单 `component` 与前端页面组件的映射约定：
  *
  * - `component` 为空：目录节点，只作为侧栏分组，不注册路由；
- * - `component` 非空：对应 `App.tsx` 里 `PAGE_COMPONENTS` 的键，按该键挂载页面；
- * - 后端下发了前端未注册的 `component`：降级为「未注册页面」占位，不抛错、不整页崩。
+ * - `component` 非空且已在 `pages/registry.ts` 登记：按该键挂载页面并出现在侧栏；
+ * - 后端下发了前端未注册的 `component`：**不进侧栏**，直接访问 URL 时才显示
+ *   「未注册页面」占位，避免用户点进一个必然不可用的入口。
  *
- * 新增页面时只需在两处登记：本文件的图标映射（可选）与 `App.tsx` 的组件表。
+ * 新增页面时只需在两处登记：本文件的图标映射（可选）与 `pages/registry.ts` 的组件表。
  */
 export interface NavItem {
   id: string;
@@ -92,6 +94,10 @@ export function buildNav(menus: AdmMenuVo[]): NavGroup[] {
     .filter((menu) => menu.enabled !== false && menu.visible !== false)
     .sort((a, b) => a.treeCode.localeCompare(b.treeCode));
 
+  /** 外链/iframe 可直接生成入口；内链必须已注册组件，否则不放进侧栏。 */
+  const navigable = (menu: AdmMenuVo): boolean =>
+    menu.linkType !== 1 ? true : isRegisteredComponent(menu.component);
+
   const roots = visible.filter((menu) => menu.treeCode.length === 3);
   const groups: NavGroup[] = [];
   const consumed = new Set<string>();
@@ -101,18 +107,16 @@ export function buildNav(menus: AdmMenuVo[]): NavGroup[] {
       (menu) => menu.treeCode.length === 6 && menu.treeCode.startsWith(root.treeCode),
     );
     const items: NavItem[] = [];
-    if (root.component || root.linkType !== 1) items.push(toItem(root));
+    if (navigable(root)) items.push(toItem(root));
     for (const child of children) {
-      if (child.component || child.linkType !== 1) items.push(toItem(child));
+      if (navigable(child)) items.push(toItem(child));
       consumed.add(child.id);
     }
     if (items.length > 0) groups.push({ label: root.name, items });
     consumed.add(root.id);
   }
 
-  const rest = visible.filter(
-    (menu) => !consumed.has(menu.id) && (menu.component || menu.linkType !== 1),
-  );
+  const rest = visible.filter((menu) => !consumed.has(menu.id) && navigable(menu));
   if (rest.length > 0) groups.push({ label: "其他", items: rest.map(toItem) });
 
   return groups;

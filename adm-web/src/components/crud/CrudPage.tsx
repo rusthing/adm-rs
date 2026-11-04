@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, GripVertical, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
@@ -55,6 +55,11 @@ export interface CrudColumn<T> {
   booleanLabels?: BooleanCellLabels;
   className?: string;
   align?: "left" | "right";
+  /**
+   * 超长文案（备注、路径等）设为 true：单元格内单行省略并带 title 悬浮全文，
+   * 避免撑宽表格导致横向滚动失控。
+   */
+  truncate?: boolean;
 }
 
 export interface CrudFieldOption {
@@ -292,6 +297,12 @@ export function CrudPage<T extends { id: string }>({
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  /** 详情/删除预检是异步请求，用递增令牌丢弃“后发先至”的旧响应。 */
+  const detailRequestRef = useRef(0);
+  const previewRequestRef = useRef(0);
+  /** 排序提交串行化，避免连续点击上移/下移时两个 reorder 并发覆盖。 */
+  const sortBusyRef = useRef(false);
+
   const keywordName = keywordParamName(filters);
   const filterParams = useMemo(() => buildFilterParams(filters, filterValues), [filters, filterValues]);
   const filterKey = JSON.stringify(filterParams);
@@ -304,11 +315,6 @@ export function CrudPage<T extends { id: string }>({
     }, 350);
     return () => window.clearTimeout(timer);
   }, [keyword]);
-
-  useEffect(() => {
-    // 筛选器变化时回第一页
-    setPage(1);
-  }, [filterKey]);
 
   const buildQuery = (): PageQuery => ({
     _page: page,
@@ -328,7 +334,14 @@ export function CrudPage<T extends { id: string }>({
 
   const rows = query.data?.list ?? [];
   const total = Number(query.data?.total ?? 0);
+  const pageCount = Math.max(1, Math.ceil(total / size));
   const hasActiveFilters = Boolean(appliedKeyword) || hasActiveFilterValues(filters, filterValues);
+
+  // 删除/筛选导致总数缩水时，把越界的页码拉回最后一页；用 isSuccess 避免
+  // 加载中 total=0 把用户刚点的第 3 页立刻重置成第 1 页。
+  useEffect(() => {
+    if (query.isSuccess && page > pageCount) setPage(pageCount);
+  }, [query.isSuccess, page, pageCount]);
 
   // ---- 统一排序模式（仅 sortable 页面启用） ----
   const [sortPreview, setSortPreview] = useState<Record<string, string[]>>({});
@@ -371,6 +384,9 @@ export function CrudPage<T extends { id: string }>({
   const orderOf = (group: string): string[] => sortPreview[group] ?? baseOrderMap.get(group) ?? [];
 
   const submitSort = async (group: string, ids: string[]) => {
+    // 上一个 reorder 未结束时不叠加新请求，避免旧响应覆盖新顺序。
+    if (sortBusyRef.current) return;
+    sortBusyRef.current = true;
     setSortSaving(true);
     try {
       await api.reorder(ids);
@@ -391,14 +407,15 @@ export function CrudPage<T extends { id: string }>({
       });
       await sortListQuery.refetch();
       await query.refetch();
-      toast.error(error instanceof Error ? error.message : "排序保存失败，已恢复");
+      toast.error(error instanceof Error ? error.message : "排序保存失败，已恢复为服务端顺序");
     } finally {
       setSortSaving(false);
+      sortBusyRef.current = false;
     }
   };
 
   const moveRow = (row: T, delta: number) => {
-    if (!sortable || !sortEnabled) return;
+    if (!sortable || !sortEnabled || sortBusyRef.current) return;
     const group = sortGroupKey(row, sortable);
     const ids = orderOf(group);
     const next = swapSortId(ids, row.id, delta);
@@ -483,7 +500,7 @@ export function CrudPage<T extends { id: string }>({
     const seq = sortSequence.get(row.id) ?? fallback;
     const disabledTitle = hasActiveFilters ? "清除搜索与筛选条件后可调整排序" : "排序数据加载中";
     return (
-      <td className="w-[112px] whitespace-nowrap px-3 py-2.5 align-middle">
+      <td className="sticky left-0 z-10 w-[112px] whitespace-nowrap border-r border-line bg-surface px-3 py-2.5 align-middle group-hover:bg-sunken/50">
         <div className="flex items-center justify-end gap-1">
           <span className="inline-flex h-5 min-w-7 items-center justify-center rounded bg-sunken px-1 text-[11px] tabular-nums text-muted">
             {Number.isFinite(seq) ? seq : "--"}
@@ -542,18 +559,25 @@ export function CrudPage<T extends { id: string }>({
   };
 
   const openCreate = () => {
+    // 取消可能仍在途的编辑详情请求，避免旧详情把新建表单顶掉。
+    detailRequestRef.current += 1;
     setFormError(null);
     setEditing({ mode: "create", values: defaultsOf(fields) });
   };
 
   const openEdit = async (row: T) => {
+    const requestId = detailRequestRef.current + 1;
+    detailRequestRef.current = requestId;
     setFormError(null);
     try {
       const detail = await api.get(row.id);
+      // 用户已点了另一行或新建时，丢弃这次旧响应。
+      if (detailRequestRef.current !== requestId) return;
       const source = (detail ?? row) as T;
       setEditing({ mode: "edit", row: source, values: toForm(source) });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "读取详情失败");
+      if (detailRequestRef.current !== requestId) return;
+      toast.error(error instanceof Error ? error.message : `读取「${itemLabel(row)}」详情失败，请重试`);
     }
   };
 
@@ -593,7 +617,8 @@ export function CrudPage<T extends { id: string }>({
       setEditing(null);
       reload();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "保存失败";
+      const message =
+        error instanceof Error ? error.message : "保存失败，服务端未返回具体原因";
       setFormError(message);
       toast.error(message);
     } finally {
@@ -616,23 +641,37 @@ export function CrudPage<T extends { id: string }>({
       try {
         await doRemove(row);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "删除失败");
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : `删除「${itemLabel(row)}」失败，服务端未返回具体原因`,
+        );
       }
       return;
     }
 
+    const requestId = previewRequestRef.current + 1;
+    previewRequestRef.current = requestId;
     setDeleteTarget({ row, loading: true });
     try {
       const preview = await api.deletePreview(row.id);
+      if (previewRequestRef.current !== requestId) return;
       if (!preview) throw new Error("删除预检未返回数据");
       setDeleteTarget({ row, preview, loading: false });
     } catch (error) {
+      if (previewRequestRef.current !== requestId) return;
       setDeleteTarget({
         row,
         loading: false,
-        error: error instanceof Error ? error.message : "删除预检失败",
+        error: error instanceof Error ? error.message : "删除预检失败，请重试或刷新列表",
       });
     }
+  };
+
+  /** 关闭删除弹窗时让在途预检失效，避免响应回来后又把弹窗重新打开。 */
+  const closeDelete = () => {
+    previewRequestRef.current += 1;
+    if (!deleting) setDeleteTarget(null);
   };
 
   /** 树形删除确认：预检成功且未被引用阻塞时才真正调用删除接口。 */
@@ -644,7 +683,11 @@ export function CrudPage<T extends { id: string }>({
       await doRemove(deleteTarget.row);
       setDeleteTarget(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "删除失败");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `删除「${itemLabel(deleteTarget.row)}」失败，服务端未返回具体原因`,
+      );
     } finally {
       setDeleting(false);
     }
@@ -673,6 +716,14 @@ export function CrudPage<T extends { id: string }>({
       else next[name] = value;
       return next;
     });
+    // 与筛选状态同批更新页码，避免先用旧 page + 新条件发一次请求。
+    setPage(1);
+  };
+
+  /** Enter 立即查询（不等待 350ms 防抖），与输入框失焦/防抖结果保持一致。 */
+  const applyKeywordNow = () => {
+    setAppliedKeyword(keyword.trim());
+    setPage(1);
   };
 
   const visibleFields = editing
@@ -712,7 +763,15 @@ export function CrudPage<T extends { id: string }>({
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Escape") clearKeyword();
+                if (event.key === "Escape") {
+                  clearKeyword();
+                  return;
+                }
+                // 中文输入法回车确认候选词时不要触发查询
+                if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  applyKeywordNow();
+                }
               }}
               placeholder={keywordPlaceholder(filters, searchPlaceholder)}
               className="h-8 pl-8 pr-8 text-[12.5px]"
@@ -721,7 +780,7 @@ export function CrudPage<T extends { id: string }>({
               <button
                 type="button"
                 onClick={clearKeyword}
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted transition-colors hover:bg-sunken hover:text-ink"
+                className="absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted transition-colors hover:bg-sunken hover:text-ink"
                 aria-label="清除搜索"
                 title="清空关键字并立即重置查询"
               >
@@ -765,9 +824,11 @@ export function CrudPage<T extends { id: string }>({
           <Spinner />
         ) : query.isError ? (
           <div className="px-4 py-10 text-center">
-            <p className="text-[13px] font-medium text-danger">加载失败</p>
-            <p className="mt-1 text-[12px] text-muted">
-              {query.error instanceof Error ? query.error.message : "未知错误"}
+            <p className="text-[13px] font-medium text-danger">列表加载失败</p>
+            <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted">
+              {query.error instanceof Error
+                ? query.error.message
+                : "请求没有返回具体原因，可检查登录状态与服务状态后重试。"}
             </p>
             <Button className="mt-4" variant="secondary" onClick={() => void query.refetch()}>
               重试
@@ -775,28 +836,36 @@ export function CrudPage<T extends { id: string }>({
           </div>
         ) : rows.length === 0 ? (
           <EmptyState
-            title="暂无数据"
+            title={hasActiveFilters ? "没有匹配的记录" : "暂无数据"}
             description={
               emptyDescription ??
-              (hasActiveFilters ? `没有匹配当前筛选条件的记录。` : "后端还没有这类数据，或当前筛选条件下为空。")
+              (hasActiveFilters
+                ? [
+                    appliedKeyword ? `关键字「${appliedKeyword}」` : null,
+                    hasActiveFilterValues(filters, filterValues) ? "当前筛选条件" : null,
+                  ]
+                    .filter(Boolean)
+                    .join("与") + "下没有记录；可清空关键字或重置筛选后重试。"
+                : "服务端还没有返回任何记录；可稍后刷新，或确认当前账号是否有该实体的数据权限。")
             }
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-left">
+            <table className="w-full min-w-[760px] border-collapse text-left">
               <thead>
-                <tr className="border-b border-line bg-sunken/70">
+                <tr className="border-b border-line bg-sunken">
                   {sortable && (
-                    <th className="w-[112px] whitespace-nowrap px-3 py-2 text-right text-[11.5px] font-medium text-muted">
+                    <th className="sticky left-0 z-10 w-[112px] whitespace-nowrap border-r border-line bg-sunken px-3 py-2 text-right text-[11.5px] font-medium text-muted">
                       排序
                     </th>
                   )}
-                  {columns.map((column) => (
+                  {columns.map((column, index) => (
                     <th
                       key={column.key}
                       className={cn(
                         "whitespace-nowrap px-3 py-2 text-[11.5px] font-medium text-muted",
-                        column.align === "right" && "text-right",
+                        (column.align === "right" || column.type === "number") && "text-right",
+                        !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-sunken",
                       )}
                     >
                       {column.label}
@@ -815,31 +884,40 @@ export function CrudPage<T extends { id: string }>({
                     key={row.id}
                     data-sort-row-id={row.id}
                     className={cn(
-                      "border-b border-line/80 last:border-b-0 hover:bg-sunken/50",
+                      "group border-b border-line/80 last:border-b-0 hover:bg-sunken/50",
                       dragState?.id === row.id && "bg-sunken/70 opacity-70",
                     )}
                   >
                     {renderSortCell(row)}
-                    {columns.map((column) => (
-                      <td
-                        key={column.key}
-                        className={cn(
-                          "px-3 py-2.5 align-middle text-[12.5px] text-ink-soft",
-                          column.align === "right" && "text-right",
-                          column.className,
-                        )}
-                      >
-                        {column.render
-                          ? column.render(row) // 自定义 render 自己决定
-                          : (
-                            <CellValue
-                              value={(row as Record<string, unknown>)[column.key]}
-                              type={column.type}
-                              booleanLabels={column.booleanLabels}
-                            />
+                    {columns.map((column, index) => {
+                      const text = (row as Record<string, unknown>)[column.key];
+                      return (
+                        <td
+                          key={column.key}
+                          className={cn(
+                            "px-3 py-2.5 align-middle text-[12.5px] text-ink-soft",
+                            (column.align === "right" || column.type === "number") && "text-right tabular-nums",
+                            !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-surface group-hover:bg-sunken/50",
+                            column.className,
                           )}
-                      </td>
-                    ))}
+                        >
+                          {column.render ? (
+                            column.render(row) // 自定义 render 自己决定
+                          ) : (
+                            <span
+                              className={cn(column.truncate && "block max-w-[320px] truncate")}
+                              title={column.truncate && text !== null && text !== undefined ? String(text) : undefined}
+                            >
+                              <CellValue
+                                value={text}
+                                type={column.type}
+                                booleanLabels={column.booleanLabels}
+                              />
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
                     {(canEdit || canDelete || rowActions) && (
                       <td className="whitespace-nowrap px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -850,7 +928,14 @@ export function CrudPage<T extends { id: string }>({
                             </Button>
                           )}
                           {canDelete && (
-                            <Button size="sm" variant="ghost" className="text-danger hover:bg-danger-soft" onClick={() => void remove(row)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-danger hover:bg-danger-soft"
+                              onClick={() => void remove(row)}
+                              aria-label={`删除「${itemLabel(row)}」`}
+                              title={`删除「${itemLabel(row)}」`}
+                            >
                               <Trash2 size={13} />
                             </Button>
                           )}
@@ -973,9 +1058,7 @@ export function CrudPage<T extends { id: string }>({
 
       <Modal
         open={Boolean(deleteTarget)}
-        onClose={() => {
-          if (!deleting) setDeleteTarget(null);
-        }}
+        onClose={closeDelete}
         title={`删除${title.replace(/管理$/, "")}`}
         description={
           deleteTarget
@@ -984,7 +1067,7 @@ export function CrudPage<T extends { id: string }>({
         }
         footer={
           <>
-            <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            <Button variant="ghost" onClick={closeDelete} disabled={deleting}>
               取消
             </Button>
             <Button

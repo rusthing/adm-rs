@@ -14,6 +14,7 @@ import { MenuCheckList, PermCheckList } from "@/components/crud/tree";
 import { Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
 import type { AdmRoleVo, FormValues } from "@/lib/types";
+import { shortId } from "@/lib/utils";
 import { LockKeyhole, Menu as MenuIcon, ShieldCheck } from "lucide-react";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -59,6 +60,12 @@ function RoleGrantsDrawer({
     enabled: open,
   });
 
+  // 切换角色时清空勾选，避免绑定尚未返回时沿用上一个角色的选中状态。
+  useEffect(() => {
+    setSelectedPerms(new Set());
+    setSelectedMenus(new Set());
+  }, [role?.id]);
+
   useEffect(() => {
     if (!permBindingsQuery.data) return;
     setSelectedPerms(new Set(permBindingsQuery.data.map((binding) => binding.permId)));
@@ -102,10 +109,14 @@ function RoleGrantsDrawer({
       toast.success(`已更新「${role.name}」的授权`);
       await queryClient.invalidateQueries({ queryKey: ["role-perm"] });
       await queryClient.invalidateQueries({ queryKey: ["role-menu"] });
+      // 授权会影响当前用户可见菜单与首页，首页缓存一并失效。
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       onSaved();
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "保存授权失败");
+      // 差异逐条提交，可能部分成功；重新读取绑定让界面回到服务端真实状态。
+      await Promise.all([permBindingsQuery.refetch(), menuBindingsQuery.refetch()]);
+      toast.error(error instanceof Error ? error.message : "保存授权失败，已重新读取当前绑定");
     } finally {
       setSaving(false);
     }
@@ -195,9 +206,13 @@ export function RolesPage() {
 
   const columns: CrudColumn<AdmRoleVo>[] = [
     { key: "name", label: "角色", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
-    { key: "groupId", label: "角色分组", render: (row) => groupName.get(row.groupId) ?? `#${row.groupId}` },
+    {
+      key: "groupId",
+      label: "角色分组",
+      render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
+    },
     { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
-    { key: "remark", label: "备注" },
+    { key: "remark", label: "备注", truncate: true },
   ];
 
   const fields: CrudField[] = [

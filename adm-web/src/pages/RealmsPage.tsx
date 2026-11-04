@@ -11,7 +11,7 @@ const columns: CrudColumn<AdmRealmVo>[] = [
   { key: "name", label: "领域", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
   { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
   { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
-  { key: "remark", label: "备注" },
+  { key: "remark", label: "备注", truncate: true },
 ];
 
 const fields: CrudField[] = [

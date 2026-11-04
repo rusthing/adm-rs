@@ -127,7 +127,7 @@ export function WidgetRenderer({ widget }: { widget: DashboardWidgetView }) {
             ? "加载中…"
             : widget.generatedMs
               ? formatMs(widget.generatedMs)
-              : "—"}
+              : "--"}
         </span>
       </footer>
     </article>
@@ -179,7 +179,7 @@ function KpiBody({ data }: { data: KpiData }) {
     <>
       <div className="text-[11.5px] text-muted">{data?.label ?? "指标"}</div>
       <div className="tnum mt-1.5 text-[30px] font-semibold leading-none tracking-[-0.02em] text-ink">
-        {value === undefined || value === null ? "—" : value}
+        {value === undefined || value === null ? "--" : value}
       </div>
       <div className="mt-3 flex items-center justify-between text-[11.5px] text-muted">
         <span className="font-mono">{data?.metric ?? ""}</span>
@@ -251,8 +251,8 @@ function TrendBody({ data }: { data: TrendData }) {
         <p className="mt-4 text-[12px] text-muted">暂无足够的数据点。</p>
       )}
       <div className="mt-2 flex justify-between text-[10.5px] text-muted">
-        <span>{points[0]?.date ?? "—"}</span>
-        <span>{points[points.length - 1]?.date ?? "—"}</span>
+        <span>{points[0]?.date ?? "--"}</span>
+        <span>{points[points.length - 1]?.date ?? "--"}</span>
       </div>
     </div>
   );

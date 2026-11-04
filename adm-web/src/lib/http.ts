@@ -86,7 +86,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (!response.ok) {
-    throw new ApiError(payload?.msg || `请求失败（HTTP ${response.status}）`, {
+    const statusHint =
+      response.status === 401
+        ? "登录状态已失效，请重新登录"
+        : response.status === 403
+          ? "当前账号没有执行该操作的权限"
+          : `请求失败（HTTP ${response.status}）`;
+    throw new ApiError(payload?.msg || statusHint, {
       status: response.status,
       result: payload?.result,
       code: payload?.code,
@@ -97,7 +103,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError("接口返回空响应", { status: response.status });
   }
   if (payload.result !== 1) {
-    throw new ApiError(payload.msg || "请求失败", {
+    throw new ApiError(payload.msg || "业务处理失败，服务端未返回具体原因", {
       status: response.status,
       result: payload.result,
       code: payload.code,

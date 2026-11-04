@@ -1,60 +1,23 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { createElement } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { RequireAuth, RequirePerm } from "@/auth/RequireAuth";
 import { AppShell } from "@/components/layout/AppShell";
 import { LoginPage } from "@/pages/LoginPage";
-import { DashboardPage } from "@/pages/DashboardPage";
-import { DashboardConfigPage } from "@/pages/DashboardConfigPage";
-import { UsersPage } from "@/pages/UsersPage";
-import { RolesPage } from "@/pages/RolesPage";
-import { RoleGroupsPage } from "@/pages/RoleGroupsPage";
-import { MenusPage } from "@/pages/MenusPage";
-import { PermissionsPage } from "@/pages/PermissionsPage";
-import { PermissionGroupsPage } from "@/pages/PermissionGroupsPage";
-import { RealmsPage } from "@/pages/RealmsPage";
-import { AppsPage } from "@/pages/AppsPage";
-import { LoginLogsPage } from "@/pages/LoginLogsPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
-import { Badge, Button, EmptyState, PageHeader, Panel } from "@/components/ui/primitives";
+import { PAGE_COMPONENTS, PAGE_PERMS, isRegisteredComponent } from "@/pages/registry";
+import { Badge, Button, EmptyState, PageHeader, Panel, Spinner } from "@/components/ui/primitives";
 import type { AdmMenuVo } from "@/lib/types";
 import { Puzzle } from "lucide-react";
 
 /**
- * 菜单 `component` → 前端页面组件。
+ * 菜单 `component` → 前端页面组件，登记处见 `pages/registry.ts`。
  *
- * 后端菜单里 `component` 为空表示目录；这里没登记的 component 会走
- * `UnregisteredPage` 降级页，只影响该菜单项，不会让整个应用崩溃。
+ * 侧栏只展示已登记组件的内链菜单；这里仍为未登记的 component 保留
+ * `UnregisteredPage` 占位，直接访问 URL 时能看出是菜单配置问题。
  */
-const PAGE_COMPONENTS: Record<string, ComponentType> = {
-  dashboard: DashboardPage,
-  "dashboard-config": DashboardConfigPage,
-  users: UsersPage,
-  roles: RolesPage,
-  menus: MenusPage,
-  permissions: PermissionsPage,
-  "role-groups": RoleGroupsPage,
-  "permission-groups": PermissionGroupsPage,
-  realms: RealmsPage,
-  apps: AppsPage,
-  "login-logs": LoginLogsPage,
-};
-
-/** 页面级权限前缀；后端菜单已经按角色过滤过，这里再做一层界面兜底。 */
-const PAGE_PERMS: Record<string, string> = {
-  users: "GET:/adm/user",
-  "dashboard-config": "GET:/adm/dashboard/config",
-  roles: "GET:/adm/role",
-  menus: "GET:/adm/menu",
-  permissions: "GET:/adm/perm",
-  "role-groups": "GET:/adm/role-group",
-  "permission-groups": "GET:/adm/perm-group",
-  realms: "GET:/adm/realm",
-  apps: "GET:/adm/app",
-  "login-logs": "GET:/adm/login-log",
-};
 
 function UnregisteredPage({ menu }: { menu: AdmMenuVo }) {
   return (
@@ -73,8 +36,8 @@ function UnregisteredPage({ menu }: { menu: AdmMenuVo }) {
             <code className="rounded bg-sunken px-1.5 py-0.5 font-mono text-[11.5px] text-ink-soft">
               component = {menu.component ?? "null"}
             </code>
-            在 `App.tsx` 的 `PAGE_COMPONENTS` 里没有对应条目。补齐映射后刷新即可；
-            当前只降级这一页，其余菜单与功能不受影响。
+            在 `pages/registry.ts` 的 `PAGE_COMPONENTS` 里没有对应条目。补齐映射后刷新即可；
+            该入口不会出现在侧栏，当前只降级这一页，其余菜单与功能不受影响。
           </p>
           <Button variant="secondary" onClick={() => window.location.reload()}>
             刷新页面
@@ -90,6 +53,35 @@ function NoMenuPage() {
     <EmptyState
       title="没有可见菜单"
       description="当前账号没有分配任何可见菜单或菜单尚未启用。请联系管理员在「角色 → 菜单授权」里配置。"
+    />
+  );
+}
+
+/** 首次登录/刷新后 `/me` 还没返回，避免直接落进 404。 */
+function AuthzPendingPage() {
+  return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <Spinner />
+      <p className="text-[12.5px] text-muted">正在加载账号菜单与权限…</p>
+    </div>
+  );
+}
+
+/** `/me` 失败且没有缓存时给出可重试的具体原因，而不是伪装成 404 或空菜单。 */
+function AuthzErrorPage({ message, onRetry }: { message?: string | null; onRetry: () => void }) {
+  return (
+    <EmptyState
+      title="账号权限加载失败"
+      description={
+        message
+          ? `无法读取 /adm/auth/me：${message}。页面与菜单暂时不可用，可重试或重新登录。`
+          : "无法读取 /adm/auth/me，页面与菜单暂时不可用，可重试或重新登录。"
+      }
+      action={
+        <Button variant="secondary" onClick={onRetry}>
+          重新加载
+        </Button>
+      }
     />
   );
 }
@@ -112,7 +104,7 @@ function renderMenu(menu: AdmMenuVo) {
 }
 
 export function App() {
-  const { authz } = useAuth();
+  const { authz, authzError, authzLoading, refreshAuthz } = useAuth();
 
   // 侧栏、面包屑与路由都以后端菜单为准；外链菜单不注册前端路由
   const leafPaths = new Map<string, AdmMenuVo>();
@@ -122,10 +114,17 @@ export function App() {
     if (path) leafPaths.set(path, menu);
   }
 
+  // 默认页按菜单编码稳定排序，且只落到已注册组件，避免首页跳到占位页。
   const defaultPath =
     [...leafPaths.values()]
+      .sort((a, b) => a.treeCode.localeCompare(b.treeCode))
+      .filter((menu) => isRegisteredComponent(menu.component))
       .map((menu) => menu.path)
       .find((path) => path && path !== "/") ?? null;
+
+  // `/me` 未返回或失败且无缓存时，直接访问任意深链都不应显示 404。
+  const pendingFallback = authzLoading && !authz;
+  const errorFallback = Boolean(authzError) && !authz;
 
   return (
     <Routes>
@@ -138,12 +137,36 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={defaultPath ? <Navigate to={defaultPath} replace /> : <NoMenuPage />} />
+        <Route
+          index
+          element={
+            pendingFallback ? (
+              <AuthzPendingPage />
+            ) : errorFallback ? (
+              <AuthzErrorPage message={authzError} onRetry={refreshAuthz} />
+            ) : defaultPath ? (
+              <Navigate to={defaultPath} replace />
+            ) : (
+              <NoMenuPage />
+            )
+          }
+        />
         {[...leafPaths.entries()].map(([path, menu]) => (
           <Route key={menu.id} path={path} element={renderMenu(menu)} />
         ))}
         <Route path="profile" element={<ProfilePage />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route
+          path="*"
+          element={
+            pendingFallback ? (
+              <AuthzPendingPage />
+            ) : errorFallback ? (
+              <AuthzErrorPage message={authzError} onRetry={refreshAuthz} />
+            ) : (
+              <NotFoundPage />
+            )
+          }
+        />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

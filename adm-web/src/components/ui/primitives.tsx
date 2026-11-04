@@ -22,7 +22,8 @@ const variantClass: Record<Variant, string> = {
 };
 
 const sizeClass: Record<Size, string> = {
-  sm: "h-7 px-2.5 text-[12px] gap-1.5",
+  // 行内小按钮保持紧凑，但高度不低于 32px，触摸端更容易点中。
+  sm: "h-8 px-2.5 text-[12px] gap-1.5",
   md: "h-9 px-3.5 text-[13px] gap-2",
 };
 

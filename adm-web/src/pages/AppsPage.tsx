@@ -4,6 +4,7 @@ import { realmApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import type { AdmAppVo, FormValues } from "@/lib/types";
+import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | undefined {
   const text = typeof value === "string" ? value.trim() : "";
@@ -26,7 +27,12 @@ export function AppsPage() {
   const columns: CrudColumn<AdmAppVo>[] = [
     { key: "name", label: "应用", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
-    { key: "realmId", label: "领域", render: (row) => (row.realmId ? realmName.get(row.realmId) ?? `#${row.realmId}` : "--") },
+    {
+      key: "realmId",
+      label: "领域",
+      render: (row) =>
+        row.realmId ? realmName.get(row.realmId) ?? shortId(row.realmId) : "--",
+    },
     { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
   ];
 

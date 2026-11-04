@@ -152,11 +152,12 @@ export function LoginPage() {
           </form>
 
           <div className="mt-6 rounded-xl border border-line bg-sunken px-3.5 py-3 text-[11.5px] leading-relaxed text-muted">
-            <div className="font-medium text-ink-soft">本地种子数据</div>
+            <div className="font-medium text-ink-soft">初始账号</div>
             <div className="mt-1">
               账号 <code className="font-mono text-ink-soft">admin</code>，口令{" "}
-              <code className="font-mono text-ink-soft">admin123</code>。迁移脚本只插入了这一个账号，
-              没有角色 / 菜单 / 权限行，因此 admin 会按「超级管理员」展示全部页面。
+              <code className="font-mono text-ink-soft">admin123</code>。登录后菜单、角色与权限
+              完全来自 <code className="font-mono text-ink-soft">GET /adm/auth/me</code>；
+              若该账号尚未分配菜单，工作台会提示联系管理员配置，前端不再按「超级管理员」猜测放行。
             </div>
           </div>
 

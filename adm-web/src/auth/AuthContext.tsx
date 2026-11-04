@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { login as loginApi, logout as logoutApi } from "@/lib/api";
 import {
   clearAuthz,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/auth-storage";
 import { sm3 } from "@/lib/sm3";
 import type { AuthSession, Authz } from "@/lib/types";
-import { loadAuthz } from "@/auth/authz";
+import { loadAuthz, matchPermUrn } from "@/auth/authz";
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -28,6 +29,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<AuthSession | null>(() => readSession());
   const [authz, setAuthz] = useState<Authz | null>(() => {
     const current = readSession();
@@ -81,9 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginPswdDefault: result.loginPswdDefault,
       loginLogId: result.loginLogId,
     };
-    // 切换用户时先清掉上一位用户的权限缓存，避免加载期间串用旧菜单
+    // 切换用户时先清掉上一位用户的权限缓存与查询缓存（dashboard、列表等），
+    // 否则 React Query 可能把上一位用户的首页/列表数据带到新会话里。
     clearAuthz();
     setAuthz(null);
+    queryClient.clear();
     saveSession(next);
     setSession(next);
 
@@ -99,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setAuthzLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   const logout = useCallback(async () => {
     try {
@@ -109,10 +113,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearSession();
     clearAuthz();
+    queryClient.clear();
     setSession(null);
     setAuthz(null);
     setAuthzError(null);
-  }, []);
+  }, [queryClient]);
 
   const refreshAuthz = useCallback(async () => {
     if (!session) return;
@@ -133,8 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (urnPrefix: string) => {
       if (!session) return false;
       if (!authz) return false;
-      const prefix = urnPrefix.toLowerCase();
-      return authz.permUrns.some((urn) => urn.toLowerCase().startsWith(prefix));
+      // 按路径段边界匹配，避免 GET:/adm/role 误命中 GET:/adm/role-group。
+      return matchPermUrn(authz.permUrns, urnPrefix);
     },
     [authz, session],
   );
