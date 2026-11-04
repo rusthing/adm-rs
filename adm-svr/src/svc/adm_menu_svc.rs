@@ -1,22 +1,4 @@
-use crate::dto::{AdmMenuAddDto, AdmMenuModifyDto, AdmMenuQueryDto};
-use robotech::macros::svc;
-
-// 排序钩子：新增按父末尾生成编码、改父重算两组、删除后同父后续前移
-crate::tree_sort_hooks!(
-    "adm_menu",
-    Some("app_id"),
-    AdmMenuAddDto,
-    AdmMenuModifyDto,
-    AdmMenuQueryDto,
-    AdmMenuVo,
-    |dto: &AdmMenuAddDto| dto.app_id.map(|value| value.value() as i64),
-    |dto: &AdmMenuModifyDto| dto.app_id.map(|value| value.value() as i64),
-    |dto: &AdmMenuModifyDto| dto
-        .parent_code
-        .as_ref()
-        .map(|value| value.clone().unwrap_or_default()),
-    |vo: &AdmMenuVo| Some(vo.app_id.value() as i64)
-);
+use robotech::macros::sortable;
 
 /// # 菜单服务
 ///
@@ -26,10 +8,9 @@ crate::tree_sort_hooks!(
 ///
 /// 菜单树按应用隔离：`(app_id, tree_code)` 唯一，生成编码时同样按应用取最大值，
 /// 两个应用互不挤占。排序值（tree_code）只由服务端维护，调整顺序走重排接口。
-#[svc(
-    before_add = sort_hooks_add,
-    before_modify = sort_hooks_modify,
-    after_del_by_id = sort_hooks_after_del_by_id,
-    after_del_by_query_dto = sort_hooks_after_del_by_query_dto
+#[sortable(
+    kind = "tree",
+    spec = "crate::svc::SORT_MENU",
+    scope = "app_id"
 )]
 pub struct AdmMenuSvc;

@@ -7,9 +7,9 @@
 //! 覆盖场景：删除中间项后序号连续、批量删除整组重算、改分组后新组末尾 / 旧组前移、
 //! 跨组反方向并发（验证按 key 排序加锁不会死锁）、树形删中间项与改父节点。
 
-use adm_svr::svc::{
+use robotech::dao::sort::{
     compact_flat_after_delete, compact_flat_gaps, compact_tree_after_delete, compact_tree_gaps,
-    flat_move_group, tree_move_node, TreeMoveArgs,
+    flat_move_group, tree_move_node, FlatSort, TreeMoveArgs, TreeSort,
 };
 use sea_orm::{
     ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, DbErr, QueryResult, Statement,
@@ -136,9 +136,15 @@ async fn delete_middle_row_compacts_following_rows() {
     .await
     .unwrap();
 
-    let affected = compact_flat_after_delete(&tx, table, Some("group_id"), Some(7), 3, None)
-        .await
-        .unwrap();
+    let affected = compact_flat_after_delete(
+        &tx,
+        &FlatSort::new(table).with_group("group_id"),
+        Some(7),
+        3,
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(affected, 2, "只应前移被删项后面的两条");
     assert_eq!(flat_sorts(&tx, table, 7).await, vec![1, 2, 3, 4]);
@@ -169,7 +175,9 @@ async fn batch_delete_renumbers_group_once() {
     .await
     .unwrap();
 
-    compact_flat_gaps(&tx, table, Some("group_id")).await.unwrap();
+    compact_flat_gaps(&tx, &FlatSort::new(table).with_group("group_id"))
+        .await
+        .unwrap();
 
     assert_eq!(flat_sorts(&tx, table, 9).await, vec![1, 2, 3]);
     tx.rollback().await.unwrap();
@@ -203,9 +211,15 @@ async fn move_to_new_group_appends_and_shifts_old_group() {
     .try_get("", "id")
     .unwrap();
 
-    let next = flat_move_group(&tx, table, "group_id", moved_id as u64, Some(8), None)
-        .await
-        .unwrap();
+    let next = flat_move_group(
+        &tx,
+        &FlatSort::new(table).with_group("group_id"),
+        moved_id as u64,
+        Some(8),
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(next, Some(3), "新分组应追加到末尾");
     exec(
@@ -274,10 +288,16 @@ async fn concurrent_moves_in_opposite_directions_stay_serialized() {
     let db_right = db.clone();
     let left = async move {
         let tx = db_left.begin().await.unwrap();
-        let next = flat_move_group(&tx, table, "group_id", moved_out as u64, Some(2), None)
-            .await
-            .unwrap()
-            .unwrap();
+        let next = flat_move_group(
+            &tx,
+            &FlatSort::new(table).with_group("group_id"),
+            moved_out as u64,
+            Some(2),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
         exec(
             &tx,
             &format!("UPDATE {table} SET group_id = 2, sort_order = {next} WHERE id = {moved_out}"),
@@ -288,10 +308,16 @@ async fn concurrent_moves_in_opposite_directions_stay_serialized() {
     };
     let right = async move {
         let tx = db_right.begin().await.unwrap();
-        let next = flat_move_group(&tx, table, "group_id", moved_in as u64, Some(1), None)
-            .await
-            .unwrap()
-            .unwrap();
+        let next = flat_move_group(
+            &tx,
+            &FlatSort::new(table).with_group("group_id"),
+            moved_in as u64,
+            Some(1),
+            None,
+        )
+        .await
+        .unwrap()
+        .unwrap();
         exec(
             &tx,
             &format!("UPDATE {table} SET group_id = 1, sort_order = {next} WHERE id = {moved_in}"),
@@ -333,9 +359,15 @@ async fn tree_delete_middle_shifts_following_siblings() {
     .await
     .unwrap();
 
-    compact_tree_after_delete(&tx, table, Some("scope_id"), Some(1), "003", None)
-        .await
-        .unwrap();
+    compact_tree_after_delete(
+        &tx,
+        &TreeSort::new(table).with_scope("scope_id"),
+        Some(1),
+        "003",
+        None,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(
         tree_codes(&tx, table, 1).await,
@@ -368,7 +400,7 @@ async fn tree_batch_delete_renumbers_sibling_group() {
     .await
     .unwrap();
 
-    compact_tree_gaps(&tx, table, Some("scope_id"))
+    compact_tree_gaps(&tx, &TreeSort::new(table).with_scope("scope_id"))
         .await
         .unwrap();
 
@@ -408,8 +440,7 @@ async fn tree_move_parent_appends_and_shifts_old_parent() {
     tree_move_node(
         &tx,
         TreeMoveArgs {
-            table,
-            scope_col: Some("scope_id"),
+            spec: &TreeSort::new(table).with_scope("scope_id"),
             id: moved_id as u64,
             new_scope: None,
             new_parent: Some("002".to_string()),
@@ -464,8 +495,7 @@ async fn tree_move_rejects_own_descendant_as_parent() {
     let result = tree_move_node(
         &tx,
         TreeMoveArgs {
-            table,
-            scope_col: Some("scope_id"),
+            spec: &TreeSort::new(table).with_scope("scope_id"),
             id: node_id as u64,
             new_scope: None,
             new_parent: Some("001001".to_string()),

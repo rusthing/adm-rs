@@ -6,12 +6,16 @@
 //!
 //! 请求体同时接受两种形式：裸数组 `["id1","id2"]` 或 `{ "ids": [...] }`。
 
-use crate::svc::{reorder_flat, reorder_tree};
+use crate::svc::{
+    reorder_flat, reorder_tree, SORT_APP, SORT_MENU, SORT_OP_TYPE, SORT_ORG, SORT_ORG_TYPE,
+    SORT_PERM, SORT_PERM_GROUP, SORT_PERSON_CODE_TYPE, SORT_REALM, SORT_ROLE, SORT_ROLE_GROUP,
+};
 use crate::web::auth::USER_ID_HEADER_NAME;
 use axum::debug_handler;
 use axum::http::HeaderMap;
 use axum::response::Json;
 use robotech::api::{Ro, U64};
+use robotech::dao::sort::{FlatSort, TreeSort};
 use robotech::web::CtrlError;
 use serde::Deserialize;
 
@@ -44,26 +48,24 @@ fn require_user_id(headers: &HeaderMap) -> Result<u64, CtrlError> {
 }
 
 async fn flat_response(
-    table: &str,
-    group_col: Option<&str>,
+    spec: &FlatSort,
     headers: HeaderMap,
     body: AdmReorderBody,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
     let operator_id = require_user_id(&headers)?;
-    let affected = reorder_flat(table, group_col, body.into_ids(), operator_id).await?;
+    let affected = reorder_flat(spec, body.into_ids(), operator_id).await?;
     Ok(Json(
         Ro::success("重排成功".to_string()).extra(Some(affected)),
     ))
 }
 
 async fn tree_response(
-    table: &str,
-    scope_col: Option<&str>,
+    spec: &TreeSort,
     headers: HeaderMap,
     body: AdmReorderBody,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
     let operator_id = require_user_id(&headers)?;
-    let affected = reorder_tree(table, scope_col, body.into_ids(), operator_id).await?;
+    let affected = reorder_tree(spec, body.into_ids(), operator_id).await?;
     Ok(Json(
         Ro::success("重排成功".to_string()).extra(Some(affected)),
     ))
@@ -83,7 +85,7 @@ pub async fn reorder_realm(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    flat_response("adm_realm", None, headers, body).await
+    flat_response(&SORT_REALM, headers, body).await
 }
 
 /// # 应用重排（按领域分组）
@@ -100,7 +102,7 @@ pub async fn reorder_app(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    flat_response("adm_app", Some("realm_id"), headers, body).await
+    flat_response(&SORT_APP, headers, body).await
 }
 
 /// # 角色重排（按角色分组）
@@ -117,7 +119,7 @@ pub async fn reorder_role(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    flat_response("adm_role", Some("group_id"), headers, body).await
+    flat_response(&SORT_ROLE, headers, body).await
 }
 
 /// # 权限重排（按权限分组）
@@ -134,7 +136,7 @@ pub async fn reorder_perm(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    flat_response("adm_perm", Some("group_id"), headers, body).await
+    flat_response(&SORT_PERM, headers, body).await
 }
 
 /// # 操作类型重排
@@ -151,7 +153,7 @@ pub async fn reorder_op_type(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    flat_response("adm_op_type", None, headers, body).await
+    flat_response(&SORT_OP_TYPE, headers, body).await
 }
 
 /// # 组织类型重排
@@ -168,7 +170,7 @@ pub async fn reorder_org_type(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    flat_response("adm_org_type", None, headers, body).await
+    flat_response(&SORT_ORG_TYPE, headers, body).await
 }
 
 /// # 人员编码类型重排
@@ -185,7 +187,7 @@ pub async fn reorder_person_code_type(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    flat_response("adm_person_code_type", None, headers, body).await
+    flat_response(&SORT_PERSON_CODE_TYPE, headers, body).await
 }
 
 /// # 菜单重排（按应用 + 父节点）
@@ -202,7 +204,7 @@ pub async fn reorder_menu(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    tree_response("adm_menu", Some("app_id"), headers, body).await
+    tree_response(&SORT_MENU, headers, body).await
 }
 
 /// # 角色分组重排（按领域 + 父节点）
@@ -219,7 +221,7 @@ pub async fn reorder_role_group(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    tree_response("adm_role_group", Some("realm_id"), headers, body).await
+    tree_response(&SORT_ROLE_GROUP, headers, body).await
 }
 
 /// # 权限分组重排（按领域 + 父节点）
@@ -236,7 +238,7 @@ pub async fn reorder_perm_group(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    tree_response("adm_perm_group", Some("realm_id"), headers, body).await
+    tree_response(&SORT_PERM_GROUP, headers, body).await
 }
 
 /// # 组织重排（按父节点，全局一棵树）
@@ -253,5 +255,5 @@ pub async fn reorder_org(
     headers: HeaderMap,
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
-    tree_response("adm_org", None, headers, body).await
+    tree_response(&SORT_ORG, headers, body).await
 }

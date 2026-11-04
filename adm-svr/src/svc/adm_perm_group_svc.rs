@@ -1,22 +1,4 @@
-use crate::dto::{AdmPermGroupAddDto, AdmPermGroupModifyDto, AdmPermGroupQueryDto};
-use robotech::macros::svc;
-
-// 排序钩子：新增按父末尾生成编码、改父重算两组、删除后同父后续前移
-crate::tree_sort_hooks!(
-    "adm_perm_group",
-    Some("realm_id"),
-    AdmPermGroupAddDto,
-    AdmPermGroupModifyDto,
-    AdmPermGroupQueryDto,
-    AdmPermGroupVo,
-    |dto: &AdmPermGroupAddDto| dto.realm_id.map(|value| value.value() as i64),
-    |dto: &AdmPermGroupModifyDto| dto.realm_id.map(|value| value.value() as i64),
-    |dto: &AdmPermGroupModifyDto| dto
-        .parent_code
-        .as_ref()
-        .map(|value| value.clone().unwrap_or_default()),
-    |vo: &AdmPermGroupVo| Some(vo.realm_id.value() as i64)
-);
+use robotech::macros::sortable;
 
 /// # 权限分组服务
 ///
@@ -26,10 +8,9 @@ crate::tree_sort_hooks!(
 ///
 /// 分组树按领域隔离：`(realm_id, tree_code)` 唯一，生成编码时同样按领域取最大值。
 /// 排序值（tree_code）只由服务端维护，调整顺序走重排接口。
-#[svc(
-    before_add = sort_hooks_add,
-    before_modify = sort_hooks_modify,
-    after_del_by_id = sort_hooks_after_del_by_id,
-    after_del_by_query_dto = sort_hooks_after_del_by_query_dto
+#[sortable(
+    kind = "tree",
+    spec = "crate::svc::SORT_PERM_GROUP",
+    scope = "realm_id"
 )]
 pub struct AdmPermGroupSvc;

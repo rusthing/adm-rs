@@ -1,22 +1,4 @@
-use crate::dto::{AdmOrgAddDto, AdmOrgModifyDto, AdmOrgQueryDto};
-use robotech::macros::svc;
-
-// 排序钩子：新增按父末尾生成编码、改父重算两组、删除后同父后续前移
-crate::tree_sort_hooks!(
-    "adm_org",
-    None,
-    AdmOrgAddDto,
-    AdmOrgModifyDto,
-    AdmOrgQueryDto,
-    AdmOrgVo,
-    |_dto: &AdmOrgAddDto| None,
-    |_dto: &AdmOrgModifyDto| None,
-    |dto: &AdmOrgModifyDto| dto
-        .parent_code
-        .as_ref()
-        .map(|value| value.clone().unwrap_or_default()),
-    |_vo: &AdmOrgVo| None
-);
+use robotech::macros::sortable;
 
 /// # 组织服务
 ///
@@ -26,10 +8,5 @@ crate::tree_sort_hooks!(
 ///
 /// 组织树全局一棵，没有隔离条件。排序值（tree_code）只由服务端维护，
 /// 调整同级顺序走重排接口。
-#[svc(
-    before_add = sort_hooks_add,
-    before_modify = sort_hooks_modify,
-    after_del_by_id = sort_hooks_after_del_by_id,
-    after_del_by_query_dto = sort_hooks_after_del_by_query_dto
-)]
+#[sortable(kind = "tree", spec = "crate::svc::SORT_ORG")]
 pub struct AdmOrgSvc;
