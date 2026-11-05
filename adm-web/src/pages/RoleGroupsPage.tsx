@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { realmApi, roleGroupApi } from "@/lib/api";
+import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
+import { Button } from "@/components/ui/primitives";
 import type { AdmRoleGroupVo, FormValues } from "@/lib/types";
+import { useRealmOptions, useRoleGroupOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -12,16 +13,8 @@ function optionalText(value: FormValues[string]): string | undefined {
 }
 
 export function RoleGroupsPage() {
-  const realmsQuery = useQuery({
-    queryKey: ["realm", "options"],
-    queryFn: () => realmApi.list({ _orderBy: "sort_order:asc" }),
-    staleTime: 30_000,
-  });
-  const groupsQuery = useQuery({
-    queryKey: ["roleGroup", "tree"],
-    queryFn: () => roleGroupApi.list({ _orderBy: "tree_code:asc" }),
-    staleTime: 30_000,
-  });
+  const realmsQuery = useRealmOptions();
+  const groupsQuery = useRoleGroupOptions();
 
   const realmName = useMemo(() => {
     const map = new Map<string, string>();
@@ -113,7 +106,7 @@ export function RoleGroupsPage() {
   return (
     <CrudPage<AdmRoleGroupVo>
       title="角色分组"
-      subtitle="角色分组是领域内的两级树，角色挂在分组下。treeCode 由服务端按 parentCode 生成。"
+      subtitle="角色分组是领域内的多层树，角色挂在分组下。左侧按领域切换，行内「添加子级」会预填领域与父分组；treeCode 由服务端按 parentCode 生成。"
       prefix="/adm/role-group"
       columns={columns}
       fields={fields}
@@ -121,17 +114,41 @@ export function RoleGroupsPage() {
       defaultOrderBy="tree_code:asc"
       sortable={{ kind: "tree", treeCode: (row) => row.treeCode, scope: (row) => row.realmId }}
       searchPlaceholder="搜索分组名 / 备注"
-      filters={[
-        {
-          type: "select",
-          name: "realm_id",
-          label: "领域",
-          options: (realmsQuery.data ?? []).map((realm) => ({ value: realm.id, label: realm.name })),
-        },
-        { type: "boolean", name: "enabled", label: "启用" },
-      ]}
+      scope={{
+        title: "领域",
+        param: "realm_id",
+        field: "realmId",
+        options: (realmsQuery.data ?? []).map((realm) => ({
+          value: realm.id,
+          label: realm.name,
+          description: realm.code,
+          disabled: !realm.enabled,
+        })),
+        loading: realmsQuery.isLoading,
+        emptyText: "还没有领域，请先到「领域管理」创建。",
+        hint: "treeCode 只在领域内唯一；两个及以上领域时才显示此分组栏。",
+      }}
+      filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
       createLabel="新建分组"
-      emptyDescription="后端种子没有角色分组。先建领域，再建分组，然后到角色管理里建角色。"
+      emptyDescription="该领域下还没有分组。先建根分组，再用行内「添加子级」逐级补齐。"
+      rowActions={(row, { openCreate, setScope, canCreate }) =>
+        canCreate ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            title={`在「${row.name}」（${row.treeCode}）下新建子分组`}
+            onClick={() => {
+              setScope(row.realmId);
+              openCreate(
+                { realmId: row.realmId, parentCode: row.treeCode },
+                `将在「${row.name}」· ${row.treeCode} 下创建子分组，所属领域与父分组已预填。`,
+              );
+            }}
+          >
+            <Plus size={13} /> 添加子级
+          </Button>
+        ) : null
+      }
       toForm={toForm}
       toPayload={toPayload}
     />

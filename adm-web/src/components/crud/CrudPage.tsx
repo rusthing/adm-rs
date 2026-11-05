@@ -19,6 +19,9 @@ import {
   Textarea,
 } from "@/components/ui/primitives";
 import { Modal, useConfirm, useToast } from "@/components/ui/overlay";
+import { ScopePanel } from "./scope-panel";
+import { effectiveScopeValue, scopeCreateValue, scopePanelVisible } from "./scope";
+import type { CrudScopeDef } from "./scope";
 import { CellValue } from "./cells";
 import type { BooleanCellLabels, CrudCellType } from "./cells";
 import {
@@ -51,6 +54,7 @@ export type { CrudCellType } from "./cells";
 export type { CrudFilterDef, CrudFilterType, CrudFilterOption } from "./filters";
 export type { CrudSortable } from "./sort";
 export type { CrudField, CrudFieldOption, FormMode } from "./fields";
+export type { CrudScopeDef, CrudScopeOption } from "./scope";
 
 export interface CrudColumn<T> {
   key: string;
@@ -70,6 +74,21 @@ export interface CrudColumn<T> {
   truncate?: boolean;
 }
 
+/**
+ * 行操作能拿到的能力。`openCreate` 用于树形实体「在此节点下添加子节点」：
+ * 传入预填值后直接打开新建表单，不必先点新建、再逐个手选父节点与所属应用/领域。
+ */
+export interface CrudRowHelpers {
+  reload: () => void;
+  /** 打开新建表单；`values` 覆盖默认值，`note` 显示在弹窗说明里。 */
+  openCreate: (values?: FormValues, note?: string) => void;
+  /** 同步搜索行的某个筛选值，例如创建子节点后自动切到它所属的应用。 */
+  setFilter: (name: string, value: CrudFilterValue) => void;
+  /** 切换左侧分组栏，例如「添加子级」时先切到父节点所属应用。 */
+  setScope: (value: string | null) => void;
+  canCreate: boolean;
+}
+
 interface CrudPageProps<T extends { id: string }> {
   title: string;
   subtitle?: ReactNode;
@@ -87,8 +106,13 @@ interface CrudPageProps<T extends { id: string }> {
   canDelete?: boolean;
   toForm: (row: T) => FormValues;
   toPayload: (values: FormValues, mode: FormMode, row?: T) => Record<string, unknown>;
-  rowActions?: (row: T, helpers: { reload: () => void }) => ReactNode;
+  rowActions?: (row: T, helpers: CrudRowHelpers) => ReactNode;
   emptyDescription?: string;
+  /**
+   * 左侧分组栏：菜单按应用、权限按权限分组、分组按领域……
+   * 选项数少于两个时自动隐藏（见 `./scope.ts`），列表与新建仍会自动收窄到唯一分组。
+   */
+  scope?: CrudScopeDef;
   /**
    * 搜索行的筛选 schema。声明后控件会与关键字搜索框排在同一行，并共享「重置」按钮。
    * 类型与拼接规则见 `./filters.ts`；页面只声明 schema，不写查询参数拼装。
@@ -250,6 +274,7 @@ export function CrudPage<T extends { id: string }>({
   toPayload,
   rowActions,
   emptyDescription,
+  scope,
   filters,
   sortable,
 }: CrudPageProps<T>) {
@@ -269,7 +294,15 @@ export function CrudPage<T extends { id: string }>({
 
   const [filterValues, setFilterValues] = useState<CrudFilterValues>({});
 
-  const [editing, setEditing] = useState<{ mode: FormMode; row?: T; values: FormValues } | null>(null);
+  const [editing, setEditing] = useState<{
+    mode: FormMode;
+    row?: T;
+    values: FormValues;
+    /** 由行操作带过来的上下文说明，例如「将在 X 下创建子节点」。 */
+    note?: string;
+  } | null>(null);
+  /** null = 自动默认；"" = 用户显式选了「全部」；其余为具体分组 id。 */
+  const [scopeSelected, setScopeSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   /** 树形实体的删除确认：先查服务端预检，再让用户确认级联范围 */
@@ -291,6 +324,18 @@ export function CrudPage<T extends { id: string }>({
   const filterParams = useMemo(() => buildFilterParams(filters, filterValues), [filters, filterValues]);
   const filterKey = JSON.stringify(filterParams);
   const extraKey = JSON.stringify(extraQuery ?? {});
+  const showScope = scopePanelVisible(scope);
+  const effectiveScope = effectiveScopeValue(scope, scopeSelected);
+  /** 分组栏的选择也是一种收窄；空状态要告知用户，而不是笼统说「服务端没有数据」。 */
+  const activeScopeLabel = effectiveScope
+    ? scope?.options.find((option) => option.value === effectiveScope)?.label ?? "当前分组"
+    : null;
+  /** 范围与筛选分开：筛选会让排序失去完整分组，范围与排序分组同键则不会。 */
+  const scopeParams: PageQuery =
+    scope && effectiveScope
+      ? scope.queryFor?.(effectiveScope) ?? { [scope.param]: effectiveScope }
+      : {};
+  const scopeKey = JSON.stringify(scopeParams);
 
   const cancelKeywordTimer = () => {
     if (keywordTimerRef.current !== null) {
@@ -318,10 +363,15 @@ export function CrudPage<T extends { id: string }>({
     _orderBy: defaultOrderBy,
     ...(extraQuery ?? {}),
     ...filterParams,
+    // 分组栏的选择优先级最高：页面不该再声明同名的普通筛选项。
+    ...scopeParams,
   });
 
   const query = useQuery({
-    queryKey: [prefix, "page", page, size, appliedKeyword, defaultOrderBy, extraKey, filterKey, reloadTick],
+    queryKey: [
+      prefix, "page", page, size, appliedKeyword, defaultOrderBy,
+      extraKey, filterKey, scopeKey, reloadTick,
+    ],
     // search/page 是后端已暴露的检索接口，支持 `字段-op` 运算符（日期范围等）。
     queryFn: () => api.searchPage(buildQuery()),
     staleTime: 5_000,
@@ -553,11 +603,18 @@ export function CrudPage<T extends { id: string }>({
     setReloadTick((tick) => tick + 1);
   };
 
-  const openCreate = () => {
+  /**
+   * 打开新建表单。`initialValues` 供「在节点下添加子节点」等场景预填父节点与作用域，
+   * `note` 把上下文写进弹窗说明，避免用户以为自己点错了按钮。
+   */
+  const openCreate = (initialValues?: FormValues, note?: string) => {
     // 取消可能仍在途的编辑详情请求，避免旧详情把新建表单顶掉。
     detailRequestRef.current += 1;
     setFormError(null);
-    setEditing({ mode: "create", values: defaultsOf(fields) });
+    const values: FormValues = { ...defaultsOf(fields) };
+    if (scope) values[scope.field] = scopeCreateValue(scope, effectiveScope);
+    Object.assign(values, initialValues ?? {});
+    setEditing({ mode: "create", values, note });
   };
 
   const openEdit = async (row: T) => {
@@ -697,6 +754,13 @@ export function CrudPage<T extends { id: string }>({
     setPage(1);
   };
 
+  /** 切换分组栏；同时回到第一页并丢弃未提交的排序预览。 */
+  const selectScope = (value: string | null) => {
+    setScopeSelected(value);
+    setSortPreview({});
+    setPage(1);
+  };
+
   /** 重置全部非关键字筛选。 */
   const clearFilters = () => {
     setFilterValues({});
@@ -725,6 +789,9 @@ export function CrudPage<T extends { id: string }>({
   };
 
   const visibleFields = editing ? visibleFieldsOf(fields, editing.mode) : [];
+  // 弹窗标题统一由页面标题推导；createLabel 是按钮文案，两者拼在一起会变成
+  // 「新建菜单菜单」这种重复，之前就是这样。
+  const entityLabel = title.replace(/管理$/, "");
 
   return (
     <div>
@@ -738,7 +805,7 @@ export function CrudPage<T extends { id: string }>({
               <RefreshCw size={14} className={query.isFetching ? "animate-spin" : ""} /> 刷新
             </Button>
             {canCreate && (
-              <Button variant="primary" onClick={openCreate}>
+              <Button variant="primary" onClick={() => openCreate()}>
                 <Plus size={15} /> {createLabel}
               </Button>
             )}
@@ -746,221 +813,247 @@ export function CrudPage<T extends { id: string }>({
         }
       />
 
-      <section className="overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel">
-        {/* 搜索 / 筛选区 */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
-          <div className="relative min-w-[220px] max-w-[420px] flex-1">
-            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
-            <Input
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-                if (event.key === "Escape") {
-                  clearKeyword();
-                  return;
-                }
-                // 中文输入法回车确认候选词时不要触发查询
-                if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                  event.preventDefault();
-                  applyKeywordNow();
-                }
-              }}
-              placeholder={keywordPlaceholder(filters, searchPlaceholder)}
-              className="h-8 pl-8 pr-8 text-[12.5px]"
-            />
-            {keyword && (
-              <button
-                type="button"
-                onClick={clearKeyword}
-                className="absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted transition-colors hover:bg-sunken hover:text-ink"
-                aria-label="清除搜索"
-                title="清空关键字并立即重置查询"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-
-          {/* 扩展筛选器：select / boolean / date-range / entity 均由 schema 驱动 */}
-          {filters
-            ?.filter((f) => f.type !== "keyword")
-            .map((def) => (
-              <FilterControl
-                key={def.name}
-                def={def}
-                value={filterValues[def.name]}
-                prefix={prefix}
-                onChange={(value) => updateFilter(def.name, value)}
-              />
-            ))}
-
-          {hasActiveFilters && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                clearKeyword();
-                clearFilters();
-              }}
-              title="清空关键字与全部筛选条件并回到第一页"
-            >
-              <X size={13} /> 重置
-            </Button>
-          )}
-
-          <span className="ml-auto text-[11.5px] text-muted">共 {total} 条</span>
-        </div>
-
-        {query.isLoading ? (
-          <Spinner />
-        ) : query.isError ? (
-          <div className="px-4 py-10 text-center">
-            <p className="text-[13px] font-medium text-danger">列表加载失败</p>
-            <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted">
-              {query.error instanceof Error
-                ? query.error.message
-                : "请求没有返回具体原因，可检查登录状态与服务状态后重试。"}
-            </p>
-            <Button className="mt-4" variant="secondary" onClick={() => void query.refetch()}>
-              重试
-            </Button>
-          </div>
-        ) : rows.length === 0 ? (
-          <EmptyState
-            title={hasActiveFilters ? "没有匹配的记录" : "暂无数据"}
-            description={
-              emptyDescription ??
-              (hasActiveFilters
-                ? [
-                    appliedKeyword ? `关键字「${appliedKeyword}」` : null,
-                    hasActiveFilterValues(filters, filterValues) ? "当前筛选条件" : null,
-                  ]
-                    .filter(Boolean)
-                    .join("与") + "下没有记录；可清空关键字或重置筛选后重试。"
-                : "服务端还没有返回任何记录；可稍后刷新，或确认当前账号是否有该实体的数据权限。")
-            }
+      <div className={cn("flex min-w-0 flex-col gap-4", showScope && "lg:flex-row lg:items-start")}>
+        {showScope && scope && (
+          <ScopePanel
+            scope={scope}
+            selected={effectiveScope}
+            onSelect={selectScope}
+            className="lg:w-[224px] lg:shrink-0"
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <table aria-label={`${title}列表`} className="w-full min-w-[760px] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-line bg-sunken">
-                  {sortable && (
-                    <th className="sticky left-0 z-10 w-[112px] whitespace-nowrap border-r border-line bg-sunken px-3 py-2 text-right text-[11.5px] font-medium text-muted">
-                      排序
-                    </th>
-                  )}
-                  {columns.map((column, index) => (
-                    <th
-                      key={column.key}
-                      className={cn(
-                        "whitespace-nowrap px-3 py-2 text-[11.5px] font-medium text-muted",
-                        (column.align === "right" || column.type === "number") && "text-right",
-                        !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-sunken",
-                      )}
-                    >
-                      {column.label}
-                    </th>
-                  ))}
-                  {(canEdit || canDelete || rowActions) && (
-                    <th className="w-px whitespace-nowrap px-3 py-2 text-right text-[11.5px] font-medium text-muted">
-                      操作
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {displayRows.map((row) => (
-                  <tr
-                    key={row.id}
-                    data-sort-row-id={row.id}
-                    className={cn(
-                      "group border-b border-line/80 last:border-b-0 hover:bg-sunken/50",
-                      dragState?.id === row.id && "bg-sunken/70 opacity-70",
+        )}
+        <section className="min-w-0 flex-1 overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel">
+          {/* 搜索 / 筛选区 */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
+            <div className="relative min-w-[220px] max-w-[420px] flex-1">
+              <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+              <Input
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  if (event.key === "Escape") {
+                    clearKeyword();
+                    return;
+                  }
+                  // 中文输入法回车确认候选词时不要触发查询
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    applyKeywordNow();
+                  }
+                }}
+                placeholder={keywordPlaceholder(filters, searchPlaceholder)}
+                className="h-8 pl-8 pr-8 text-[12.5px]"
+              />
+              {keyword && (
+                <button
+                  type="button"
+                  onClick={clearKeyword}
+                  className="absolute right-0.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted transition-colors hover:bg-sunken hover:text-ink"
+                  aria-label="清除搜索"
+                  title="清空关键字并立即重置查询"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* 扩展筛选器：select / boolean / date-range / entity 均由 schema 驱动 */}
+            {filters
+              ?.filter((f) => f.type !== "keyword")
+              .map((def) => (
+                <FilterControl
+                  key={def.name}
+                  def={def}
+                  value={filterValues[def.name]}
+                  prefix={prefix}
+                  onChange={(value) => updateFilter(def.name, value)}
+                />
+              ))}
+
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  clearKeyword();
+                  clearFilters();
+                }}
+                title="清空关键字与全部筛选条件并回到第一页"
+              >
+                <X size={13} /> 重置
+              </Button>
+            )}
+
+            <span className="ml-auto text-[11.5px] text-muted">共 {total} 条</span>
+          </div>
+
+          {query.isLoading ? (
+            <Spinner />
+          ) : query.isError ? (
+            <div className="px-4 py-10 text-center">
+              <p className="text-[13px] font-medium text-danger">列表加载失败</p>
+              <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted">
+                {query.error instanceof Error
+                  ? query.error.message
+                  : "请求没有返回具体原因，可检查登录状态与服务状态后重试。"}
+              </p>
+              <Button className="mt-4" variant="secondary" onClick={() => void query.refetch()}>
+                重试
+              </Button>
+            </div>
+          ) : rows.length === 0 ? (
+            <EmptyState
+              title={hasActiveFilters || activeScopeLabel ? "没有匹配的记录" : "暂无数据"}
+              description={
+                hasActiveFilters
+                  ? [
+                      appliedKeyword ? `关键字「${appliedKeyword}」` : null,
+                      hasActiveFilterValues(filters, filterValues) ? "当前筛选条件" : null,
+                      activeScopeLabel ? `分组「${activeScopeLabel}」` : null,
+                    ]
+                      .filter(Boolean)
+                      .join("与") + "下没有记录；可清空关键字、重置筛选或切换到「全部」。"
+                  : activeScopeLabel
+                    ? `分组「${activeScopeLabel}」下还没有记录；可以切到「全部」查看其它分组，或在这里直接新建。`
+                    : emptyDescription ??
+                      "服务端还没有返回任何记录；可稍后刷新，或确认当前账号是否有该实体的数据权限。"
+              }
+              action={
+                activeScopeLabel ? (
+                  <Button variant="secondary" onClick={() => selectScope(null)}>
+                    查看全部分组
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table aria-label={`${title}列表`} className="w-full min-w-[760px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-line bg-sunken">
+                    {sortable && (
+                      <th className="sticky left-0 z-10 w-[112px] whitespace-nowrap border-r border-line bg-sunken px-3 py-2 text-right text-[11.5px] font-medium text-muted">
+                        排序
+                      </th>
                     )}
-                  >
-                    {renderSortCell(row)}
-                    {columns.map((column, index) => {
-                      const text = (row as Record<string, unknown>)[column.key];
-                      return (
-                        <td
-                          key={column.key}
-                          className={cn(
-                            "px-3 py-2.5 align-middle text-[12.5px] text-ink-soft",
-                            (column.align === "right" || column.type === "number") && "text-right tabular-nums",
-                            !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-surface group-hover:bg-sunken/50",
-                            column.className,
-                          )}
-                        >
-                          {column.render ? (
-                            column.render(row) // 自定义 render 自己决定
-                          ) : (
-                            <span
-                              className={cn(column.truncate && "block max-w-[320px] truncate")}
-                              title={column.truncate && text !== null && text !== undefined ? String(text) : undefined}
-                            >
-                              <CellValue
-                                value={text}
-                                type={column.type}
-                                booleanLabels={column.booleanLabels}
-                              />
-                            </span>
-                          )}
-                        </td>
-                      );
-                    })}
+                    {columns.map((column, index) => (
+                      <th
+                        key={column.key}
+                        className={cn(
+                          "whitespace-nowrap px-3 py-2 text-[11.5px] font-medium text-muted",
+                          (column.align === "right" || column.type === "number") && "text-right",
+                          !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-sunken",
+                        )}
+                      >
+                        {column.label}
+                      </th>
+                    ))}
                     {(canEdit || canDelete || rowActions) && (
-                      <td className="whitespace-nowrap px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {rowActions?.(row, { reload })}
-                          {canEdit && (
-                            <Button size="sm" variant="ghost" onClick={() => void openEdit(row)}>
-                              编辑
-                            </Button>
-                          )}
-                          {canDelete && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-danger hover:bg-danger-soft"
-                              onClick={() => void remove(row)}
-                              aria-label={`删除「${itemLabel(row)}」`}
-                              title={`删除「${itemLabel(row)}」`}
-                            >
-                              <Trash2 size={13} />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
+                      <th className="w-px whitespace-nowrap px-3 py-2 text-right text-[11.5px] font-medium text-muted">
+                        操作
+                      </th>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {displayRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      data-sort-row-id={row.id}
+                      className={cn(
+                        "group border-b border-line/80 last:border-b-0 hover:bg-sunken/50",
+                        dragState?.id === row.id && "bg-sunken/70 opacity-70",
+                      )}
+                    >
+                      {renderSortCell(row)}
+                      {columns.map((column, index) => {
+                        const text = (row as Record<string, unknown>)[column.key];
+                        return (
+                          <td
+                            key={column.key}
+                            className={cn(
+                              "px-3 py-2.5 align-middle text-[12.5px] text-ink-soft",
+                              (column.align === "right" || column.type === "number") && "text-right tabular-nums",
+                              !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-surface group-hover:bg-sunken/50",
+                              column.className,
+                            )}
+                          >
+                            {column.render ? (
+                              column.render(row) // 自定义 render 自己决定
+                            ) : (
+                              <span
+                                className={cn(column.truncate && "block max-w-[320px] truncate")}
+                                title={column.truncate && text !== null && text !== undefined ? String(text) : undefined}
+                              >
+                                <CellValue
+                                  value={text}
+                                  type={column.type}
+                                  booleanLabels={column.booleanLabels}
+                                />
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      {(canEdit || canDelete || rowActions) && (
+                        <td className="whitespace-nowrap px-3 py-2 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {rowActions?.(row, {
+                              reload,
+                              openCreate,
+                              setFilter: updateFilter,
+                              setScope: selectScope,
+                              canCreate,
+                            })}
+                            {canEdit && (
+                              <Button size="sm" variant="ghost" onClick={() => void openEdit(row)}>
+                                编辑
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-danger hover:bg-danger-soft"
+                                onClick={() => void remove(row)}
+                                aria-label={`删除「${itemLabel(row)}」`}
+                                title={`删除「${itemLabel(row)}」`}
+                              >
+                                <Trash2 size={13} />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-        <Pagination
-          page={page}
-          size={size}
-          total={total}
-          onChange={setPage}
-          onSizeChange={(next) => {
-            setSize(next);
-            setPage(1);
-          }}
-        />
-      </section>
+          <Pagination
+            page={page}
+            size={size}
+            total={total}
+            onChange={setPage}
+            onSizeChange={(next) => {
+              setSize(next);
+              setPage(1);
+            }}
+          />
+        </section>
+      </div>
 
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        title={editing?.mode === "create" ? `${createLabel}${title.replace(/管理$/, "")}` : `编辑${title.replace(/管理$/, "")}`}
+        title={editing?.mode === "create" ? `新建${entityLabel}` : `编辑${entityLabel}`}
         description={
           editing?.mode === "edit" && editing.row
             ? `ID ${editing.row.id}；只提交表单里可见的字段。`
-            : "带 * 的字段为必填项。"
+            : editing?.note ?? "带 * 的字段为必填项。"
         }
         dismissable={false}
         footer={
@@ -1054,7 +1147,7 @@ export function CrudPage<T extends { id: string }>({
       <Modal
         open={Boolean(deleteTarget)}
         onClose={closeDelete}
-        title={`删除${title.replace(/管理$/, "")}`}
+        title={`删除${entityLabel}`}
         description={
           deleteTarget
             ? `确定删除「${itemLabel(deleteTarget.row)}」？此操作不可撤销。`

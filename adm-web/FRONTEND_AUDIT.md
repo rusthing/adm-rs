@@ -4,6 +4,7 @@
 
 - 第一轮已提交：`e984468 fix(adm-web): 前端体检整改，修正权限边界、路由菜单与列表交互`。
 - 第二轮已提交并推送：`8c188f3 fix(adm-web): 第二轮前端体检整改，收敛会话、弹窗、侧栏与配置页交互`。本轮把第一轮因「改动繁琐 / 超出范围」留在「可接受 / 未做」里、但其实合理的问题继续做完，并顺带修掉通读中新发现的缺陷。
+- 第三轮：按应用 / 分组管理树形数据、树形页面行内添加子级、侧栏空目录剪枝。**改动已落地并验证通过，尚未提交。**
 
 ## 1. 第一轮已修（简述）
 
@@ -80,6 +81,77 @@
 - `runPreview()` 补 `catch`，`Promise.all` 异常时不再让预览卡在 loading 占位。
 - 切换目标 / 删除配置改用统一确认弹窗；取消切换时强制重渲染，把受控 Select 的 DOM 值拉回当前目标。
 
+### 2.7 第三轮：按应用 / 分组管理树形数据
+
+用户反馈：菜单要按应用分组（且只在 0/1 个应用时才不分组）、权限要能按分组管理、树形页面要能在节点下直接添加子级、侧栏里「没有子节点的非叶子菜单」不该显示。
+
+#### 侧栏按应用动态分段
+
+`src/components/layout/nav.ts`：
+
+- 新增 `NavAppInfo` / `NavSection` / `buildNavSections(menus, apps)`：
+  - 依据**当前账号可见菜单**的 distinct `appId` 判断：0 或 1 个 → 合为一段、`showHeader=false`（保持原单树形态）；2 个及以上 → 每应用一段、带应用标题。
+  - 应用顺序取调用方给的 `sort_order:asc` 顺序（`apps` 数组下标当权重），未查到的应用排最后并回退为 `应用 <短 ID>`。
+  - `prefixTrail()` 把应用名前置到 `trail`，多应用下面包屑与折叠态 tooltip 都带所属应用。
+- 新增 `pruneNav()`：**自底向上**剪掉「既不可导航、又没有可展示后代」的目录；子目录整棵是空壳时父目录同样被回收，避免侧栏留一排点不开的标题。分段剪枝后为空则整段隐藏，不留空标题。
+- `codeKey(appId, treeCode)`：`buildNavTree()` 的父关系按 `appId` 隔离，两个应用都配 `001 / 001001` 也不会串树。
+- `navigableOf()` 收紧：必须有非空 `path`；内链还要求组件已登记。
+- `findNavTrail()` 只匹配 `navigable` 节点。
+- 新增 `sectionNodes(sections)` 展平分段供路径匹配。
+
+`src/components/layout/AppShell.tsx`：`NavSections` 按分段渲染 `NavTree`；`AppSectionHeader` 显示应用名（折叠态只留图标）；应用列表走共享 `useAppOptions()`，接口失败仍按 `appId` 分组、标题回退短 ID，不阻断侧栏。
+
+`src/App.tsx`：
+
+- `menuRoutes` 改为按**应用 `sort_order`** → `treeCode` → `id` 稳定排序后按 path 去重，默认落地页与侧栏第一段顺序一致（原来按 `appId` 字典序，多应用时会「进错应用」）。
+- 应用顺序还在加载时先显示加载态，不跳默认页，避免先落到字典序第一个应用再跳走。
+- `UnregisteredPage` 文案用户化，不再暴露 `component` / `path` 等开发者细节。
+
+#### 列表按分组 / 应用切换
+
+`src/components/crud/scope.ts` + `scope-panel.tsx`（新增）：`CrudPage` 的左侧分组栏。
+
+- `CrudScopeDef`：`title / param(snake_case 后端参数) / field(camelCase 表单字段) / options / hideWhenSingle / queryFor`。
+- `scopePanelVisible()`：默认只在**两个及以上选项**时出现——即用户要求的「没有应用或只有一个应用时不分组」。
+- `initialScopeValue()` 恒返回 `null`：**「只有一个应用」的含义是不分组展示，不是隐式筛选**。分组栏隐藏时用户没有任何筛选入口，一旦默认收窄到唯一分组，`appId` 为空或指向已删除分组的历史数据会凭空消失，列表还会随选项加载完成无声跳变。
+- `effectiveScopeValue()`：分组栏不可见时恒为「全部」；选项被删除后回落「全部」，不让列表停在永远查不到数据的范围上。
+- `scopeCreateValue()`：新建时优先当前范围、否则第一个分组；与 `initialScopeValue` 解耦。
+- `treeGroupQuery()`：选中树形父分组时展开为「本组 + 同领域所有子孙」的 `il`（is_in）条件，参数形如 `group_id-op=il` + `group_id-0..n`，与 `robotech` 的 `SearchParams::from_pairs()` 契约一致。要求 `extra % 3 === 0`，`0010` 这类脏编码不会被误判为 `001` 的子孙；跨 `realmId` 同编码分组一律排除。
+- `CrudPage`：`scope` 支持 `queryFor`、`scopeKey` 进 `queryKey`、切换分组时丢弃未提交排序预览、空状态识别当前分组并提供「查看全部分组」、`ScopePanel` 高亮用真实生效值 `effectiveScope`。
+
+落地页面：`MenusPage`（按应用）、`PermissionsPage` / `RolesPage`（按分组树，含子分组）、`RoleGroupsPage` / `PermissionGroupsPage`（按领域）。原先这些页面的 `app_id` / `group_id` / `realm_id` 只是普通筛选项，现在统一成左侧分组栏。
+
+#### 树形页面行内「添加子级」
+
+`CrudPage` 的 `rowActions` 从「只有 `reload`」扩展为 `CrudRowHelpers`：
+
+```ts
+openCreate(values?, note?)   // 预填字段并打开新建表单，note 显示在弹窗说明里
+setFilter(name, value)       // 同步搜索行筛选
+setScope(value | null)       // 切换左侧分组
+canCreate                    // 当前账号是否可新建
+```
+
+`MenusPage` / `RoleGroupsPage` / `PermissionGroupsPage` 每行加「添加子级」：先 `setScope(父所属应用/领域)`，再 `openCreate({ appId|realmId, parentCode })`，弹窗里写明「将在「X」· 001001 下创建子节点」。
+
+#### 授权清单按分组批量勾选
+
+`src/components/crud/tree-utils.ts`（新增，纯逻辑）：`buildTree(items, scopeOf?)` 按 `treeCode` 前缀还原任意层级树；`scopeOf` 用来隔离作用域（菜单按 `appId`、分组按 `realmId`）；clone 入参，绝不往 React Query 缓存对象上挂 `children`；`depth` 按真实可见父链计算。新增 `flattenTreeIds()`。
+
+`src/components/crud/tree.tsx`：
+
+- `PermCheckList` / `MenuCheckList` 每组（每个应用）显示「已选/总数」与「全选本组 / 清空本组」；菜单按应用分段、段内独立建树。
+- `useGroupedOptions()`：分组记录缺失时进「未分组（分组已删除或不在当前领域）」兜底桶，绝不静默丢弃；分组顺序按「领域顺序 → `treeCode`」排列；**多个领域时标题前置领域名**，跨领域同名分组不再出现两个一模一样的标题。
+- 删除从未被引用的 `useRoleTree` / `RoleTable` / `useMenuTree`。
+
+`src/pages/UsersPage.tsx`：用户角色抽屉同样补「已选/总数 + 全选本组 / 清空本组」，分组顺序改为跟随分组树而非角色出现顺序。
+
+#### 选项列表统一查询
+
+`src/lib/queries.ts`（新增）：`useAppOptions / useRealmOptions / useMenuOptions / usePermOptions / useRoleOptions / useRoleGroupOptions / usePermGroupOptions`。
+
+统一约定 `queryKey = [<crud 前缀>, "options"]`。原来同一份数据在不同调用点有 `app/options`、`app/nav-groups`、`app/check-list`、`roleGroup/tree`、`roleGroup/options`、`roleGroup/all-for-user` 等别名 key，既重复请求，又因为 `CrudPage` 只失效 `[prefix]`（分页列表）而带不走选项缓存，下拉框会长期停在旧数据上。现在前缀匹配会一并失效。
+
 ## 3. 问题清单与状态
 
 | 问题 | 状态 | 关键位置 |
@@ -101,22 +173,36 @@
 | 配置页有未保存修改直接离开 | **第二轮已修（刷新/站内跳转）** | `lib/unsaved-guard.ts` |
 | 跨领域选父分组 | **第二轮已修** | `RoleGroupsPage.tsx`、`PermissionGroupsPage.tsx` |
 | 既是页面又是父目录的菜单点不进去 | **第二轮已修** | `AppShell.tsx` |
+| 菜单不按应用分组、单/多应用都长一样 | **第三轮已修** | `layout/nav.ts`、`AppShell.tsx` |
+| 侧栏残留「没有子节点又非叶子」的空目录 | **第三轮已修** | `layout/nav.ts`（`pruneNav`） |
+| 多应用同 `treeCode` 在侧栏串成一棵树 | **第三轮已修** | `layout/nav.ts`（`codeKey`） |
+| 权限/角色/菜单/分组只能在搜索行里选父级 | **第三轮已修（左侧分组栏）** | `crud/scope.ts`、`crud/scope-panel.tsx` |
+| 树形页面无法在节点下直接添加子级 | **第三轮已修** | `CrudPage.tsx`、`MenusPage.tsx` 等 |
+| 选中父分组后列表为空（父组本身无数据） | **第三轮已修** | `crud/scope.ts`（`treeGroupQuery`） |
+| 分组栏隐藏时仍隐式筛选到唯一分组 | **第三轮已修** | `crud/scope.ts`（`initialScopeValue`） |
+| 授权清单缺少按分组批量勾选 | **第三轮已修** | `crud/tree.tsx`、`UsersPage.tsx` |
+| 跨领域同名分组标题无法区分 | **第三轮已修** | `crud/tree.tsx`（`useGroupedOptions`） |
+| 授权树跨应用同编码串挂 | **第三轮已修** | `crud/tree-utils.ts`（`scopeOf`） |
+| 选项列表重复请求且变更后不刷新 | **第三轮已修** | `lib/queries.ts` |
+| 多应用时默认落地页与侧栏顺序不一致 | **第三轮已修** | `App.tsx` |
 | 权限 URN 通配符（如 `*:/adm/**`） | **待后端确认语义** | 见第 6 节 |
 
 ## 4. 验证
 
-本轮验证结果：
+第三轮验证结果：
 
 - `pnpm typecheck`：通过（`tsc --noEmit`，`strict` + `noUnusedLocals` / `noUnusedParameters`）。
-- `pnpm test`：**9 个文件 / 51 个用例全部通过**。新增 `crud/fields.test.ts`(6)、`layout/nav.test.ts`(6)、`lib/utils.test.ts`(5)、`lib/unsaved-guard.test.ts`(4)；原有 `perm / cells / filters / sort / sm3` 共 30 个用例未回归。
-- `pnpm build`：通过。`dist/assets/index-B604C7ur.js` 452.77 kB（gzip 139.73 kB）、`index-DCLNGvht.css` 32.80 kB（gzip 7.10 kB）；`dist/` 已被 `.gitignore` 排除。
+- `pnpm test`：**11 个文件 / 79 个用例全部通过**。第三轮新增 `crud/scope.test.ts`(14)、`crud/tree-utils.test.ts`(7)，`layout/nav.test.ts` 由 6 个扩到 13 个（新增 `buildNavSections` / `pruneNav` / `sectionNodes` 覆盖）；原有 51 个用例未回归。
+- `pnpm build`：通过。`dist/assets/index-Cul0RQaP.js` 464.85 kB（gzip 143.14 kB）、`index-CWZvVy2o.css` 33.40 kB（gzip 7.20 kB）；`dist/` 已被 `.gitignore` 排除。
 
-第一轮另曾做过真实链路实测（`adm-svr` 9007 + Vite 5181，登录、用户搜索、首页 6 张 widget、配置页 6 条配置均正常）；**第二轮只做了静态验证**，未重启后端做浏览器实测。
+第一轮另曾做过真实链路实测（`adm-svr` 9007 + Vite 5181，登录、用户搜索、首页 6 张 widget、配置页 6 条配置均正常）；**第二、三轮只做了静态验证**，未重启后端做浏览器实测。
 
 ## 5. 已知边界 / 未做
 
 - `useUnsavedGuard` 覆盖刷新/关闭标签页与站内 `<Link>` 点击；浏览器前进/后退（`popstate`）无法在 `BrowserRouter` 下可靠取消，未伪装支持。若后续需要完整拦截，应迁移到 `createBrowserRouter + RouterProvider` 再用 `useBlocker`。
-- 未做真实浏览器 E2E：拖拽排序（鼠标/触屏）、多级侧栏、401 自动登出、会话切换、子路径部署与 `HashRouter` 模式，均只有代码层与单测覆盖。
+- 树形页面只在**新建**时能选父节点（`parentCode` 是 `createOnly`），不支持把已有节点移动到别的父节点下；因此也不存在「把父节点设成自己的子孙」形成环的路径。若后续要做移动，必须同时排除自身与子孙。
+- `AppsPage` 的领域仍是普通筛选下拉而非左侧分组栏：`realmId` 可留空表示「跨领域通用应用」，用下拉能同时表达「全部 / 某领域」，比分组栏更贴合语义。
+- 未做真实浏览器 E2E：拖拽排序（鼠标/触屏）、多级侧栏、多应用分段、401 自动登出、会话切换、子路径部署与 `HashRouter` 模式，均只有代码层与单测覆盖。
 - 未做移动端真机视觉走查。
 - 未做「切换第二个账号后 dashboard 内容变化」「仅 role-group 权限」等账号级 E2E（需要额外账号与授权数据）。
 

@@ -1,52 +1,14 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { menuApi, permGroupApi, roleGroupApi } from "@/lib/api";
-import type {
-  AdmMenuVo,
-  AdmPermGroupVo,
-  AdmPermVo,
-  AdmRoleGroupVo,
-  AdmRoleVo,
-} from "@/lib/types";
-import { cn } from "@/lib/utils";
+import type { AdmMenuVo, AdmPermGroupVo, AdmPermVo, AdmRoleGroupVo } from "@/lib/types";
+import { shortId } from "@/lib/utils";
 import { Badge, Checkbox } from "@/components/ui/primitives";
 import { FolderTree } from "lucide-react";
+import { useAppOptions, usePermGroupOptions, useRealmOptions, useRoleGroupOptions } from "@/lib/queries";
+import { buildTree, flattenTreeIds } from "./tree-utils";
+import type { TreeItem, TreeNode } from "./tree-utils";
 
-/* ------------------------------ tree helpers ------------------------------ */
-
-export interface TreeNode {
-  id: string;
-  name: string;
-  treeCode: string;
-  enabled: boolean;
-}
-
-export type TreeItem<T> = T & { children?: TreeItem<T>[] };
-
-export function buildTree<T extends TreeNode>(items: T[]): TreeItem<T>[] {
-  const byCode = new Map<string, TreeItem<T>>(items.map((item) => [item.treeCode, item]));
-  const roots: TreeItem<T>[] = [];
-  const childrenOf = new Map<string, TreeItem<T>[]>();
-  for (const item of items) {
-    const parentCode = item.treeCode.slice(0, -3);
-    if (parentCode && byCode.has(parentCode)) {
-      const siblings = childrenOf.get(parentCode) ?? [];
-      siblings.push(item);
-      childrenOf.set(parentCode, siblings);
-    } else {
-      roots.push(item);
-    }
-  }
-  const sortRec = (nodes: TreeItem<T>[]): TreeItem<T>[] => {
-    nodes.sort((a, b) => a.treeCode.localeCompare(b.treeCode));
-    for (const node of nodes) {
-      const children = childrenOf.get(node.treeCode);
-      if (children) node.children = sortRec(children);
-    }
-    return nodes;
-  };
-  return sortRec(roots);
-}
+export type { TreeItem, TreeNode } from "./tree-utils";
+export { buildTree, flattenTreeIds } from "./tree-utils";
 
 /* ----------------------------- tree select UI ----------------------------- */
 
@@ -85,7 +47,7 @@ function TreeRow<T extends TreeNode>({
   depthIndent: number;
   checkable: boolean;
 }) {
-  const depth = Math.floor(item.treeCode.length / 3) - 1;
+  const depth = item.depth ?? Math.max(0, Math.floor(item.treeCode.length / 3) - 1);
   const children = item.children ?? [];
   return (
     <div>
@@ -95,6 +57,7 @@ function TreeRow<T extends TreeNode>({
       >
         <FolderTree size={14} className={depth === 0 ? "text-accent" : "text-muted/70"} />
         <span className="flex-1 truncate text-[12.5px] text-ink-soft">{item.name}</span>
+        <code className="font-mono text-[10px] text-muted">{item.treeCode}</code>
         {!item.enabled && <Badge tone="warn">停用</Badge>}
         {checkable && (
           <Checkbox
@@ -124,6 +87,20 @@ function TreeRow<T extends TreeNode>({
 
 /* ------------------------------ grouped select ------------------------------ */
 
+export interface GroupedOptionRows<T> {
+  key: string;
+  label: string;
+  /** 分组树编码，用于标题后缀展示与排序。 */
+  treeCode: string;
+  /** 所属领域：分组树按 realm 隔离，跨领域同名分组必须能区分。 */
+  realmId: string;
+  rows: T[];
+}
+
+/**
+ * 按 groupId 分桶。分组记录缺失（被删了或跨领域没加载）时单独放进「未分组」，
+ * 绝不能静默丢弃这些条目——否则授权抽屉会凭空少掉一批权限 / 角色。
+ */
 export function useGroupedOptions<T extends { groupId: string }>({
   groupApi,
   items,
@@ -131,82 +108,108 @@ export function useGroupedOptions<T extends { groupId: string }>({
   groupApi: "permGroup" | "roleGroup";
   items: T[];
 }) {
-  const query = useQuery({
-    queryKey: [groupApi, "grouped-options"],
-    queryFn: () => (groupApi === "permGroup" ? permGroupApi.list() : roleGroupApi.list()),
-    staleTime: 30_000,
-  });
+  // 两个 hook 都调用以保持 hook 顺序稳定，未选中的那个 enabled=false 不会发请求。
+  const permGroupQuery = usePermGroupOptions(groupApi === "permGroup");
+  const roleGroupQuery = useRoleGroupOptions(groupApi === "roleGroup");
+  const query = groupApi === "permGroup" ? permGroupQuery : roleGroupQuery;
+  // 分组树按领域隔离：跨领域会出现同名分组，只显示 name 会让两段标题一模一样。
+  const realmsQuery = useRealmOptions();
   const groups = query.data ?? [];
-  const grouped = useMemo(() => {
+  const realms = realmsQuery.data ?? [];
+
+  const grouped = useMemo<GroupedOptionRows<T>[]>(() => {
     const byId = new Map<string, AdmPermGroupVo | AdmRoleGroupVo>(groups.map((group) => [group.id, group]));
-    const map = new Map<string, { group: AdmPermGroupVo | AdmRoleGroupVo; rows: T[] }>();
+    const realmName = new Map(realms.map((realm) => [realm.id, realm.name]));
+    const realmRank = new Map(realms.map((realm, index) => [realm.id, index]));
+    const buckets = new Map<string, GroupedOptionRows<T>>();
     for (const item of items) {
       const group = byId.get(item.groupId);
-      if (!group) continue;
-      const entry = map.get(item.groupId) ?? { group, rows: [] };
+      const key = group?.id ?? "__ungrouped__";
+      const entry =
+        buckets.get(key) ??
+        ({
+          key,
+          label: group?.name ?? "未分组（分组已删除或不在当前领域）",
+          treeCode: group?.treeCode ?? "\uffff",
+          realmId: group?.realmId ?? "",
+          rows: [],
+        } satisfies GroupedOptionRows<T>);
       entry.rows.push(item);
-      map.set(item.groupId, entry);
+      buckets.set(key, entry);
     }
-    return Array.from(map.values()).sort((a, b) => a.group.treeCode.localeCompare(b.group.treeCode));
-  }, [items, groups]);
+
+    const entries = [...buckets.values()];
+    // 只在确实出现多个领域时才加前缀，单领域下保持标题简洁。
+    const realmCount = new Set(entries.map((entry) => entry.realmId).filter(Boolean)).size;
+    const labelOf = (entry: GroupedOptionRows<T>) => {
+      if (!entry.realmId || realmCount <= 1) return entry.label;
+      const realm = realmName.get(entry.realmId) ?? `领域 ${shortId(entry.realmId)}`;
+      return `${realm} · ${entry.label}`;
+    };
+    return entries
+      .sort(
+        (a, b) =>
+          (realmRank.get(a.realmId) ?? Number.MAX_SAFE_INTEGER) -
+            (realmRank.get(b.realmId) ?? Number.MAX_SAFE_INTEGER) ||
+          a.treeCode.localeCompare(b.treeCode) ||
+          a.key.localeCompare(b.key),
+      )
+      .map((entry) => ({ ...entry, label: labelOf(entry) }));
+  }, [items, groups, realms]);
+
   return { groups, grouped, loading: query.isLoading };
 }
 
-/* --------------------------- role tree + table --------------------------- */
-
-export function useRoleTree() {
-  const query = useQuery({
-    queryKey: ["roleGroup", "tree"],
-    queryFn: () => roleGroupApi.list(),
-    staleTime: 30_000,
-  });
-  return { groups: query.data ?? [], loading: query.isLoading };
-}
-
-export function RoleTable({
-  roles,
-  selectedId,
-  onSelect,
+/**
+ * 授权清单的分组标题：显示「已选/总数」，并提供「全选本组 / 清空本组」。
+ *
+ * 分组树里父节点通常只是分类、本身没有数据，逐个点太慢；批量操作按可见分组
+ * （含子孙）一次勾选，才是真正的分组管理。
+ */
+function GroupHeader({
+  label,
+  treeCode,
+  total,
+  checked,
+  onSelectAll,
+  onClearAll,
 }: {
-  roles: AdmRoleVo[];
-  selectedId: string | null;
-  onSelect: (role: AdmRoleVo) => void;
+  label: string;
+  treeCode?: string;
+  total: number;
+  checked: number;
+  onSelectAll?: () => void;
+  onClearAll?: () => void;
 }) {
-  if (roles.length === 0) {
-    return (
-      <p className="rounded-lg border border-line bg-sunken px-3 py-4 text-center text-[12px] text-muted">
-        该分组下还没有角色。
-      </p>
-    );
-  }
   return (
-    <table className="w-full border-collapse text-left">
-      <thead>
-        <tr className="border-b border-line text-[11.5px] text-muted">
-          <th className="px-2 py-1.5 font-medium">角色</th>
-          <th className="px-2 py-1.5 text-right font-medium">排序</th>
-          <th className="px-2 py-1.5 text-right font-medium">状态</th>
-        </tr>
-      </thead>
-      <tbody>
-        {roles.map((role) => (
-          <tr
-            key={role.id}
-            onClick={() => onSelect(role)}
-            className={cn(
-              "cursor-pointer border-b border-line/70 last:border-b-0",
-              selectedId === role.id ? "bg-accent-soft" : "hover:bg-sunken",
-            )}
-          >
-            <td className="px-2 py-2 text-[12.5px] text-ink-soft">{role.name}</td>
-            <td className="tnum px-2 py-2 text-right text-[12px] text-muted">{role.sortOrder}</td>
-            <td className="px-2 py-2 text-right">
-              {role.enabled ? <Badge tone="success">启用</Badge> : <Badge tone="warn">停用</Badge>}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="mb-1 flex items-center gap-2 border-b border-line/70 pb-1">
+      <span className="truncate text-[11.5px] font-medium text-muted">{label}</span>
+      {treeCode && <code className="shrink-0 font-mono text-[10px] text-muted/70">{treeCode}</code>}
+      <span className="shrink-0 text-[10.5px] text-muted/70">
+        {checked}/{total}
+      </span>
+      <span className="flex-1" />
+      {onSelectAll && (
+        <button
+          type="button"
+          onClick={onSelectAll}
+          disabled={total === 0 || checked >= total}
+          className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          全选本组
+        </button>
+      )}
+      {onClearAll && (
+        <button
+          type="button"
+          onClick={onClearAll}
+          disabled={checked === 0}
+          className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          清空本组
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -216,10 +219,13 @@ export function PermCheckList({
   perms,
   selected,
   onToggle,
+  onSetMany,
 }: {
   perms: AdmPermVo[];
   selected: Set<string>;
   onToggle: (id: string) => void;
+  /** 批量勾选本组；不传则不显示「全选本组 / 清空本组」。 */
+  onSetMany?: (ids: string[], checked: boolean) => void;
 }) {
   const { grouped } = useGroupedOptions({ groupApi: "permGroup", items: perms });
   if (perms.length === 0)
@@ -230,62 +236,112 @@ export function PermCheckList({
     );
   return (
     <div className="flex flex-col gap-3">
-      {grouped.map(({ group, rows }) => (
-        <div key={group.id}>
-          <div className="mb-1 text-[11.5px] font-medium text-muted">{group.name}</div>
-          <div className="flex flex-col gap-0.5">
-            {rows.map((perm) => (
-              <label key={perm.id} className="flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sunken">
-                <Checkbox
-                  checked={selected.has(perm.id)}
-                  onChange={() => onToggle(perm.id)}
-                  label={
-                    <span className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-ink-soft">
-                      {perm.name}
-                      <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
-                      {!perm.enabled && <Badge tone="warn">停用</Badge>}
-                    </span>
-                  }
-                />
-              </label>
-            ))}
+      {grouped.map(({ key, label, treeCode, rows }) => {
+        const checked = rows.reduce((count, perm) => count + (selected.has(perm.id) ? 1 : 0), 0);
+        const ids = rows.map((perm) => perm.id);
+        return (
+          <div key={key}>
+            <GroupHeader
+              label={label}
+              treeCode={treeCode === "\uffff" ? undefined : treeCode}
+              total={rows.length}
+              checked={checked}
+              onSelectAll={onSetMany ? () => onSetMany(ids, true) : undefined}
+              onClearAll={onSetMany ? () => onSetMany(ids, false) : undefined}
+            />
+            <div className="flex flex-col gap-0.5">
+              {rows.map((perm) => (
+                <label key={perm.id} className="flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sunken">
+                  <Checkbox
+                    checked={selected.has(perm.id)}
+                    onChange={() => onToggle(perm.id)}
+                    label={
+                      <span className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-ink-soft">
+                        {perm.name}
+                        <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
+                        {!perm.enabled && <Badge tone="warn">停用</Badge>}
+                      </span>
+                    }
+                  />
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 /* ------------------------------ menu tree from backend ------------------------------ */
 
-export function useMenuTree() {
-  const query = useQuery({
-    queryKey: ["menu", "tree"],
-    queryFn: () => menuApi.list(),
-    staleTime: 30_000,
-  });
-  return { menus: query.data ?? [], loading: query.isLoading };
-}
-
+/**
+ * 菜单授权清单按应用切段：与侧栏一致，只有多应用时才显示应用标题；
+ * 每段单独建树并用 `appId` 隔离，避免跨应用同 treeCode 串挂。
+ */
 export function MenuCheckList({
   menus,
   selected,
   onToggle,
+  onSetMany,
 }: {
   menus: AdmMenuVo[];
   selected: Set<string>;
   onToggle: (id: string) => void;
+  /** 批量勾选本应用（含所有子孙菜单）；不传则不显示批量按钮。 */
+  onSetMany?: (ids: string[], checked: boolean) => void;
 }) {
-  const tree = useMemo(() => buildTree(menus), [menus]);
+  const appsQuery = useAppOptions();
+  const apps = appsQuery.data ?? [];
+
+  const groups = useMemo(() => {
+    const byId = new Map(apps.map((app) => [app.id, app.name]));
+    const order = new Map(apps.map((app, index) => [app.id, index]));
+    const buckets = new Map<string, AdmMenuVo[]>();
+    for (const menu of menus) {
+      const rows = buckets.get(menu.appId) ?? [];
+      rows.push(menu);
+      buckets.set(menu.appId, rows);
+    }
+    return [...buckets.entries()]
+      .sort(
+        (a, b) =>
+          (order.get(a[0]) ?? Number.MAX_SAFE_INTEGER) - (order.get(b[0]) ?? Number.MAX_SAFE_INTEGER) ||
+          a[0].localeCompare(b[0]),
+      )
+      .map(([appId, rows]) => ({
+        appId,
+        label: byId.get(appId) ?? `应用 ${shortId(appId)}`,
+        tree: buildTree(rows, (row) => row.appId),
+      }));
+  }, [menus, apps]);
+
   if (menus.length === 0)
     return (
       <p className="rounded-lg border border-line bg-sunken px-3 py-4 text-center text-[12px] text-muted">
         还没有菜单数据。请先在「菜单」里创建。
       </p>
     );
+
   return (
-    <div className="max-h-[420px] overflow-y-auto rounded-lg border border-line p-1.5">
-      <TreeCheckboxGroup items={tree} selected={selected} onToggle={onToggle} />
+    <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto rounded-lg border border-line p-1.5">
+      {groups.map((group) => {
+        // 勾选要连子孙一起算：只勾根节点会让子菜单漏授权。
+        const ids = flattenTreeIds(group.tree);
+        const checked = ids.reduce((count, id) => count + (selected.has(id) ? 1 : 0), 0);
+        return (
+          <div key={group.appId}>
+            <GroupHeader
+              label={group.label}
+              total={ids.length}
+              checked={checked}
+              onSelectAll={onSetMany ? () => onSetMany(ids, true) : undefined}
+              onClearAll={onSetMany ? () => onSetMany(ids, false) : undefined}
+            />
+            <TreeCheckboxGroup items={group.tree} selected={selected} onToggle={onToggle} />
+          </div>
+        );
+      })}
     </div>
   );
 }

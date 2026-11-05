@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { createElement } from "react";
+import { createElement, useMemo } from "react";
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { RequireAuth, RequirePerm } from "@/auth/RequireAuth";
@@ -10,6 +10,7 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PAGE_COMPONENTS, PAGE_PERMS, isRegisteredComponent } from "@/pages/registry";
 import { Badge, Button, EmptyState, PageHeader, Panel, Spinner } from "@/components/ui/primitives";
 import type { AdmMenuVo } from "@/lib/types";
+import { useAppOptions } from "@/lib/queries";
 import { Puzzle } from "lucide-react";
 
 /**
@@ -24,7 +25,7 @@ function UnregisteredPage({ menu }: { menu: AdmMenuVo }) {
     <div>
       <PageHeader
         title={menu.name}
-        subtitle={`菜单路径 ${menu.path}；后端下发的 component 为 ${menu.component ?? "（空）"}。`}
+        subtitle="这条菜单指向的页面在当前前端版本里尚未开放。"
         actions={<Badge tone="warn">未登记页面</Badge>}
       />
       <Panel title="页面暂不可用" description="这条菜单指向的页面没有在当前前端版本里登记。">
@@ -106,24 +107,50 @@ function renderMenu(menu: AdmMenuVo) {
 export function App() {
   const { authz, authzError, authzLoading, refreshAuthz } = useAuth();
 
-  // 侧栏、面包屑与路由都以后端菜单为准；外链菜单不注册前端路由
-  const leafPaths = new Map<string, AdmMenuVo>();
-  for (const menu of authz?.menus ?? []) {
-    if (!menu.component || menu.linkType !== 1) continue;
-    const path = menu.path.startsWith("/") ? menu.path.slice(1) : menu.path;
-    if (path) leafPaths.set(path, menu);
-  }
+  // 应用的 sort_order 决定侧栏分段顺序；默认落地页必须跟着同一顺序走，
+  // 否则多应用时「先进哪个应用」与侧栏第一段不一致，用户会以为进错了应用。
+  const appsQuery = useAppOptions(Boolean(authz?.menus?.length));
+  const appRank = useMemo(() => {
+    const rank = new Map<string, number>();
+    (appsQuery.data ?? []).forEach((app, index) => rank.set(app.id, index));
+    return rank;
+  }, [appsQuery.data]);
 
-  // 默认页按菜单编码稳定排序，且只落到已登记组件，避免首页跳到占位页。
+  // 路由以后端菜单为准：外链 / 停用菜单不注册，且同一路径只保留一条。
+  // 多应用完全可能配置出相同 path，Map 按 path 覆盖会让菜单静默丢失；
+  // 这里按应用顺序 + treeCode 稳定排序后去重，结果可复现。
+  const menuRoutes = useMemo(() => {
+    const seen = new Set<string>();
+    const routes: Array<{ path: string; menu: AdmMenuVo }> = [];
+    const rankOf = (appId: string) => appRank.get(appId) ?? Number.MAX_SAFE_INTEGER;
+    const sorted = [...(authz?.menus ?? [])].sort(
+      (a, b) =>
+        rankOf(a.appId) - rankOf(b.appId) ||
+        a.appId.localeCompare(b.appId) ||
+        a.treeCode.localeCompare(b.treeCode) ||
+        a.id.localeCompare(b.id),
+    );
+    for (const menu of sorted) {
+      if (!menu.component || menu.linkType !== 1 || menu.enabled === false) continue;
+      const path = menu.path.startsWith("/") ? menu.path.slice(1) : menu.path;
+      if (!path || seen.has(path)) continue;
+      seen.add(path);
+      routes.push({ path, menu });
+    }
+    return routes;
+  }, [authz?.menus, appRank]);
+
+  // 默认页只落到已登记组件，避免首页跳到占位页；排序同上，结果稳定。
   const defaultPath =
-    [...leafPaths.values()]
-      .sort((a, b) => a.treeCode.localeCompare(b.treeCode))
-      .filter((menu) => isRegisteredComponent(menu.component))
-      .map((menu) => menu.path)
+    menuRoutes
+      .filter(({ menu }) => isRegisteredComponent(menu.component))
+      .map(({ menu }) => menu.path)
       .find((path) => path && path !== "/") ?? null;
 
   // 权限未返回或失败且无缓存时，直接访问任意深链都不应显示 404。
-  const pendingFallback = authzLoading && !authz;
+  // 应用顺序还在加载时也不跳默认页，否则会先落到字典序第一个应用再跳走。
+  const appsPending = Boolean(authz?.menus?.length) && appsQuery.isLoading;
+  const pendingFallback = (authzLoading && !authz) || appsPending;
   const errorFallback = Boolean(authzError) && !authz;
 
   return (
@@ -151,7 +178,7 @@ export function App() {
             )
           }
         />
-        {[...leafPaths.entries()].map(([path, menu]) => (
+        {menuRoutes.map(({ path, menu }) => (
           <Route key={menu.id} path={path} element={renderMenu(menu)} />
         ))}
         <Route path="profile" element={<ProfilePage />} />

@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { opTypeApi, permGroupApi } from "@/lib/api";
+import { opTypeApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
+import { treeGroupQuery } from "@/components/crud/scope";
 import type { AdmPermVo, FormValues } from "@/lib/types";
+import { usePermGroupOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -12,11 +14,7 @@ function optionalText(value: FormValues[string]): string | undefined {
 }
 
 export function PermissionsPage() {
-  const groupsQuery = useQuery({
-    queryKey: ["permGroup", "options"],
-    queryFn: () => permGroupApi.list({ _orderBy: "tree_code:asc" }),
-    staleTime: 30_000,
-  });
+  const groupsQuery = usePermGroupOptions();
   const opTypesQuery = useQuery({
     queryKey: ["opType", "options"],
     queryFn: () => opTypeApi.list({ _orderBy: "sort_order:asc" }),
@@ -28,6 +26,10 @@ export function PermissionsPage() {
     for (const group of groupsQuery.data ?? []) map.set(group.id, group.name);
     return map;
   }, [groupsQuery.data]);
+
+  /** 选中父分组时连同同一领域下的子孙分组一起展示。 */
+  const groupQueryFor = (groupId: string) =>
+    treeGroupQuery("group_id", groupId, groupsQuery.data ?? []);
 
   const columns: CrudColumn<AdmPermVo>[] = [
     { key: "name", label: "权限", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
@@ -84,7 +86,7 @@ export function PermissionsPage() {
   return (
     <CrudPage<AdmPermVo>
       title="权限管理"
-      subtitle="权限点是「HTTP 方法 + 路径」的 URN。后端当前只校验 Bearer 身份，接口级 URN 授权后续在 gatex-rs 实现；前端前缀匹配仅用于展示层门禁。"
+      subtitle="权限点按分组组织，用「HTTP 方法 + 路径」的 URN 表达。左侧按分组树切换，选中父分组会连同子分组一起展示；后端当前只校验 Bearer 身份，接口级 URN 授权后续在 gatex-rs 实现。"
       prefix="/adm/perm"
       columns={columns}
       fields={fields}
@@ -92,16 +94,24 @@ export function PermissionsPage() {
       defaultOrderBy="sort_order:asc"
       sortable={{ kind: "number", orderValue: (row) => row.sortOrder, scope: (row) => row.groupId }}
       searchPlaceholder="搜索权限名 / URN / 备注"
-      filters={[
-        {
-          type: "select",
-          name: "group_id",
-          label: "权限分组",
-          options: (groupsQuery.data ?? []).map((group) => ({ value: group.id, label: group.name })),
-        },
-        { type: "boolean", name: "enabled", label: "启用" },
-      ]}
-      emptyDescription="后端种子没有权限行。建议先建分组，再按接口逐个录入 URN。"
+      scope={{
+        title: "权限分组",
+        param: "group_id",
+        field: "groupId",
+        options: (groupsQuery.data ?? []).map((group) => ({
+          value: group.id,
+          label: group.name,
+          treeCode: group.treeCode,
+          description: group.treeCode,
+          disabled: !group.enabled,
+        })),
+        queryFor: groupQueryFor,
+        loading: groupsQuery.isLoading,
+        emptyText: "还没有权限分组，请先到「权限分组」创建，再回来录入权限点。",
+        hint: "选中分组后只列该分组（含子分组）的权限，新建时自动归入该分组。",
+      }}
+      filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
+      emptyDescription="该分组下还没有权限行。先到「权限分组」建好分组，再按接口逐个录入 URN。"
       toForm={toForm}
       toPayload={toPayload}
     />

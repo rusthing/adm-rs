@@ -1,20 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  menuApi,
-  permApi,
-  roleApi,
-  roleGroupApi,
-  roleMenuApi,
-  rolePermApi,
-} from "@/lib/api";
+import { roleApi, roleMenuApi, rolePermApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { MenuCheckList, PermCheckList } from "@/components/crud/tree";
+import { treeGroupQuery } from "@/components/crud/scope";
 import { Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
 import { useAuth } from "@/auth/AuthContext";
 import type { AdmRoleVo, FormValues } from "@/lib/types";
+import { useMenuOptions, usePermOptions, useRoleGroupOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 import { LockKeyhole, Menu as MenuIcon, ShieldCheck } from "lucide-react";
 
@@ -51,16 +46,8 @@ function RoleGrantsDrawer({
     queryFn: () => roleMenuApi.list({ roleId: role!.id }),
     enabled: open,
   });
-  const permsQuery = useQuery({
-    queryKey: ["perm", "all-for-role"],
-    queryFn: () => permApi.list({ _orderBy: "sort_order:asc" }),
-    enabled: open,
-  });
-  const menusQuery = useQuery({
-    queryKey: ["menu", "all-for-role"],
-    queryFn: () => menuApi.list({ _orderBy: "tree_code:asc" }),
-    enabled: open,
-  });
+  const permsQuery = usePermOptions(open);
+  const menusQuery = useMenuOptions(open);
 
   // 切换角色时清空勾选，避免绑定尚未返回时沿用上一个角色的选中状态。
   useEffect(() => {
@@ -83,6 +70,18 @@ function RoleGrantsDrawer({
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  };
+
+  /** 按分组批量勾选 / 清空；一次改一批，避免逐条 setState。 */
+  const setMany = (setter: typeof setSelectedPerms, ids: string[], checked: boolean) => {
+    setter((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
       return next;
     });
   };
@@ -178,12 +177,14 @@ function RoleGrantsDrawer({
               perms={permsQuery.data ?? []}
               selected={selectedPerms}
               onToggle={(id) => toggle(setSelectedPerms, id)}
+              onSetMany={(ids, checked) => setMany(setSelectedPerms, ids, checked)}
             />
           ) : (
             <MenuCheckList
               menus={menusQuery.data ?? []}
               selected={selectedMenus}
               onToggle={(id) => toggle(setSelectedMenus, id)}
+              onSetMany={(ids, checked) => setMany(setSelectedMenus, ids, checked)}
             />
           )}
         </div>
@@ -197,11 +198,7 @@ export function RolesPage() {
   const [grantRole, setGrantRole] = useState<AdmRoleVo | null>(null);
   const queryClient = useQueryClient();
 
-  const groupsQuery = useQuery({
-    queryKey: ["roleGroup", "options"],
-    queryFn: () => roleGroupApi.list({ _orderBy: "tree_code:asc" }),
-    staleTime: 30_000,
-  });
+  const groupsQuery = useRoleGroupOptions();
 
   const groupName = useMemo(() => {
     const map = new Map<string, string>();
@@ -261,7 +258,7 @@ export function RolesPage() {
     <>
       <CrudPage<AdmRoleVo>
         title="角色管理"
-        subtitle="角色是权限与菜单的集合。角色本身不决定菜单，授权后由角色 × 用户关系生效。"
+        subtitle="角色是权限与菜单的集合，按分组树组织。左侧按分组切换（含子分组），授权后由角色 × 用户关系生效。"
         prefix="/adm/role"
         columns={columns}
         fields={fields}
@@ -269,15 +266,23 @@ export function RolesPage() {
         defaultOrderBy="sort_order:asc"
         sortable={{ kind: "number", orderValue: (row) => row.sortOrder, scope: (row) => row.groupId }}
         searchPlaceholder="搜索角色名 / 备注"
-        filters={[
-          {
-            type: "select",
-            name: "group_id",
-            label: "角色分组",
-            options: (groupsQuery.data ?? []).map((group) => ({ value: group.id, label: group.name })),
-          },
-          { type: "boolean", name: "enabled", label: "启用" },
-        ]}
+        scope={{
+          title: "角色分组",
+          param: "group_id",
+          field: "groupId",
+          options: (groupsQuery.data ?? []).map((group) => ({
+            value: group.id,
+            label: group.name,
+            treeCode: group.treeCode,
+            description: group.treeCode,
+            disabled: !group.enabled,
+          })),
+          queryFor: (groupId) => treeGroupQuery("group_id", groupId, groupsQuery.data ?? []),
+          loading: groupsQuery.isLoading,
+          emptyText: "还没有角色分组，请先到「角色分组」创建。",
+          hint: "选中分组后只列该分组（含子分组）的角色，新建时自动归入该分组。",
+        }}
+        filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
         toForm={toForm}
         toPayload={toPayload}
         rowActions={(row) => (

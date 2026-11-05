@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { roleApi, roleGroupApi, roleUserApi, userApi } from "@/lib/api";
+import { roleUserApi, userApi } from "@/lib/api";
 import type { CrudColumn, CrudField, FormMode } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { Badge, Button, Checkbox, Spinner } from "@/components/ui/primitives";
 import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
 import type { AdmRoleVo, AdmUserVo, FormValues } from "@/lib/types";
+import { useRoleGroupOptions, useRoleOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
 
@@ -41,16 +42,8 @@ function UserRolesDrawer({
     queryFn: () => roleUserApi.list({ userId: user!.id }),
     enabled: open,
   });
-  const rolesQuery = useQuery({
-    queryKey: ["role", "all-for-user"],
-    queryFn: () => roleApi.list({ _orderBy: "sort_order:asc" }),
-    enabled: open,
-  });
-  const groupsQuery = useQuery({
-    queryKey: ["roleGroup", "all-for-user"],
-    queryFn: () => roleGroupApi.list(),
-    enabled: open,
-  });
+  const rolesQuery = useRoleOptions(open);
+  const groupsQuery = useRoleGroupOptions(open);
 
   // 切换用户时先清空勾选，避免在新用户的绑定还没返回前沿用上一位用户的选中状态。
   useEffect(() => {
@@ -77,14 +70,32 @@ function UserRolesDrawer({
       list.push(role);
       byGroup.set(role.groupId, list);
     }
-    return Array.from(byGroup.entries());
-  }, [roles]);
+    // 分组顺序跟随分组树（tree_code 升序），而不是角色先出现谁就排谁。
+    const order = new Map((groupsQuery.data ?? []).map((group, index) => [group.id, index]));
+    return Array.from(byGroup.entries()).sort(
+      (a, b) =>
+        (order.get(a[0]) ?? Number.MAX_SAFE_INTEGER) - (order.get(b[0]) ?? Number.MAX_SAFE_INTEGER) ||
+        a[0].localeCompare(b[0]),
+    );
+  }, [roles, groupsQuery.data]);
 
   const toggle = (roleId: string) => {
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(roleId)) next.delete(roleId);
       else next.add(roleId);
+      return next;
+    });
+  };
+
+  /** 按分组批量勾选 / 清空角色。 */
+  const setMany = (ids: string[], checked: boolean) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
       return next;
     });
   };
@@ -139,27 +150,51 @@ function UserRolesDrawer({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {groups.map(([groupId, groupRoles]) => (
-            <section key={groupId}>
-              <div className="mb-1.5 flex items-center gap-2 text-[11.5px] font-medium text-muted">
-                <ShieldCheck size={13} />
-                {groupName.get(groupId) ?? shortId(groupId)}
-              </div>
-              <div className="flex flex-col gap-0.5 rounded-xl border border-line p-1.5">
-                {groupRoles.map((role) => (
-                  <label
-                    key={role.id}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sunken"
+          {groups.map(([groupId, groupRoles]) => {
+            const ids = groupRoles.map((role) => role.id);
+            const checkedCount = ids.reduce((count, id) => count + (selected.has(id) ? 1 : 0), 0);
+            return (
+              <section key={groupId}>
+                <div className="mb-1.5 flex items-center gap-2 text-[11.5px] font-medium text-muted">
+                  <ShieldCheck size={13} />
+                  <span className="truncate">{groupName.get(groupId) ?? shortId(groupId)}</span>
+                  <span className="shrink-0 text-[10.5px] text-muted/70">
+                    {checkedCount}/{ids.length}
+                  </span>
+                  <span className="flex-1" />
+                  <button
+                    type="button"
+                    onClick={() => setMany(ids, true)}
+                    disabled={checkedCount >= ids.length}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <Checkbox checked={selected.has(role.id)} onChange={() => toggle(role.id)} />
-                    <span className="flex-1 text-[12.5px] text-ink-soft">{role.name}</span>
-                    {!role.enabled && <Badge tone="warn">停用</Badge>}
-                    <code className="font-mono text-[10.5px] text-muted">{role.sortOrder}</code>
-                  </label>
-                ))}
-              </div>
-            </section>
-          ))}
+                    全选本组
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMany(ids, false)}
+                    disabled={checkedCount === 0}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    清空本组
+                  </button>
+                </div>
+                <div className="flex flex-col gap-0.5 rounded-xl border border-line p-1.5">
+                  {groupRoles.map((role) => (
+                    <label
+                      key={role.id}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sunken"
+                    >
+                      <Checkbox checked={selected.has(role.id)} onChange={() => toggle(role.id)} />
+                      <span className="flex-1 text-[12.5px] text-ink-soft">{role.name}</span>
+                      {!role.enabled && <Badge tone="warn">停用</Badge>}
+                      <code className="font-mono text-[10.5px] text-muted">{role.sortOrder}</code>
+                    </label>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
           <p className="text-[11.5px] leading-relaxed text-muted">
             说明：用户本身没有 roleId 字段，用户与角色是多对多；同一个用户可以有多个角色，权限取并集。
           </p>

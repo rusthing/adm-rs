@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
-import { buildNavTree, findNavTrail, flattenNav } from "@/components/layout/nav";
-import type { NavNode } from "@/components/layout/nav";
+import { buildNavSections, findNavTrail, sectionNodes } from "@/components/layout/nav";
+import type { NavNode, NavSection } from "@/components/layout/nav";
+import { useAppOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
+  AppWindow,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -117,6 +119,49 @@ function AccountMenu({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 多应用时的分组头。折叠态只留一个图标作分隔，避免 64px 侧栏里挤出文字。
+ * 是否渲染由 `buildNavSections()` 按「可见菜单里的应用数」动态决定。
+ */
+function AppSectionHeader({ label, collapsed }: { label: string; collapsed: boolean }) {
+  return (
+    <div
+      className={cn(
+        "mt-3 flex items-center gap-2 px-2.5 pb-1 first:mt-0",
+        collapsed && "lg:justify-center lg:px-0",
+      )}
+      title={label}
+    >
+      <AppWindow size={12} className="shrink-0 text-muted" />
+      <span className={cn("truncate text-[10.5px] font-semibold tracking-wide text-muted", collapsed && "lg:hidden")}>
+        {label}
+      </span>
+      <span className={cn("h-px flex-1 bg-line", collapsed && "lg:hidden")} />
+    </div>
+  );
+}
+
+/** 把分段按应用顺序渲染；空段已在纯逻辑层剪掉，这里不会再出现空标题。 */
+function NavSections({
+  sections,
+  collapsed,
+  ...treeProps
+}: Omit<NavTreeProps, "nodes" | "level" | "collapsed"> & {
+  sections: NavSection[];
+  collapsed: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      {sections.map((section) => (
+        <div key={section.id} className="flex flex-col gap-0.5">
+          {section.showHeader && <AppSectionHeader label={section.label} collapsed={collapsed} />}
+          <NavTree {...treeProps} nodes={section.nodes} level={0} collapsed={collapsed} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -321,12 +366,16 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const navTree = useMemo(() => buildNavTree(authz?.menus ?? []), [authz?.menus]);
-  const matched = useMemo(() => findNavTrail(navTree, location.pathname), [navTree, location.pathname]);
-  const hasVisibleEntries = useMemo(
-    () => flattenNav(navTree).some((node) => node.navigable || node.children.length > 0),
-    [navTree],
+  // 应用名只用于分组标题；接口失败也能继续按 appId 分组（回退成短 ID），不阻断侧栏。
+  const appsQuery = useAppOptions(Boolean(authz?.menus?.length));
+  const sections = useMemo(
+    () => buildNavSections(authz?.menus ?? [], appsQuery.data ?? []),
+    [authz?.menus, appsQuery.data],
   );
+  // 分段已经是剪枝后的结果，展平只用于路径匹配；有节点就一定有可展示入口。
+  const navTree = useMemo(() => sectionNodes(sections), [sections]);
+  const matched = useMemo(() => findNavTrail(navTree, location.pathname), [navTree, location.pathname]);
+  const hasVisibleEntries = navTree.length > 0;
   const roleNames = authz?.roles.map((role) => role.name) ?? [];
 
   useEffect(() => {
@@ -438,9 +487,8 @@ export function AppShell() {
               当前账号没有可见菜单。
             </div>
           ) : (
-            <NavTree
-              nodes={navTree}
-              level={0}
+            <NavSections
+              sections={sections}
               collapsed={collapsed}
               expanded={expanded}
               matchedId={matched?.node.id}

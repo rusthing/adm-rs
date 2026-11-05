@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { realmApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import type { AdmAppVo, FormValues } from "@/lib/types";
+import { useRealmOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -12,11 +11,7 @@ function optionalText(value: FormValues[string]): string | undefined {
 }
 
 export function AppsPage() {
-  const realmsQuery = useQuery({
-    queryKey: ["realm", "options"],
-    queryFn: () => realmApi.list({ _orderBy: "sort_order:asc" }),
-    staleTime: 30_000,
-  });
+  const realmsQuery = useRealmOptions();
 
   const realmName = useMemo(() => {
     const map = new Map<string, string>();

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { appApi, menuApi } from "@/lib/api";
+import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { PAGE_COMPONENTS } from "@/pages/registry";
 import { ICON_NAMES } from "@/components/layout/nav";
-import { Badge } from "@/components/ui/primitives";
+import { Badge, Button } from "@/components/ui/primitives";
 import type { AdmMenuVo, FormValues } from "@/lib/types";
+import { useAppOptions, useMenuOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
 const LINK_TYPE: Record<number, { label: string; tone: "info" | "warn" | "violet" }> = {
@@ -21,16 +21,8 @@ function optionalText(value: FormValues[string]): string | undefined {
 }
 
 export function MenusPage() {
-  const appsQuery = useQuery({
-    queryKey: ["app", "options"],
-    queryFn: () => appApi.list({ _orderBy: "sort_order:asc" }),
-    staleTime: 30_000,
-  });
-  const menusQuery = useQuery({
-    queryKey: ["menu", "options"],
-    queryFn: () => menuApi.list({ _orderBy: "tree_code:asc" }),
-    staleTime: 30_000,
-  });
+  const appsQuery = useAppOptions();
+  const menusQuery = useMenuOptions();
 
   const appName = useMemo(() => {
     const map = new Map<string, string>();
@@ -194,7 +186,7 @@ export function MenusPage() {
   return (
     <CrudPage<AdmMenuVo>
       title="菜单管理"
-      subtitle="菜单树用 treeCode（每层 3 位）表达；新增时传 parentCode，treeCode 由服务端生成。登录后侧栏与路由按当前账号的可见菜单生成，未登记组件的菜单不会出现在侧栏。"
+      subtitle="菜单树按应用隔离，用 treeCode（每层 3 位）表达层级。左侧按应用切换，行内「添加子级」会预填所属应用与父节点；treeCode 由服务端生成，未登记组件的菜单不会出现在侧栏。"
       prefix="/adm/menu"
       columns={columns}
       fields={fields}
@@ -202,18 +194,45 @@ export function MenusPage() {
       defaultOrderBy="tree_code:asc"
       sortable={{ kind: "tree", treeCode: (row) => row.treeCode, scope: (row) => row.appId }}
       searchPlaceholder="搜索菜单名 / 编码 / 路径"
+      scope={{
+        title: "应用",
+        param: "app_id",
+        field: "appId",
+        options: (appsQuery.data ?? []).map((app) => ({
+          value: app.id,
+          label: app.name,
+          description: app.code,
+          disabled: !app.enabled,
+        })),
+        loading: appsQuery.isLoading,
+        emptyText: "还没有应用，请先到「应用管理」创建，再回来建菜单。",
+        hint: "菜单树按应用隔离；两个及以上应用时才显示此分组栏，选中后新建会自动填入该应用。",
+      }}
       filters={[
-        {
-          type: "select",
-          name: "app_id",
-          label: "应用",
-          options: (appsQuery.data ?? []).map((app) => ({ value: app.id, label: app.name })),
-        },
         { type: "boolean", name: "visible", label: "显示" },
         { type: "boolean", name: "enabled", label: "启用" },
       ]}
       createLabel="新建菜单"
-      emptyDescription="后端种子没有菜单行；先建应用，再建根菜单，最后建子菜单。"
+      emptyDescription="该应用下还没有菜单行；先建根菜单，再用行内「添加子级」逐级补齐。"
+      rowActions={(row, { openCreate, setScope, canCreate }) =>
+        canCreate ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            title={`在「${row.name}」（${row.treeCode}）下新建子菜单`}
+            onClick={() => {
+              // 先切到父节点所属应用：否则新子节点会因为列表仍停在别的应用而「消失」。
+              setScope(row.appId);
+              openCreate(
+                { appId: row.appId, parentCode: row.treeCode },
+                `将在「${row.name}」· ${row.treeCode} 下创建子菜单，所属应用与父节点已预填。`,
+              );
+            }}
+          >
+            <Plus size={13} /> 添加子级
+          </Button>
+        ) : null
+      }
       toForm={toForm}
       toPayload={toPayload}
     />
