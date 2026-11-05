@@ -25,7 +25,15 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const rawReturn = params.get("returnUrl") ?? "/";
-  const returnUrl = rawReturn.startsWith("/") && !rawReturn.startsWith("//") ? rawReturn : "/";
+  // 只接受站内绝对路径：拒绝 //host、反斜杠变形、控制字符，以及 /login 自跳转。
+  const returnUrl =
+    rawReturn.startsWith("/") &&
+    !rawReturn.startsWith("//") &&
+    !rawReturn.includes("\\") &&
+    !/[\u0000-\u001f]/.test(rawReturn) &&
+    rawReturn.split(/[?#]/)[0] !== "/login"
+      ? rawReturn
+      : "/";
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -70,18 +78,18 @@ export function LoginPage() {
             放在同一张桌面上。
           </h1>
           <p className="mt-4 max-w-md text-[13px] leading-relaxed text-white/65">
-            直接对接 adm-svr 的 REST 接口：统一的 Ro 信封、字符串形态的雪花 ID、
-            以及基于 role-user / role-menu / role-perm 的 RBAC 关系。
+            账号、角色、菜单与授权关系集中维护；登录后所见即所用，
+            可见页面按当前账号的授权实时下发。
           </p>
 
           <ul className="mt-10 flex flex-col gap-3 text-[12.5px] text-white/70">
             <li className="flex items-center gap-2">
               <KeyRound size={15} className="text-[#8fb2ff]" />
-              登录口令在浏览器侧先做一次 SM3，不以明文传输
+              登录口令在浏览器侧先做摘要处理，不以明文传输
             </li>
             <li className="flex items-center gap-2">
               <LockKeyhole size={15} className="text-[#8fb2ff]" />
-              业务接口自动带 Authorization，中间件注入当前用户 ID
+              每次操作都携带登录态，由服务端识别当前用户
             </li>
             <li className="flex items-center gap-2">
               <ArrowRight size={15} className="text-[#8fb2ff]" />
@@ -91,8 +99,7 @@ export function LoginPage() {
         </div>
 
         <div className="relative text-[10.5px] leading-relaxed text-white/35">
-          业务接口已由后端中间件校验 Bearer 令牌；界面上的权限门是第二层兜底，
-          真正的拒止以服务端为准。
+          界面仅按授权展示可用功能；所有操作最终以服务端的鉴权结果为准。
         </div>
       </aside>
 
@@ -151,21 +158,14 @@ export function LoginPage() {
             </Button>
           </form>
 
+          {/* 不在页面上公开初始凭据：默认账号由部署方在初始化数据时提供。 */}
           <div className="mt-6 rounded-xl border border-line bg-sunken px-3.5 py-3 text-[11.5px] leading-relaxed text-muted">
-            <div className="font-medium text-ink-soft">初始账号</div>
+            <div className="font-medium text-ink-soft">首次登录</div>
             <div className="mt-1">
-              账号 <code className="font-mono text-ink-soft">admin</code>，口令{" "}
-              <code className="font-mono text-ink-soft">admin123</code>。登录后菜单、角色与权限
-              完全来自 <code className="font-mono text-ink-soft">GET /adm/auth/me</code>；
-              若该账号尚未分配菜单，工作台会提示联系管理员配置，前端不再按「超级管理员」猜测放行。
+              初始账号由部署方在初始化数据时提供，请勿在公开界面展示或长期沿用默认口令。
+              登录后可见的菜单、角色与权限完全由当前账号的授权决定；若还没有可用菜单，请联系管理员配置。
+              首次登录后请立即到个人中心修改口令。
             </div>
-          </div>
-
-          <div className="mt-5 text-[11.5px] text-muted">
-            接口前缀{" "}
-            <code className="rounded bg-sunken px-1 py-0.5 font-mono text-ink-soft">
-              {import.meta.env.VITE_API_BASE || "同源"}
-            </code>
           </div>
         </div>
       </main>

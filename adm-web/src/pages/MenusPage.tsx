@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { appApi, menuApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
+import { PAGE_COMPONENTS } from "@/pages/registry";
+import { ICON_NAMES } from "@/components/layout/nav";
 import { Badge } from "@/components/ui/primitives";
 import type { AdmMenuVo, FormValues } from "@/lib/types";
 import { shortId } from "@/lib/utils";
@@ -36,14 +38,19 @@ export function MenusPage() {
     return map;
   }, [appsQuery.data]);
 
-  const parentOptions = useMemo(
-    () =>
-      (menusQuery.data ?? []).map((menu) => ({
+  /**
+   * 父节点下拉按表单里当前 appId 过滤：treeCode 只在应用内唯一，
+   * 跨应用选父节点一定会被后端拒绝，没必要让用户选得到。
+   */
+  const parentOptions = (values: FormValues) => {
+    const appId = String(values.appId ?? "");
+    return (menusQuery.data ?? [])
+      .filter((menu) => !appId || menu.appId === appId)
+      .map((menu) => ({
         value: menu.treeCode,
         label: `${"　".repeat(Math.max(0, menu.treeCode.length / 3 - 1))}${menu.name} · ${menu.treeCode}`,
-      })),
-    [menusQuery.data],
-  );
+      }));
+  };
 
   const columns: CrudColumn<AdmMenuVo>[] = [
     {
@@ -103,12 +110,19 @@ export function MenusPage() {
       type: "select",
       createOnly: true,
       options: parentOptions,
-      hint: "不选则创建根节点。服务端根据 parentCode 生成 treeCode；留空即根节点。",
+      resetOn: ["appId"],
+      hint: "只列出同一应用下的菜单；不选则创建根节点，treeCode 由服务端生成。",
     },
     { name: "code", label: "编码", required: true, placeholder: "同一应用内唯一，如 system:user" },
     { name: "name", label: "名称", required: true, placeholder: "同一应用内唯一" },
     { name: "path", label: "路径", required: true, placeholder: "内链以 / 开头；外链/iframe 填完整 URL" },
-    { name: "component", label: "组件路径", placeholder: "为空表示目录节点", hint: "前端按 component 映射页面组件；未登记的 component 会降级为占位页。" },
+    {
+      name: "component",
+      label: "页面组件",
+      type: "select",
+      options: Object.keys(PAGE_COMPONENTS).map((key) => ({ value: key, label: key })),
+      hint: "留空表示目录节点。只能选当前前端已登记的页面，未登记的组件不会出现在侧栏。",
+    },
     {
       name: "linkType",
       label: "链接类型",
@@ -120,8 +134,22 @@ export function MenusPage() {
         { value: "2", label: "2 · 外链" },
         { value: "3", label: "3 · iframe" },
       ],
+      validate: (_value, values) => {
+        const path = String(values.path ?? "").trim();
+        const type = Number(values.linkType ?? 1);
+        if (!path) return null;
+        if (type === 1 && !path.startsWith("/")) return "内链路径需以 / 开头";
+        if (type !== 1 && !/^https?:\/\//i.test(path)) return "外链 / iframe 需填写完整 URL（http(s)://…）";
+        return null;
+      },
     },
-    { name: "icon", label: "图标", placeholder: "前端图标名，如 SettingOutlined" },
+    {
+      name: "icon",
+      label: "图标",
+      type: "select",
+      options: ICON_NAMES.map((name) => ({ value: name, label: name })),
+      hint: "从当前前端图标表里选择；留空则用默认图标。",
+    },
     { name: "keepAlive", label: "缓存页面", type: "switch", defaultValue: false },
     { name: "visible", label: "在导航中显示", type: "switch", defaultValue: true },
     { name: "enabled", label: "启用", type: "switch", defaultValue: true },
@@ -166,7 +194,7 @@ export function MenusPage() {
   return (
     <CrudPage<AdmMenuVo>
       title="菜单管理"
-      subtitle="菜单树用 treeCode（每层 3 位）表达；新增时传 parentCode，treeCode 由服务端生成。登录后侧栏与路由按 /adm/auth/me 下发的可见菜单生成，未注册组件的菜单不会出现在侧栏。"
+      subtitle="菜单树用 treeCode（每层 3 位）表达；新增时传 parentCode，treeCode 由服务端生成。登录后侧栏与路由按当前账号的可见菜单生成，未登记组件的菜单不会出现在侧栏。"
       prefix="/adm/menu"
       columns={columns}
       fields={fields}

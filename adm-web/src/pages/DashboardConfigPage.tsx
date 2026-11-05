@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dashboardApi, roleApi } from "@/lib/api";
 import { fetchWidget } from "@/lib/widget-fetch";
@@ -22,9 +23,10 @@ import {
   Switch,
   Textarea,
 } from "@/components/ui/primitives";
-import { Modal, useToast } from "@/components/ui/overlay";
+import { Modal, useConfirm, useToast } from "@/components/ui/overlay";
 import { WidgetRenderer } from "@/components/dashboard/WidgetRenderer";
 import { cn } from "@/lib/utils";
+import { useUnsavedGuard } from "@/lib/unsaved-guard";
 import {
   ChevronDown,
   ChevronUp,
@@ -133,15 +135,26 @@ function buildWidgets(widgets: DraftWidget[]): { ok: true; value: AdmDashboardSa
  */
 export function DashboardConfigPage() {
   const toast = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [target, setTarget] = useState<string>("");
+  // 取消切换目标时受控 Select 的 DOM 值已被浏览器改掉，用它触发一次重渲染把值拉回来。
+  const [, forceTargetSync] = useState(0);
   const [draft, setDraft] = useState<DraftConfig>(() => emptyDraft(""));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newType, setNewType] = useState("");
   const [preview, setPreview] = useState<DashboardWidgetView[] | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const dragIndex = useRef<number | null>(null);
+  /** 拖拽只记 widget.key；拖动过程中数组会重排，索引会失效。 */
+  const [dragState, setDragState] = useState<{
+    pointerId: number;
+    key: string;
+    startX: number;
+    startY: number;
+  } | null>(null);
+
+  useUnsavedGuard(dirty, "首页配置有未保存的修改，离开后会丢失这些修改。");
 
   const rolesQuery = useQuery({
     queryKey: ["dashboard", "role-options"],
@@ -174,6 +187,10 @@ export function DashboardConfigPage() {
     [configsQuery.data],
   );
   const currentRoleName = roles.find((role) => role.id === target)?.name;
+  // 下拉只列启用项，但已保存配置可能引用停用/已下线的项：额外补一条「当前值」
+  // 占位，避免 <select value=...> 找不到 option 被浏览器静默改成第一项。
+  const enabledTypes = types.filter((type) => type.enabled);
+  const enabledServices = services.filter((item) => item.enabled);
 
   // 目标切换 / 远程配置变化时同步到本地草稿；正在请求时不覆盖，避免串数据
   useEffect(() => {
@@ -215,18 +232,43 @@ export function DashboardConfigPage() {
     setDirty(true);
   };
 
-  const handleDrop = (targetIndex: number) => {
-    const from = dragIndex.current;
-    dragIndex.current = null;
-    if (from === null || from === targetIndex) return;
+  /**
+   * 拖拽排序用 Pointer Events：HTML5 drag 在触屏上完全不可用。
+   * 手柄 setPointerCapture 后持续收到 move，`elementFromPoint` 找出指针下方
+   * 的行（按 widget.key 定位，不用会在重排中失效的索引）。
+   */
+  const beginDrag = (key: string, event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragState({ pointerId: event.pointerId, key, startX: event.clientX, startY: event.clientY });
+  };
+
+  const dragOver = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    if (Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY) < 6) return;
+    const element = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-widget-key]");
+    const targetKey = element?.getAttribute("data-widget-key");
+    if (!targetKey || targetKey === dragState.key) return;
+    if (!draft.widgets.some((item) => item.key === targetKey)) return;
+    if (!draft.widgets.some((item) => item.key === dragState.key)) return;
     setDraft((current) => {
+      const from = current.widgets.findIndex((item) => item.key === dragState.key);
+      const to = current.widgets.findIndex((item) => item.key === targetKey);
+      if (from < 0 || to < 0 || from === to) return current;
       const widgets = [...current.widgets];
-      const [moved] = widgets.splice(from, 1);
-      widgets.splice(targetIndex, 0, moved);
+      const [item] = widgets.splice(from, 1);
+      widgets.splice(to, 0, item);
       return { ...current, widgets };
     });
     setDirty(true);
   };
+
+  const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    setDragState(null);
+  };
+
+  const cancelDrag = () => setDragState(null);
 
   const addWidget = (typeCode: string) => {
     const type = types.find((item) => item.code === typeCode);
@@ -282,9 +324,23 @@ export function DashboardConfigPage() {
   /** 配置尚未读完时禁止保存，避免把空草稿覆盖到目标角色/全局模板。 */
   const configBusy = configQuery.isLoading || configQuery.isFetching;
 
-  const changeTarget = (next: string) => {
+  const changeTarget = async (next: string) => {
     if (next === target) return;
-    if (dirty && !window.confirm("当前配置有未保存修改，切换目标后会丢弃这些修改。继续？")) return;
+    if (dirty) {
+      const ok = await confirm({
+        title: "放弃未保存的修改？",
+        description: "当前配置有未保存修改，切换目标后会丢弃这些修改。",
+        confirmText: "切换",
+        cancelText: "继续编辑",
+      });
+      if (!ok) {
+        // 浏览器已经改掉了受控 Select 的 DOM 值，强制重渲染回到当前目标。
+        forceTargetSync((value) => value + 1);
+        return;
+      }
+    }
+    setDirty(false);
+    setPreview(null);
     setTarget(next);
   };
 
@@ -331,9 +387,17 @@ export function DashboardConfigPage() {
       toast.error("全局兜底模板不能删除");
       return;
     }
-    if (!window.confirm("删除该角色的首页配置？删除后将回落到全局兜底模板。")) return;
+    const ok = await confirm({
+      title: "删除角色首页配置",
+      description: "删除后该角色将回落到全局兜底模板，当前草稿中的未保存修改也会一并丢弃。",
+      confirmText: "删除",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       await dashboardApi.deleteConfig(target);
+      setDirty(false);
+      setPreview(null);
       toast.success("已删除角色首页配置");
       await Promise.all([
         configQuery.refetch(),
@@ -383,6 +447,15 @@ export function DashboardConfigPage() {
         }),
       );
       setPreview(fetched);
+    } catch (error) {
+      // fetchWidget 正常会把失败收进信封，但 Promise.all 仍可能因异常整体拒绝；
+      // 这时别让预览卡在 loading 占位上。
+      toast.error(error instanceof Error ? error.message : "预览失败");
+      setPreview(
+        placeholders.map((item) =>
+          item.status === "loading" ? { ...item, status: "error" as const, error: "预览请求失败" } : item,
+        ),
+      );
     } finally {
       setPreviewLoading(false);
     }
@@ -420,7 +493,7 @@ export function DashboardConfigPage() {
           <Field label="目标角色">
             <Select
               value={target}
-              onChange={(event) => changeTarget(event.target.value)}
+              onChange={(event) => void changeTarget(event.target.value)}
               disabled={saving}
             >
               <option value="">全局兜底模板</option>
@@ -477,7 +550,7 @@ export function DashboardConfigPage() {
 
       <Panel
         title="Widget 列表"
-        description="拖动行或使用上移 / 下移调整顺序；保存时按当前顺序重算 sortOrder。"
+        description="按住行左侧手柄拖动（鼠标与触屏均可），或使用上移 / 下移调整顺序；保存时按当前顺序重算 sortOrder。"
         actions={
           <div className="flex items-center gap-2">
             <Select
@@ -486,13 +559,14 @@ export function DashboardConfigPage() {
               disabled={types.length === 0}
               className="h-7 w-[170px] text-[12px]"
             >
-              {types
-                .filter((type) => type.enabled)
-                .map((type) => (
-                  <option key={type.id} value={type.code}>
-                    {type.name}
-                  </option>
-                ))}
+              {newType && !enabledTypes.some((type) => type.code === newType) && (
+                <option value={newType}>{newType}（当前值，已停用）</option>
+              )}
+              {enabledTypes.map((type) => (
+                <option key={type.id} value={type.code}>
+                  {type.name}
+                </option>
+              ))}
             </Select>
             <Button
               variant="soft"
@@ -537,22 +611,26 @@ export function DashboardConfigPage() {
             return (
               <div
                 key={widget.key}
-                draggable
-                onDragStart={(event) => {
-                  dragIndex.current = index;
-                  event.dataTransfer.effectAllowed = "move";
-                }}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => handleDrop(index)}
+                data-widget-key={widget.key}
                 className={cn(
                   "rounded-xl border border-line bg-surface p-3 transition-colors",
                   !widget.enabled && "opacity-70",
+                  dragState?.key === widget.key && "border-accent ring-2 ring-accent/20",
                 )}
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="cursor-grab text-muted" title="拖动排序">
+                  <button
+                    type="button"
+                    aria-label={`拖拽调整第 ${index + 1} 个 widget 的顺序`}
+                    title="按住拖拽排序（鼠标 / 触屏均可）"
+                    onPointerDown={(event) => beginDrag(widget.key, event)}
+                    onPointerMove={dragOver}
+                    onPointerUp={endDrag}
+                    onPointerCancel={cancelDrag}
+                    className="touch-none cursor-grab rounded p-1 text-muted transition-colors hover:bg-sunken hover:text-ink active:cursor-grabbing"
+                  >
                     <GripVertical size={16} />
-                  </span>
+                  </button>
                   <span className="tnum w-6 shrink-0 text-[11px] text-muted">{(index + 1).toString().padStart(2, "0")}</span>
                   <Input
                     value={widget.title}
@@ -599,13 +677,14 @@ export function DashboardConfigPage() {
                       onChange={(event) => applyWidgetType(widget, event.target.value)}
                       className="h-8 text-[12px]"
                     >
-                      {types
-                        .filter((type) => type.enabled)
-                        .map((type) => (
-                          <option key={type.id} value={type.code}>
-                            {type.name}
-                          </option>
-                        ))}
+                      {widget.widgetType && !enabledTypes.some((type) => type.code === widget.widgetType) && (
+                        <option value={widget.widgetType}>{widget.widgetType}（当前值，已停用）</option>
+                      )}
+                      {enabledTypes.map((type) => (
+                        <option key={type.id} value={type.code}>
+                          {type.name}
+                        </option>
+                      ))}
                     </Select>
                   </Field>
 
@@ -624,13 +703,14 @@ export function DashboardConfigPage() {
                       onChange={(event) => applyService(widget, event.target.value)}
                       className="h-8 text-[12px]"
                     >
-                      {services
-                        .filter((item) => item.enabled)
-                        .map((item) => (
-                          <option key={item.code} value={item.code}>
-                            {item.name}（{item.code}）
-                          </option>
-                        ))}
+                      {widget.service && !enabledServices.some((item) => item.code === widget.service) && (
+                        <option value={widget.service}>{widget.service}（当前值，已停用或不在目录）</option>
+                      )}
+                      {enabledServices.map((item) => (
+                        <option key={item.code} value={item.code}>
+                          {item.name}（{item.code}）
+                        </option>
+                      ))}
                     </Select>
                   </Field>
 
@@ -641,6 +721,9 @@ export function DashboardConfigPage() {
                       className="h-8 text-[12px]"
                     >
                       {endpoints.length === 0 && <option value="">（无可用端点）</option>}
+                      {widget.endpoint && !endpoints.some((endpoint) => endpoint.key === widget.endpoint) && (
+                        <option value={widget.endpoint}>{widget.endpoint}（当前值，已停用或不在目录）</option>
+                      )}
                       {endpoints.map((endpoint) => (
                         <option key={endpoint.key} value={endpoint.key}>
                           {endpoint.name}（{endpoint.key}）

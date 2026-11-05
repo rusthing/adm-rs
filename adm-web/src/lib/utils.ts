@@ -42,6 +42,22 @@ export function copyText(text: string): Promise<boolean> {
     .catch(() => false);
 }
 
+/**
+ * 把后端下发的跳转地址收敛成「可安全交给 Router 的站内绝对路径」。
+ *
+ * widget 配置由服务端下发、管理员可编辑，直接把任意字符串塞进 `<Link to>`
+ * 会把外链、伪协议、`#` 之类的占位值变成可点击跳转。这里只放行站内路径，
+ * 无法确认的返回 null，调用方应降级成不可点击的普通元素。
+ */
+export function safeInternalPath(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  if (!value.startsWith("/") || value.startsWith("//")) return null;
+  if (value.includes("\\") || value.includes("://")) return null;
+  if (/[\u0000-\u001f\u007f]/.test(value)) return null;
+  return value;
+}
+
 /** 简单防抖，用于搜索框 */
 export function debounce<T extends (...args: never[]) => void>(fn: T, wait: number): T {
   let timer: ReturnType<typeof setTimeout> | undefined;

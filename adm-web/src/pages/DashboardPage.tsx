@@ -56,6 +56,9 @@ export function DashboardPage() {
   const dashboard = effectiveQuery.isSuccess ? (effectiveQuery.data ?? null) : (authz?.dashboard ?? null);
   const configWidgets = dashboard?.widgets ?? [];
   const authzReady = authz !== null;
+  // 带 permUrn 的卡片在权限信息可用之前一律不取数：后端虽已按权限过滤配置，
+  // 前端也不能在鉴权失败 / 加载中时抢跑把数据先拉回来（fail closed）。
+  const authzUsable = authzReady && !authzError;
 
   const widgetQueries = useQueries({
     queries: configWidgets.map((widget) => ({
@@ -75,10 +78,8 @@ export function DashboardPage() {
           title: widget.title,
           widgetType: widget.widgetType,
         }),
-      // 后端已按权限过滤配置；这里只对本地可见权限做一次兜底
-      enabled:
-        widget.enabled &&
-        (!widget.permUrn || !authzReady || hasPerm(widget.permUrn)),
+      // 后端已按权限过滤配置；这里只对本地可见权限做一次兜底，且必须等权限就绪
+      enabled: widget.enabled && (!widget.permUrn || (authzUsable && hasPerm(widget.permUrn))),
       retry: false,
       staleTime: 30_000,
       refetchOnWindowFocus: false,
@@ -96,8 +97,14 @@ export function DashboardPage() {
     if (!widget.enabled) {
       return { ...base, status: "disabled" as const };
     }
-    if (authzReady && widget.permUrn && !hasPerm(widget.permUrn)) {
-      return { ...base, status: "forbidden" as const, error: `需要权限 ${widget.permUrn}` };
+    if (widget.permUrn) {
+      if (authzError) {
+        return { ...base, status: "forbidden" as const, error: "权限信息加载失败，暂不展示该卡片" };
+      }
+      if (!authzReady) return { ...base, status: "loading" as const };
+      if (!hasPerm(widget.permUrn)) {
+        return { ...base, status: "forbidden" as const, error: `需要权限 ${widget.permUrn}` };
+      }
     }
     const result = widgetQueries[index];
     if (!result || result.isLoading || !result.data) {

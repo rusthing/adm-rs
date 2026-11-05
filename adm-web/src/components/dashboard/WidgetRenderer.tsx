@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 import type { DashboardWidgetView, RecentLogItem, TodoItem, TrendPoint } from "@/lib/types";
-import { cn, formatMs } from "@/lib/utils";
+import { cn, formatMs, safeInternalPath } from "@/lib/utils";
 import { Badge } from "@/components/ui/primitives";
 import {
   Activity,
@@ -82,6 +83,28 @@ type AnyData =
 
 function asData(data: unknown): AnyData {
   return (data ?? null) as AnyData;
+}
+
+/**
+ * 只把确认是站内绝对路径的地址交给 Router；`#`、空值、外链、伪协议一律
+ * 降级成不可点击的普通元素，避免后端下发的 widget 配置变成任意跳转入口。
+ */
+function SafeNavLink({
+  to,
+  className,
+  children,
+}: {
+  to: unknown;
+  className: string;
+  children: ReactNode;
+}) {
+  const path = safeInternalPath(to);
+  if (!path) return <div className={className}>{children}</div>;
+  return (
+    <Link to={path} className={className}>
+      {children}
+    </Link>
+  );
 }
 
 /**
@@ -175,6 +198,7 @@ function WidgetBody({ type, data }: { type: string; data: AnyData }) {
 
 function KpiBody({ data }: { data: KpiData }) {
   const value = data?.value;
+  const path = safeInternalPath(data?.path);
   const body = (
     <>
       <div className="text-[11.5px] text-muted">{data?.label ?? "指标"}</div>
@@ -183,20 +207,20 @@ function KpiBody({ data }: { data: KpiData }) {
       </div>
       <div className="mt-3 flex items-center justify-between text-[11.5px] text-muted">
         <span className="font-mono">{data?.metric ?? ""}</span>
-        {data?.path && <ArrowUpRight size={13} />}
+        {path && <ArrowUpRight size={13} />}
       </div>
     </>
   );
-  if (!data?.path) {
+  if (!path) {
     return <div className="flex h-full flex-col justify-between">{body}</div>;
   }
   return (
-    <Link
-      to={data.path}
+    <SafeNavLink
+      to={path}
       className="group flex h-full flex-col justify-between rounded-lg transition-colors hover:text-accent"
     >
       {body}
-    </Link>
+    </SafeNavLink>
   );
 }
 
@@ -272,8 +296,8 @@ function TodoBody({ data }: { data: TodoData }) {
     <ul className="flex flex-col gap-2">
       {items.map((item) => (
         <li key={item.code}>
-          <Link
-            to={item.path || "#"}
+          <SafeNavLink
+            to={item.path}
             className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2 transition-colors hover:border-line-strong hover:bg-sunken"
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -281,7 +305,7 @@ function TodoBody({ data }: { data: TodoData }) {
               <span className="truncate text-[12.5px] text-ink-soft">{item.label}</span>
             </span>
             <ArrowUpRight size={13} className="shrink-0 text-muted" />
-          </Link>
+          </SafeNavLink>
         </li>
       ))}
     </ul>
@@ -336,14 +360,14 @@ function ShortcutsBody({ data }: { data: ShortcutData }) {
   return (
     <div className="grid grid-cols-2 gap-2">
       {items.map((item, index) => (
-        <Link
+        <SafeNavLink
           key={item.id ?? `${item.path}-${index}`}
-          to={item.path || "#"}
+          to={item.path}
           className="flex items-center gap-2 rounded-lg border border-line px-2.5 py-2 text-[12.5px] text-ink-soft transition-colors hover:border-line-strong hover:bg-sunken"
         >
           <LayoutGrid size={13} className="shrink-0 text-accent" />
           <span className="truncate">{item.label ?? item.name ?? item.path ?? "菜单"}</span>
-        </Link>
+        </SafeNavLink>
       ))}
     </div>
   );

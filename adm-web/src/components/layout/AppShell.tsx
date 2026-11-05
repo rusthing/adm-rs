@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
-import { buildNav, findNav } from "@/components/layout/nav";
+import { buildNavTree, findNavTrail, flattenNav } from "@/components/layout/nav";
+import type { NavNode } from "@/components/layout/nav";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
   ExternalLink,
-  KeyRound,
   LoaderCircle,
   LogOut,
   Menu,
@@ -98,10 +98,7 @@ function AccountMenu({
           className="absolute right-0 top-[calc(100%+6px)] z-40 w-[190px] overflow-hidden rounded-[12px] border border-line bg-surface py-1 shadow-panel"
         >
           <Link to="/profile" role="menuitem" className={MENU_ITEM_CLASS} onClick={() => setOpen(false)}>
-            <UserCircle size={14} className="text-muted" /> 个人中心
-          </Link>
-          <Link to="/profile" role="menuitem" className={MENU_ITEM_CLASS} onClick={() => setOpen(false)}>
-            <KeyRound size={14} className="text-muted" /> 修改口令
+            <UserCircle size={14} className="text-muted" /> 个人中心 / 修改口令
           </Link>
           <div className="my-1 border-t border-line" />
           <button
@@ -124,15 +121,212 @@ function AccountMenu({
   );
 }
 
+interface NavTreeProps {
+  nodes: NavNode[];
+  level: number;
+  collapsed: boolean;
+  expanded: Set<string>;
+  matchedId?: string;
+  onToggle: (id: string) => void;
+  onExpandFromCollapsed: (id: string) => void;
+  onNavigate: () => void;
+  showTooltip: (label: string, group: string, element: HTMLElement) => void;
+  hideTooltip: () => void;
+}
+
+/**
+ * 递归渲染侧栏：目录节点是可折叠分组，叶子节点只有可导航时才出现。
+ * 层级由 treeCode 前缀推导，不再限制两级。
+ */
+function NavTree({
+  nodes,
+  level,
+  collapsed,
+  expanded,
+  matchedId,
+  onToggle,
+  onExpandFromCollapsed,
+  onNavigate,
+  showTooltip,
+  hideTooltip,
+}: NavTreeProps) {
+  return (
+    <div className={cn("flex flex-col gap-0.5", level > 0 && "ml-2.5 border-l border-line pl-2")}>
+      {nodes.map((node) => {
+        const hasChildren = node.children.length > 0;
+        const Icon = node.icon;
+        const active = matchedId === node.id;
+        const groupLabel = node.trail.length > 0 ? node.trail.join(" / ") : "顶层菜单";
+        // 既能挂在 button 也能挂在 a / Link 上；currentTarget 只取公共的 HTMLElement。
+        const tooltipProps = collapsed
+          ? {
+              "aria-label": node.label,
+              onMouseEnter: (event: { currentTarget: HTMLElement }) => showTooltip(node.label, groupLabel, event.currentTarget),
+              onMouseLeave: hideTooltip,
+              onFocus: (event: { currentTarget: HTMLElement }) => showTooltip(node.label, groupLabel, event.currentTarget),
+              onBlur: hideTooltip,
+            }
+          : {};
+        const toggle = () => (collapsed ? onExpandFromCollapsed(node.id) : onToggle(node.id));
+
+        if (hasChildren) {
+          const isOpen = expanded.has(node.id);
+          const groupClass = cn(
+            "flex min-h-[34px] flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-colors",
+            active ? "text-accent-strong" : "text-muted hover:bg-sunken hover:text-ink",
+            collapsed && "lg:h-10 lg:justify-center lg:gap-0 lg:px-0 lg:py-0",
+          );
+          const groupInner = (
+            <>
+              <Icon size={14} className={active ? "text-accent" : "text-muted"} />
+              <span className={cn("flex-1 truncate text-left", collapsed && "lg:hidden")}>{node.label}</span>
+            </>
+          );
+          return (
+            <div key={node.id} className={cn("flex flex-col gap-0.5", level === 0 && "mt-1 first:mt-0")}>
+              <div className="flex items-center gap-0.5">
+                {/*
+                 * 既是页面又是父目录的节点必须两个入口都保留：
+                 * 名称部分跳页面，右侧箭头只负责折叠 / 展开。
+                 */}
+                {node.navigable ? (
+                  node.external ? (
+                    <a
+                      href={node.path}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={onNavigate}
+                      className={groupClass}
+                      aria-current={active ? "page" : undefined}
+                      {...tooltipProps}
+                    >
+                      {groupInner}
+                      <ExternalLink size={12} className="text-muted" />
+                    </a>
+                  ) : (
+                    <Link
+                      to={node.path}
+                      onClick={onNavigate}
+                      className={groupClass}
+                      aria-current={active ? "page" : undefined}
+                      {...tooltipProps}
+                    >
+                      {groupInner}
+                    </Link>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    title={collapsed ? `${node.label}（点击展开侧栏）` : node.label}
+                    className={groupClass}
+                    {...tooltipProps}
+                  >
+                    {groupInner}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={toggle}
+                  aria-expanded={!collapsed && isOpen}
+                  aria-label={`${isOpen ? "折叠" : "展开"}${node.label}的子菜单`}
+                  className="flex h-8 w-7 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-sunken hover:text-ink"
+                >
+                  <ChevronDown size={12} className={cn("transition-transform", !isOpen && "-rotate-90")} />
+                </button>
+              </div>
+              {/* 折叠态没有空间展示缩进子级，改为点击箭头时展开整条侧栏 */}
+              {isOpen && !collapsed && (
+                <NavTree
+                  nodes={node.children}
+                  level={level + 1}
+                  collapsed={collapsed}
+                  expanded={expanded}
+                  matchedId={matchedId}
+                  onToggle={onToggle}
+                  onExpandFromCollapsed={onExpandFromCollapsed}
+                  onNavigate={onNavigate}
+                  showTooltip={showTooltip}
+                  hideTooltip={hideTooltip}
+                />
+              )}
+            </div>
+          );
+        }
+
+        // 目录节点（不可导航）且没有子级时没有展示价值，直接跳过。
+        if (!node.navigable) return null;
+
+        const className = cn(
+          "relative flex min-h-[38px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors",
+          active ? "bg-accent-soft text-accent-strong" : "text-ink-soft hover:bg-sunken hover:text-ink",
+          collapsed && "lg:h-10 lg:justify-center lg:gap-0 lg:px-0 lg:py-0",
+        );
+        const inner = (
+          <>
+            <Icon size={15} className={active ? "text-accent" : "text-muted"} />
+            <span className={cn("truncate", collapsed && "lg:hidden")}>{node.label}</span>
+            {node.external && <ExternalLink size={12} className={cn("text-muted", collapsed && "lg:hidden")} />}
+            {active && <span className={cn("ml-auto h-1.5 w-1.5 rounded-full bg-accent", collapsed && "lg:hidden")} />}
+            {active && collapsed && (
+              <span className="absolute left-0 top-1/2 hidden h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent lg:block" />
+            )}
+          </>
+        );
+        const linkProps: ComponentProps<"a"> = collapsed
+          ? {
+              "aria-label": node.label,
+              onMouseEnter: (event) => showTooltip(node.label, groupLabel, event.currentTarget),
+              onMouseLeave: hideTooltip,
+              onFocus: (event) => showTooltip(node.label, groupLabel, event.currentTarget),
+              onBlur: hideTooltip,
+            }
+          : {};
+        return node.external ? (
+          <a
+            key={node.id}
+            href={node.path}
+            target="_blank"
+            rel="noreferrer"
+            onClick={onNavigate}
+            className={className}
+            aria-current={active ? "page" : undefined}
+            {...linkProps}
+          >
+            {inner}
+          </a>
+        ) : (
+          <Link
+            key={node.id}
+            to={node.path}
+            onClick={onNavigate}
+            className={className}
+            aria-current={active ? "page" : undefined}
+            {...linkProps}
+          >
+            {inner}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AppShell() {
   const { session, authz, authzError, authzLoading, logout, refreshAuthz } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [tooltip, setTooltip] = useState<{ label: string; group: string; top: number } | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const groups = useMemo(() => buildNav(authz?.menus ?? []), [authz?.menus]);
-  const matched = findNav(groups, location.pathname);
+
+  const navTree = useMemo(() => buildNavTree(authz?.menus ?? []), [authz?.menus]);
+  const matched = useMemo(() => findNavTrail(navTree, location.pathname), [navTree, location.pathname]);
+  const hasVisibleEntries = useMemo(
+    () => flattenNav(navTree).some((node) => node.navigable || node.children.length > 0),
+    [navTree],
+  );
   const roleNames = authz?.roles.map((role) => role.name) ?? [];
 
   useEffect(() => {
@@ -144,10 +338,43 @@ export function AppShell() {
     setTooltip(null);
   }, [collapsed]);
 
+  // 深链进来时自动展开当前页面所在的整条分支。
+  useEffect(() => {
+    if (!matched || matched.ancestorIds.length === 0) return;
+    setExpanded((current) => {
+      const next = new Set(current);
+      let changed = false;
+      for (const id of matched.ancestorIds) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [matched]);
+
   const showTooltip = (label: string, group: string, element: HTMLElement) => {
     if (!collapsed) return;
     const rect = element.getBoundingClientRect();
     setTooltip({ label, group, top: rect.top + rect.height / 2 });
+  };
+
+  const hideTooltip = () => setTooltip(null);
+
+  const toggleNode = (id: string) => {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const expandFromCollapsed = (id: string) => {
+    setCollapsed(false);
+    setExpanded((current) => new Set(current).add(id));
+    hideTooltip();
   };
 
   const onLogout = async () => {
@@ -205,93 +432,24 @@ export function AppShell() {
           </button>
         </div>
 
-        <nav className={cn("flex-1 overflow-y-auto px-2.5 py-3", collapsed && "lg:px-2")}>
-          {groups.length === 0 ? (
+        <nav aria-label="主导航" className={cn("flex-1 overflow-y-auto px-2.5 py-3", collapsed && "lg:px-2")}>
+          {!hasVisibleEntries ? (
             <div className={cn("px-2 py-3 text-[11.5px] leading-relaxed text-muted", collapsed && "lg:hidden")}>
               当前账号没有可见菜单。
             </div>
           ) : (
-            groups.map((group) => (
-              <div key={group.label} className={cn("mb-4", collapsed && "lg:mb-2")}>
-                <div
-                  className={cn(
-                    "px-2 pb-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted/80",
-                    collapsed && "lg:hidden",
-                  )}
-                >
-                  {group.label}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {group.items.map((item) => {
-                    const active = matched?.item.id === item.id;
-                    const Icon = item.icon;
-                    const className = cn(
-                      "relative flex min-h-[38px] items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors",
-                      active
-                        ? "bg-accent-soft text-accent-strong"
-                        : "text-ink-soft hover:bg-sunken hover:text-ink",
-                      collapsed && "lg:h-10 lg:justify-center lg:gap-0 lg:px-0 lg:py-0",
-                    );
-                    const interactionProps: ComponentProps<"a"> = collapsed
-                      ? {
-                          "aria-label": item.label,
-                          onMouseEnter: (event) =>
-                            showTooltip(item.label, group.label, event.currentTarget),
-                          onMouseLeave: () => setTooltip(null),
-                          onFocus: (event) => showTooltip(item.label, group.label, event.currentTarget),
-                          onBlur: () => setTooltip(null),
-                        }
-                      : {};
-                    const inner = (
-                      <>
-                        <Icon size={15} className={active ? "text-accent" : "text-muted"} />
-                        <span className={cn("truncate", collapsed && "lg:hidden")}>{item.label}</span>
-                        {item.external && (
-                          <ExternalLink size={12} className={cn("text-muted", collapsed && "lg:hidden")} />
-                        )}
-                        {active && (
-                          <span
-                            className={cn(
-                              "ml-auto h-1.5 w-1.5 rounded-full bg-accent",
-                              collapsed && "lg:hidden",
-                            )}
-                          />
-                        )}
-                        {/* 折叠态选中项：左侧强调条 */}
-                        {active && collapsed && (
-                          <span className="absolute left-0 top-1/2 hidden h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent lg:block" />
-                        )}
-                      </>
-                    );
-                    return item.external ? (
-                      <a
-                        key={item.id}
-                        href={item.path}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={() => setMobileOpen(false)}
-                        className={className}
-                        aria-current={active ? "page" : undefined}
-                        {...interactionProps}
-                      >
-                        {inner}
-                      </a>
-                    ) : (
-                      <Link
-                        key={item.id}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={className}
-                        aria-current={active ? "page" : undefined}
-                        {...interactionProps}
-                      >
-                        {inner}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
+            <NavTree
+              nodes={navTree}
+              level={0}
+              collapsed={collapsed}
+              expanded={expanded}
+              matchedId={matched?.node.id}
+              onToggle={toggleNode}
+              onExpandFromCollapsed={expandFromCollapsed}
+              onNavigate={() => setMobileOpen(false)}
+              showTooltip={showTooltip}
+              hideTooltip={hideTooltip}
+            />
           )}
         </nav>
 
@@ -362,13 +520,17 @@ export function AppShell() {
 
           <div className="min-w-0 flex-1">
             {matched ? (
-              <nav className="flex items-center gap-1.5 text-[12px] text-muted">
-                <span>{matched.group.label}</span>
-                <ChevronRight size={12} />
-                <span className="font-medium text-ink">{matched.item.label}</span>
+              <nav aria-label="面包屑" className="flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
+                {matched.trail.map((label, index) => (
+                  <span key={`${label}-${index}`} className="inline-flex items-center gap-1.5">
+                    <span className="truncate">{label}</span>
+                    <ChevronRight size={12} />
+                  </span>
+                ))}
+                <span className="truncate font-medium text-ink">{matched.node.label}</span>
               </nav>
             ) : location.pathname === "/profile" ? (
-              <nav className="flex items-center gap-1.5 text-[12px] text-muted">
+              <nav aria-label="面包屑" className="flex items-center gap-1.5 text-[12px] text-muted">
                 <span>账号</span>
                 <ChevronRight size={12} />
                 <span className="font-medium text-ink">个人中心</span>
@@ -402,11 +564,11 @@ export function AppShell() {
 
         {session?.loginPswdDefault && (
           <div className="border-b border-warn/30 bg-warn-soft px-4 py-2 text-[12px] text-warn">
-            当前账号仍在使用初始口令。生产环境应先到
+            当前账号仍在使用初始口令，请尽快到
             <Link to="/profile" className="mx-1 underline underline-offset-2">
               个人中心
             </Link>
-            修改。个人中心使用独立改密接口 <code className="font-mono">POST /adm/auth/change-password</code>。
+            修改。
           </div>
         )}
 
@@ -426,8 +588,8 @@ export function AppShell() {
         </main>
 
         <footer className="mx-auto flex w-full max-w-[1480px] flex-wrap items-center justify-between gap-2 px-4 pb-6 text-[11px] text-muted sm:px-6">
-          <span>Adm Console · 前端视图与 adm-svr REST 契约对齐</span>
-          <span className="font-mono">API {import.meta.env.VITE_API_BASE || "同源"}</span>
+          <span>Adm Console</span>
+          <span>账号 · 角色 · 菜单 · 权限</span>
         </footer>
       </div>
     </div>

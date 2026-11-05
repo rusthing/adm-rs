@@ -4,7 +4,7 @@ import { roleApi, roleGroupApi, roleUserApi, userApi } from "@/lib/api";
 import type { CrudColumn, CrudField, FormMode } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { Badge, Button, Checkbox, Spinner } from "@/components/ui/primitives";
-import { Drawer, useToast } from "@/components/ui/overlay";
+import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
 import type { AdmRoleVo, AdmUserVo, FormValues } from "@/lib/types";
 import { shortId } from "@/lib/utils";
@@ -119,7 +119,7 @@ function UserRolesDrawer({
       open={open}
       onClose={onClose}
       title={`分配角色 · ${user?.name ?? ""}`}
-      description="关系写入 /adm/role-user。保存时只提交新增与移除的差异。"
+      description="保存时只提交新增与移除的差异；同一个用户可以属于多个角色。"
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
@@ -143,7 +143,7 @@ function UserRolesDrawer({
             <section key={groupId}>
               <div className="mb-1.5 flex items-center gap-2 text-[11.5px] font-medium text-muted">
                 <ShieldCheck size={13} />
-                {groupName.get(groupId) ?? `分组 ${shortId(groupId)}`}
+                {groupName.get(groupId) ?? shortId(groupId)}
               </div>
               <div className="flex flex-col gap-0.5 rounded-xl border border-line p-1.5">
                 {groupRoles.map((role) => (
@@ -171,6 +171,7 @@ function UserRolesDrawer({
 
 export function UsersPage() {
   const toast = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [roleUser, setRoleUser] = useState<AdmUserVo | null>(null);
 
@@ -201,10 +202,37 @@ export function UsersPage() {
   ];
 
   const fields: CrudField[] = [
-    { name: "name", label: "登录名", required: true, placeholder: "4-32 位，字母开头，可含数字与下划线" },
+    {
+      name: "name",
+      label: "登录名",
+      required: true,
+      placeholder: "4-32 位，字母开头，可含数字与下划线",
+      validate: (value) =>
+        /^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(String(value ?? "").trim())
+          ? null
+          : "登录名需 4-32 位，字母开头，只含字母、数字与下划线",
+    },
     { name: "nickName", label: "昵称", placeholder: "展示用，可重复" },
-    { name: "mobile", label: "手机号", placeholder: "11 位，可留空", hint: "留空表示该账号不用于手机号登录" },
-    { name: "email", label: "邮箱", placeholder: "可留空", hint: "留空表示该账号不用于邮箱登录" },
+    {
+      name: "mobile",
+      label: "手机号",
+      placeholder: "11 位，可留空",
+      hint: "留空表示该账号不用于手机号登录",
+      validate: (value) => {
+        const text = String(value ?? "").trim();
+        return !text || /^1\d{10}$/.test(text) ? null : "手机号需为 11 位数字，且以 1 开头";
+      },
+    },
+    {
+      name: "email",
+      label: "邮箱",
+      placeholder: "可留空",
+      hint: "留空表示该账号不用于邮箱登录",
+      validate: (value) => {
+        const text = String(value ?? "").trim();
+        return !text || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text) ? null : "邮箱格式不正确";
+      },
+    },
     {
       name: "status",
       label: "账号状态",
@@ -220,14 +248,16 @@ export function UsersPage() {
     { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     {
       name: "loginPswd",
+      key: "loginPswd-create",
       label: "登录口令",
       type: "password",
       required: true,
       createOnly: true,
-      hint: "必填。明文只在浏览器内做一次 SM3 后提交，服务端各自生成组合码。",
+      hint: "必填。明文只在浏览器内做一次 SM3 后提交。",
     },
     {
       name: "loginPswd",
+      key: "loginPswd-edit",
       label: "新登录口令",
       type: "password",
       editOnly: true,
@@ -273,27 +303,21 @@ export function UsersPage() {
     };
 
     // 三套口令各自独立：谁填了就单独算一次 SM3 提交，绝不互相复用。
-    // 组合码由服务端生成，这里传 6 位占位只是为了让 AddDto 的 @len 6..=6 通过。
+    // 组合码由服务端在写库钩子里随机生成并覆盖，客户端传的 *Salt 一律被忽略，
+    // 所以这里不发送任何盐字段，免得请求看起来像「客户端可以指定组合码」。
     const attachPswd = (field: string) => {
       const plain = optionalText(values[field]);
       if (!plain) return;
       payload[field] = sm3(plain);
-      payload[`${field}Salt`] = "000000";
     };
 
     if (mode === "create") {
       attachPswd("loginPswd");
       attachPswd("auditPswd");
       attachPswd("payPswd");
-      // 审核 / 支付留空时显式提交空串，与「没传」区分开
-      if (!payload.auditPswd) {
-        payload.auditPswd = "";
-        payload.auditPswdSalt = "";
-      }
-      if (!payload.payPswd) {
-        payload.payPswd = "";
-        payload.payPswdSalt = "";
-      }
+      // 审核 / 支付留空时显式提交空串，与「没传」区分开（新增时列是 NOT NULL）
+      if (!payload.auditPswd) payload.auditPswd = "";
+      if (!payload.payPswd) payload.payPswd = "";
     } else {
       attachPswd("loginPswd");
       attachPswd("auditPswd");
@@ -312,13 +336,13 @@ export function UsersPage() {
   };
 
   const resetPassword = async (row: AdmUserVo) => {
-    if (
-      !window.confirm(
-        `确定把「${row.name}」的登录口令重置为服务端默认口令？重置后该账号下次登录需立即修改。`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "重置登录口令",
+      description: `确定把「${row.name}」的登录口令重置为服务端默认口令？重置后该账号下次登录需立即修改。`,
+      confirmText: "重置",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       await userApi.resetPassword(row.id);
       toast.success(`已重置「${row.name}」的登录口令`);

@@ -29,14 +29,16 @@ export function RoleGroupsPage() {
     return map;
   }, [realmsQuery.data]);
 
-  const parentOptions = useMemo(
-    () =>
-      (groupsQuery.data ?? []).map((group) => ({
+  /** 父分组只列同一领域下的节点：treeCode 按领域隔离，跨领域选父会被服务端拒绝。 */
+  const parentOptions = (values: FormValues) => {
+    const realmId = String(values.realmId ?? "");
+    return (groupsQuery.data ?? [])
+      .filter((group) => !realmId || group.realmId === realmId)
+      .map((group) => ({
         value: group.treeCode,
         label: `${"　".repeat(Math.max(0, group.treeCode.length / 3 - 1))}${group.name} · ${group.treeCode}`,
-      })),
-    [groupsQuery.data],
-  );
+      }));
+  };
 
   const columns: CrudColumn<AdmRoleGroupVo>[] = [
     {
@@ -79,7 +81,8 @@ export function RoleGroupsPage() {
       type: "select",
       createOnly: true,
       options: parentOptions,
-      hint: "不选则创建根分组。treeCode 由服务端按 parentCode 生成。",
+      resetOn: ["realmId"],
+      hint: "只列出同一领域下的分组；不选则创建根分组，treeCode 由服务端按 parentCode 生成。",
     },
     { name: "name", label: "名称", required: true, placeholder: "同一父节点下允许重名，靠 treeCode 区分" },
     { name: "enabled", label: "启用", type: "switch", defaultValue: true },

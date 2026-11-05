@@ -1,4 +1,4 @@
-import { readSession } from "@/lib/auth-storage";
+import { notifySessionExpired, readSession } from "@/lib/auth-storage";
 import type { PageQuery, Ro } from "@/lib/types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/+$/, "");
@@ -92,6 +92,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
         : response.status === 403
           ? "当前账号没有执行该操作的权限"
           : `请求失败（HTTP ${response.status}）`;
+    if (response.status === 401) {
+      // 令牌无效/过期/已登出：统一由 AuthProvider 清会话并跳登录页，
+      // 不再让用户停在「看着像已登录、点什么都报错」的界面上。
+      notifySessionExpired();
+    }
     throw new ApiError(payload?.msg || statusHint, {
       status: response.status,
       result: payload?.result,
@@ -103,6 +108,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError("接口返回空响应", { status: response.status });
   }
   if (payload.result !== 1) {
+    // 少数认证接口在 HTTP 200 里用 ADM00005 表达令牌失效，语义与 401 一致。
+    if (payload.code === "ADM00005") notifySessionExpired();
     throw new ApiError(payload.msg || "业务处理失败，服务端未返回具体原因", {
       status: response.status,
       result: payload.result,

@@ -26,12 +26,13 @@ import { isRegisteredComponent } from "@/pages/registry";
  *
  * - `component` 为空：目录节点，只作为侧栏分组，不注册路由；
  * - `component` 非空且已在 `pages/registry.ts` 登记：按该键挂载页面并出现在侧栏；
- * - 后端下发了前端未注册的 `component`：**不进侧栏**，直接访问 URL 时才显示
- *   「未注册页面」占位，避免用户点进一个必然不可用的入口。
+ * - 后端下发了前端未登记的 `component`：**不进侧栏**，直接访问 URL 时才显示
+ *   「未登记页面」占位，避免用户点进一个必然不可用的入口。
  *
  * 新增页面时只需在两处登记：本文件的图标映射（可选）与 `pages/registry.ts` 的组件表。
  */
-export interface NavItem {
+
+export interface NavNode {
   id: string;
   label: string;
   path: string;
@@ -40,11 +41,14 @@ export interface NavItem {
   linkType: number;
   /** 外链 / iframe 不走前端路由，直接打开原 URL */
   external: boolean;
-}
-
-export interface NavGroup {
-  label: string;
-  items: NavItem[];
+  /** 是否可点击：外链与已登记组件的内链为 true，目录节点为 false。 */
+  navigable: boolean;
+  depth: number;
+  children: NavNode[];
+  /** 从最顶层分组到父级的名称链（不含自身），用于面包屑与折叠态 tooltip。 */
+  trail: string[];
+  /** 从最顶层分组到父级的 id 链，用于自动展开当前所在分支。 */
+  ancestorIds: string[];
 }
 
 const ICONS: Record<string, LucideIcon> = {
@@ -67,80 +71,119 @@ const ICONS: Record<string, LucideIcon> = {
   "user-circle": UserCircle,
 };
 
-function iconOf(name?: string): LucideIcon {
+/** 图标名白名单：菜单表单的图标下拉只能从这些值里选，避免自由文本写出无效图标。 */
+export const ICON_NAMES: string[] = Object.keys(ICONS).sort();
+
+export function iconOf(name?: string): LucideIcon {
   return (name && ICONS[name]) || LayoutGrid;
 }
 
-function toItem(menu: AdmMenuVo): NavItem {
-  return {
-    id: menu.id,
-    label: menu.name,
-    path: menu.path || "/",
-    icon: iconOf(menu.icon),
-    component: menu.component || undefined,
-    linkType: menu.linkType,
-    external: menu.linkType === 2 || menu.linkType === 3,
-  };
+function navigableOf(menu: AdmMenuVo): boolean {
+  // 外链 / iframe 可直接生成入口；内链必须已登记组件，且不能是空 component 的目录。
+  return menu.linkType !== 1 ? true : isRegisteredComponent(menu.component);
 }
 
 /**
- * 用后端 `GET /adm/auth/me` 返回的菜单树（已按 role-menu 过滤）构建侧栏。
+ * 用 `treeCode` 的**前缀关系**构造任意层级侧栏树。
  *
- * 约定两层结构：`treeCode` 长度 3 为分组目录，长度 6 为其下的菜单项；
- * 没有父目录的可见菜单统一放进「其他」分组，避免直接丢弃。
+ * 后端约定每层 3 位、总长 3..=30（最多 10 层），所以不能再按长度 3/6 写死两级。
+ * 父目录被隐藏或未授权时，子节点逐级向上找最近的可见祖先并挂过去；
+ * 一个可见祖先都没有就上提为根节点，保证菜单不会因为中间层缺失而整条消失。
  */
-export function buildNav(menus: AdmMenuVo[]): NavGroup[] {
+export function buildNavTree(menus: AdmMenuVo[]): NavNode[] {
   const visible = menus
     .filter((menu) => menu.enabled !== false && menu.visible !== false)
+    .slice()
     .sort((a, b) => a.treeCode.localeCompare(b.treeCode));
 
-  /** 外链/iframe 可直接生成入口；内链必须已注册组件，否则不放进侧栏。 */
-  const navigable = (menu: AdmMenuVo): boolean =>
-    menu.linkType !== 1 ? true : isRegisteredComponent(menu.component);
+  const byCode = new Map<string, AdmMenuVo>();
+  for (const menu of visible) byCode.set(menu.treeCode, menu);
 
-  const roots = visible.filter((menu) => menu.treeCode.length === 3);
-  const groups: NavGroup[] = [];
-  const consumed = new Set<string>();
-
-  for (const root of roots) {
-    const children = visible.filter(
-      (menu) => menu.treeCode.length === 6 && menu.treeCode.startsWith(root.treeCode),
-    );
-    const items: NavItem[] = [];
-    if (navigable(root)) items.push(toItem(root));
-    for (const child of children) {
-      if (navigable(child)) items.push(toItem(child));
-      consumed.add(child.id);
-    }
-    if (items.length > 0) groups.push({ label: root.name, items });
-    consumed.add(root.id);
+  const nodes = new Map<string, NavNode>();
+  for (const menu of visible) {
+    nodes.set(menu.id, {
+      id: menu.id,
+      label: menu.name,
+      path: menu.path || "/",
+      icon: iconOf(menu.icon),
+      component: menu.component || undefined,
+      linkType: menu.linkType,
+      external: menu.linkType === 2 || menu.linkType === 3,
+      navigable: navigableOf(menu),
+      // 真正的层级在下面按可见父链计算：中间层被隐藏/未授权时不应凭空跳一级。
+      depth: 0,
+      children: [],
+      trail: [],
+      ancestorIds: [],
+    });
   }
 
-  const rest = visible.filter((menu) => !consumed.has(menu.id) && navigable(menu));
-  if (rest.length > 0) groups.push({ label: "其他", items: rest.map(toItem) });
-
-  return groups;
-}
-
-export function navItems(groups: NavGroup[]): NavItem[] {
-  return groups.flatMap((group) => group.items);
-}
-
-export function findNav(
-  groups: NavGroup[],
-  pathname: string,
-): { group: NavGroup; item: NavItem } | null {
-  for (const group of groups) {
-    for (const item of group.items) {
-      if (item.external) continue;
-      if (
-        item.path === "/"
-          ? pathname === "/"
-          : pathname === item.path || pathname.startsWith(`${item.path}/`)
-      ) {
-        return { group, item };
+  const roots: NavNode[] = [];
+  for (const menu of visible) {
+    const node = nodes.get(menu.id)!;
+    let code = menu.treeCode;
+    let parent: NavNode | null = null;
+    // 逐级剥掉最后一层，直到找到一个可见的祖先；用 byCode 而不是 id，
+    // 因为 treeCode 才是层级关系的唯一依据。
+    while (code.length > 3) {
+      code = code.slice(0, -3);
+      const candidate = byCode.get(code);
+      if (candidate && candidate.id !== menu.id) {
+        parent = nodes.get(candidate.id) ?? null;
+        break;
       }
     }
+    if (parent) {
+      node.trail = [...parent.trail, parent.label];
+      node.ancestorIds = [...parent.ancestorIds, parent.id];
+      node.depth = parent.depth + 1;
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
   }
-  return null;
+  return roots;
+}
+
+/** 深度优先展开所有节点，便于统计与单测。 */
+export function flattenNav(nodes: NavNode[]): NavNode[] {
+  const result: NavNode[] = [];
+  const walk = (list: NavNode[]) => {
+    for (const node of list) {
+      result.push(node);
+      walk(node.children);
+    }
+  };
+  walk(nodes);
+  return result;
+}
+
+function pathMatches(path: string, pathname: string): boolean {
+  return path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
+}
+
+/**
+ * 找到当前地址对应的菜单节点，取**最长路径匹配**：
+ * 三级菜单 `/system/users/list` 不应被父级 `/system` 抢先命中。
+ * 返回节点及其祖先名称链，供面包屑与自动展开使用。
+ */
+export function findNavTrail(
+  nodes: NavNode[],
+  pathname: string,
+): { node: NavNode; trail: string[]; ancestorIds: string[] } | null {
+  const matched: Array<{ node: NavNode; score: number }> = [];
+  const walk = (list: NavNode[]) => {
+    for (const node of list) {
+      if (!node.external && pathMatches(node.path, pathname)) {
+        matched.push({ node, score: node.path === "/" ? 0 : node.path.length });
+      }
+      walk(node.children);
+    }
+  };
+  walk(nodes);
+  matched.sort((a, b) => b.score - a.score);
+  const top = matched[0];
+  return top
+    ? { node: top.node, trail: top.node.trail, ancestorIds: top.node.ancestorIds }
+    : null;
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createElement } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import { RequireAuth, RequirePerm } from "@/auth/RequireAuth";
 import { AppShell } from "@/components/layout/AppShell";
@@ -25,23 +25,23 @@ function UnregisteredPage({ menu }: { menu: AdmMenuVo }) {
       <PageHeader
         title={menu.name}
         subtitle={`菜单路径 ${menu.path}；后端下发的 component 为 ${menu.component ?? "（空）"}。`}
-        actions={<Badge tone="warn">未注册组件</Badge>}
+        actions={<Badge tone="warn">未登记页面</Badge>}
       />
-      <Panel title="前端未注册该页面" description="菜单来自后端，但组件映射缺失。">
+      <Panel title="页面暂不可用" description="这条菜单指向的页面没有在当前前端版本里登记。">
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warn-soft text-warn">
             <Puzzle size={22} />
           </div>
           <p className="max-w-md text-[12.5px] leading-relaxed text-muted">
-            <code className="rounded bg-sunken px-1.5 py-0.5 font-mono text-[11.5px] text-ink-soft">
-              component = {menu.component ?? "null"}
-            </code>
-            在 `pages/registry.ts` 的 `PAGE_COMPONENTS` 里没有对应条目。补齐映射后刷新即可；
-            该入口不会出现在侧栏，当前只降级这一页，其余菜单与功能不受影响。
+            请让管理员核对菜单的组件配置，或升级到包含该页面的前端版本。
+            该入口不会出现在侧栏，其余菜单与功能不受影响。
           </p>
-          <Button variant="secondary" onClick={() => window.location.reload()}>
-            刷新页面
-          </Button>
+          <Link
+            to="/"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3.5 text-[13px] font-medium text-ink transition-colors hover:bg-sunken"
+          >
+            回到工作台
+          </Link>
         </div>
       </Panel>
     </div>
@@ -57,7 +57,7 @@ function NoMenuPage() {
   );
 }
 
-/** 首次登录/刷新后 `/me` 还没返回，避免直接落进 404。 */
+/** 首次登录/刷新后权限还没返回，避免直接落进 404。 */
 function AuthzPendingPage() {
   return (
     <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -67,15 +67,15 @@ function AuthzPendingPage() {
   );
 }
 
-/** `/me` 失败且没有缓存时给出可重试的具体原因，而不是伪装成 404 或空菜单。 */
+/** 权限加载失败且没有缓存时给出可重试的具体原因，而不是伪装成 404 或空菜单。 */
 function AuthzErrorPage({ message, onRetry }: { message?: string | null; onRetry: () => void }) {
   return (
     <EmptyState
       title="账号权限加载失败"
       description={
         message
-          ? `无法读取 /adm/auth/me：${message}。页面与菜单暂时不可用，可重试或重新登录。`
-          : "无法读取 /adm/auth/me，页面与菜单暂时不可用，可重试或重新登录。"
+          ? `无法读取账号权限信息：${message}。页面与菜单暂时不可用，可重试或重新登录。`
+          : "无法读取账号权限信息，页面与菜单暂时不可用，可重试或重新登录。"
       }
       action={
         <Button variant="secondary" onClick={onRetry}>
@@ -114,7 +114,7 @@ export function App() {
     if (path) leafPaths.set(path, menu);
   }
 
-  // 默认页按菜单编码稳定排序，且只落到已注册组件，避免首页跳到占位页。
+  // 默认页按菜单编码稳定排序，且只落到已登记组件，避免首页跳到占位页。
   const defaultPath =
     [...leafPaths.values()]
       .sort((a, b) => a.treeCode.localeCompare(b.treeCode))
@@ -122,7 +122,7 @@ export function App() {
       .map((menu) => menu.path)
       .find((path) => path && path !== "/") ?? null;
 
-  // `/me` 未返回或失败且无缓存时，直接访问任意深链都不应显示 404。
+  // 权限未返回或失败且无缓存时，直接访问任意深链都不应显示 404。
   const pendingFallback = authzLoading && !authz;
   const errorFallback = Boolean(authzError) && !authz;
 

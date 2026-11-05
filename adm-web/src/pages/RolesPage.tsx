@@ -13,6 +13,7 @@ import { CrudPage } from "@/components/crud/CrudPage";
 import { MenuCheckList, PermCheckList } from "@/components/crud/tree";
 import { Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
+import { useAuth } from "@/auth/AuthContext";
 import type { AdmRoleVo, FormValues } from "@/lib/types";
 import { shortId } from "@/lib/utils";
 import { LockKeyhole, Menu as MenuIcon, ShieldCheck } from "lucide-react";
@@ -34,6 +35,7 @@ function RoleGrantsDrawer({
   const open = Boolean(role);
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { refreshAuthz } = useAuth();
   const [tab, setTab] = useState<"perm" | "menu">("perm");
   const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set());
   const [selectedMenus, setSelectedMenus] = useState<Set<string>>(new Set());
@@ -111,6 +113,9 @@ function RoleGrantsDrawer({
       await queryClient.invalidateQueries({ queryKey: ["role-menu"] });
       // 授权会影响当前用户可见菜单与首页，首页缓存一并失效。
       await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      // 改的可能正是当前账号所属角色：重新拉一次权限视图，侧栏与页面门禁立即生效，
+      // 不必等下次刷新页面。
+      await refreshAuthz();
       onSaved();
       onClose();
     } catch (error) {
@@ -130,7 +135,7 @@ function RoleGrantsDrawer({
       open={open}
       onClose={onClose}
       title={`角色授权 · ${role?.name ?? ""}`}
-      description="关系写入 /adm/role-perm 与 /adm/role-menu；保存时只提交差异。"
+      description="保存时只提交新增与移除的差异；授权变更对所属账号立即生效。"
       width="w-full max-w-[720px]"
       footer={
         <>

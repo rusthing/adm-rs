@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, GripVertical, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
@@ -18,7 +18,7 @@ import {
   Switch,
   Textarea,
 } from "@/components/ui/primitives";
-import { Modal, useToast } from "@/components/ui/overlay";
+import { Modal, useConfirm, useToast } from "@/components/ui/overlay";
 import { CellValue } from "./cells";
 import type { BooleanCellLabels, CrudCellType } from "./cells";
 import {
@@ -37,12 +37,20 @@ import {
   swapSortId,
 } from "./sort";
 import type { CrudSortable } from "./sort";
-
-export type FormMode = "create" | "edit";
+import {
+  applyFieldChange,
+  defaultsOf,
+  fieldKey,
+  resolveFieldOptions,
+  validateForm,
+  visibleFieldsOf,
+} from "./fields";
+import type { CrudField, FormMode } from "./fields";
 
 export type { CrudCellType } from "./cells";
 export type { CrudFilterDef, CrudFilterType, CrudFilterOption } from "./filters";
 export type { CrudSortable } from "./sort";
+export type { CrudField, CrudFieldOption, FormMode } from "./fields";
 
 export interface CrudColumn<T> {
   key: string;
@@ -60,25 +68,6 @@ export interface CrudColumn<T> {
    * 避免撑宽表格导致横向滚动失控。
    */
   truncate?: boolean;
-}
-
-export interface CrudFieldOption {
-  value: string;
-  label: string;
-}
-
-export interface CrudField {
-  name: string;
-  label: string;
-  type?: "text" | "textarea" | "switch" | "select" | "password" | "number";
-  required?: boolean;
-  placeholder?: string;
-  hint?: string;
-  options?: CrudFieldOption[];
-  span?: 2;
-  createOnly?: boolean;
-  editOnly?: boolean;
-  defaultValue?: string | boolean;
 }
 
 interface CrudPageProps<T extends { id: string }> {
@@ -242,15 +231,6 @@ function EntityFilterControl({
   );
 }
 
-function defaultsOf(fields: CrudField[]): FormValues {
-  const values: FormValues = {};
-  for (const field of fields) {
-    if (field.type === "switch") values[field.name] = Boolean(field.defaultValue);
-    else values[field.name] = field.defaultValue === undefined ? "" : String(field.defaultValue);
-  }
-  return values;
-}
-
 export function CrudPage<T extends { id: string }>({
   title,
   subtitle,
@@ -276,6 +256,10 @@ export function CrudPage<T extends { id: string }>({
   const api = useMemo<CrudApi<T>>(() => crudApi<T>(prefix), [prefix]);
   const queryClient = useQueryClient();
   const toast = useToast();
+  const confirm = useConfirm();
+  const formId = useId();
+  /** 关键字防抖定时器：Enter / Esc / 清空时立即取消，避免旧 timer 覆盖即时结果。 */
+  const keywordTimerRef = useRef<number | null>(null);
 
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
@@ -308,12 +292,23 @@ export function CrudPage<T extends { id: string }>({
   const filterKey = JSON.stringify(filterParams);
   const extraKey = JSON.stringify(extraQuery ?? {});
 
+  const cancelKeywordTimer = () => {
+    if (keywordTimerRef.current !== null) {
+      window.clearTimeout(keywordTimerRef.current);
+      keywordTimerRef.current = null;
+    }
+  };
+
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    cancelKeywordTimer();
+    keywordTimerRef.current = window.setTimeout(() => {
+      keywordTimerRef.current = null;
       setAppliedKeyword(keyword.trim());
       setPage(1);
     }, 350);
-    return () => window.clearTimeout(timer);
+    return cancelKeywordTimer;
+    // cancelKeywordTimer 只操作 ref，不随渲染变化
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword]);
 
   const buildQuery = (): PageQuery => ({
@@ -585,22 +580,10 @@ export function CrudPage<T extends { id: string }>({
     event.preventDefault();
     if (!editing) return;
 
-    const visibleFields = fields.filter((field) => {
-      if (field.createOnly && editing.mode !== "create") return false;
-      if (field.editOnly && editing.mode !== "edit") return false;
-      return true;
-    });
-    for (const field of visibleFields) {
-      if (!field.required) continue;
-      const value = editing.values[field.name];
-      if (typeof value === "string" && !value.trim()) {
-        setFormError(`请填写「${field.label}」`);
-        return;
-      }
-      if (value === undefined || value === "") {
-        setFormError(`请填写「${field.label}」`);
-        return;
-      }
+    const error = validateForm(fields, editing.mode, editing.values);
+    if (error) {
+      setFormError(error);
+      return;
     }
 
     setSaving(true);
@@ -634,10 +617,16 @@ export function CrudPage<T extends { id: string }>({
   };
 
   const remove = async (row: T) => {
-    // 非树形实体沿用原来的同步确认；树形实体先查服务端预检，
+    // 非树形实体走全局确认弹窗；树形实体先查服务端预检，
     // 由确认弹窗展示真实子孙数量与名单，避免前端估算。
     if (sortable?.kind !== "tree") {
-      if (!window.confirm(`确定删除「${itemLabel(row)}」？此操作不可撤销。`)) return;
+      const ok = await confirm({
+        title: "删除确认",
+        description: `确定删除「${itemLabel(row)}」？此操作不可撤销。`,
+        confirmText: "删除",
+        tone: "danger",
+      });
+      if (!ok) return;
       try {
         await doRemove(row);
       } catch (error) {
@@ -693,8 +682,16 @@ export function CrudPage<T extends { id: string }>({
     }
   };
 
+  /** Enter 立即查询：同时取消在途防抖，避免 350ms 后旧值把即时结果覆盖回去。 */
+  const applyKeywordNow = () => {
+    cancelKeywordTimer();
+    setAppliedKeyword(keyword.trim());
+    setPage(1);
+  };
+
   /** 清空关键字并立即重置查询（不等待输入防抖）。 */
   const clearKeyword = () => {
+    cancelKeywordTimer();
     setKeyword("");
     setAppliedKeyword("");
     setPage(1);
@@ -720,19 +717,14 @@ export function CrudPage<T extends { id: string }>({
     setPage(1);
   };
 
-  /** Enter 立即查询（不等待 350ms 防抖），与输入框失焦/防抖结果保持一致。 */
-  const applyKeywordNow = () => {
-    setAppliedKeyword(keyword.trim());
-    setPage(1);
+  /** 更新表单字段，并处理 resetOn 声明的依赖字段联动清空。 */
+  const setFieldValue = (name: string, value: FormValues[string]) => {
+    setEditing((current) =>
+      current ? { ...current, values: applyFieldChange(fields, current.values, name, value) } : current,
+    );
   };
 
-  const visibleFields = editing
-    ? fields.filter((field) => {
-        if (field.createOnly && editing.mode !== "create") return false;
-        if (field.editOnly && editing.mode !== "edit") return false;
-        return true;
-      })
-    : [];
+  const visibleFields = editing ? visibleFieldsOf(fields, editing.mode) : [];
 
   return (
     <div>
@@ -851,7 +843,7 @@ export function CrudPage<T extends { id: string }>({
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left">
+            <table aria-label={`${title}列表`} className="w-full min-w-[760px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-line bg-sunken">
                   {sortable && (
@@ -968,8 +960,9 @@ export function CrudPage<T extends { id: string }>({
         description={
           editing?.mode === "edit" && editing.row
             ? `ID ${editing.row.id}；只提交表单里可见的字段。`
-            : "带 * 的字段为后端必填项。"
+            : "带 * 的字段为必填项。"
         }
+        dismissable={false}
         footer={
           <>
             <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>
@@ -982,73 +975,75 @@ export function CrudPage<T extends { id: string }>({
         }
       >
         <form onSubmit={submit} className="grid grid-cols-2 gap-3.5">
-          {visibleFields.map((field) => (
-            <div key={field.name} className={field.span === 2 || field.type === "textarea" ? "col-span-2" : ""}>
-              <Field label={field.label} required={field.required} hint={field.hint}>
-                {field.type === "switch" ? (
-                  <div className="flex h-9 items-center">
-                    <Switch
-                      checked={Boolean(editing?.values[field.name])}
-                      onChange={(checked) =>
-                        setEditing((current) =>
-                          current ? { ...current, values: { ...current.values, [field.name]: checked } } : current,
-                        )
-                      }
-                      label={Boolean(editing?.values[field.name]) ? "启用" : "停用"}
+          {visibleFields.map((field, index) => {
+            const inputId = `${formId}-${fieldKey(field, index)}`;
+            const value = editing?.values[field.name];
+            const options = resolveFieldOptions(field, editing?.values ?? {}, editing?.mode ?? "create");
+            const current = String(value ?? "");
+            // 已保存但已停用 / 不在当前候选里的值必须留在下拉中，否则 Select 会静默丢值。
+            const staleOption =
+              current && !options.some((option) => option.value === current) ? current : null;
+            return (
+              <div key={fieldKey(field, index)} className={field.span === 2 || field.type === "textarea" ? "col-span-2" : ""}>
+                <Field
+                  label={field.label}
+                  htmlFor={field.type === "switch" ? undefined : inputId}
+                  required={field.required}
+                  hint={field.hint}
+                >
+                  {field.type === "switch" ? (
+                    <div className="flex h-9 items-center">
+                      <Switch
+                        checked={Boolean(value)}
+                        disabled={field.disabled}
+                        onChange={(checked) => setFieldValue(field.name, checked)}
+                        label={Boolean(value) ? "启用" : "停用"}
+                      />
+                    </div>
+                  ) : field.type === "select" ? (
+                    <Select
+                      id={inputId}
+                      value={current}
+                      onChange={(event) => setFieldValue(field.name, event.target.value)}
+                      required={field.required}
+                      disabled={field.disabled}
+                    >
+                      <option value="">请选择</option>
+                      {staleOption && (
+                        <option value={staleOption}>{staleOption}（当前值，已不在可选列表）</option>
+                      )}
+                      {options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : field.type === "textarea" ? (
+                    <Textarea
+                      id={inputId}
+                      value={current}
+                      placeholder={field.placeholder}
+                      disabled={field.disabled}
+                      onChange={(event) => setFieldValue(field.name, event.target.value)}
                     />
-                  </div>
-                ) : field.type === "select" ? (
-                  <Select
-                    value={String(editing?.values[field.name] ?? "")}
-                    onChange={(event) =>
-                      setEditing((current) =>
-                        current
-                          ? { ...current, values: { ...current.values, [field.name]: event.target.value } }
-                          : current,
-                      )
-                    }
-                    required={field.required}
-                  >
-                    <option value="">请选择</option>
-                    {field.options?.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                ) : field.type === "textarea" ? (
-                  <Textarea
-                    value={String(editing?.values[field.name] ?? "")}
-                    placeholder={field.placeholder}
-                    onChange={(event) =>
-                      setEditing((current) =>
-                        current
-                          ? { ...current, values: { ...current.values, [field.name]: event.target.value } }
-                          : current,
-                      )
-                    }
-                  />
-                ) : (
-                  <Input
-                    type={field.type === "password" ? "password" : field.type === "number" ? "number" : "text"}
-                    value={String(editing?.values[field.name] ?? "")}
-                    placeholder={field.placeholder}
-                    required={field.required}
-                    autoComplete={field.type === "password" ? "new-password" : "off"}
-                    onChange={(event) =>
-                      setEditing((current) =>
-                        current
-                          ? { ...current, values: { ...current.values, [field.name]: event.target.value } }
-                          : current,
-                      )
-                    }
-                  />
-                )}
-              </Field>
-            </div>
-          ))}
+                  ) : (
+                    <Input
+                      id={inputId}
+                      type={field.type === "password" ? "password" : field.type === "number" ? "number" : "text"}
+                      value={current}
+                      placeholder={field.placeholder}
+                      required={field.required}
+                      disabled={field.disabled}
+                      autoComplete={field.type === "password" ? "new-password" : "off"}
+                      onChange={(event) => setFieldValue(field.name, event.target.value)}
+                    />
+                  )}
+                </Field>
+              </div>
+            );
+          })}
           {formError && (
-            <div className="col-span-2 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-[12px] text-danger">
+            <div role="alert" className="col-span-2 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-[12px] text-danger">
               {formError}
             </div>
           )}

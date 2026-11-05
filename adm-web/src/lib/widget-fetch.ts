@@ -50,7 +50,6 @@ export interface WidgetFetchInput {
  * 卡片本身始终保留，不会因为某个服务不可用而整页空白。
  */
 export async function fetchWidget(input: WidgetFetchInput): Promise<AdmWidgetDataVo> {
-  const started = Date.now();
   const session = readSession();
   const url = `${serviceBase(input.service)}/${input.service}/widget-data/${encodeURIComponent(input.endpoint)}`;
 
@@ -108,8 +107,5 @@ export async function fetchWidget(input: WidgetFetchInput): Promise<AdmWidgetDat
     };
   } catch (error) {
     return fallback(error);
-  } finally {
-    // 保留开始时间，便于排查慢请求
-    void started;
   }
 }
