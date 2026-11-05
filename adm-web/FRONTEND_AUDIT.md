@@ -3,7 +3,7 @@
 范围：`/Users/zbz/workspace/rusthing/adm-rs/adm-web`。**未修改任何 Rust 代码或后端接口契约。**
 
 - 第一轮已提交：`e984468 fix(adm-web): 前端体检整改，修正权限边界、路由菜单与列表交互`。
-- 第二轮（本文件本次更新对应）为**未提交、未推送**的追加整改：把第一轮因「改动繁琐 / 超出范围」留在「可接受 / 未做」里、但其实合理的问题继续做完，并顺带修掉通读中新发现的缺陷。
+- 第二轮已提交并推送：`8c188f3 fix(adm-web): 第二轮前端体检整改，收敛会话、弹窗、侧栏与配置页交互`。本轮把第一轮因「改动繁琐 / 超出范围」留在「可接受 / 未做」里、但其实合理的问题继续做完，并顺带修掉通读中新发现的缺陷。
 
 ## 1. 第一轮已修（简述）
 
@@ -105,7 +105,7 @@
 
 ## 4. 验证
 
-本轮（未提交）验证结果：
+本轮验证结果：
 
 - `pnpm typecheck`：通过（`tsc --noEmit`，`strict` + `noUnusedLocals` / `noUnusedParameters`）。
 - `pnpm test`：**9 个文件 / 51 个用例全部通过**。新增 `crud/fields.test.ts`(6)、`layout/nav.test.ts`(6)、`lib/utils.test.ts`(5)、`lib/unsaved-guard.test.ts`(4)；原有 `perm / cells / filters / sort / sm3` 共 30 个用例未回归。
