@@ -9,6 +9,8 @@ import type { AdmWidgetDataVo } from "@/lib/types";
  * - `adm` 走 adm-web 既有的 API 前缀（开发期 `/api`，生产同源 `/adm`）
  * - 其它服务按 gatex 的 Service matcher 约定走 `/{service}-svr`
  *   （例如 `/jobx-svr/jobx/widget-data/stats.today`，网关会剥掉 `/jobx-svr`）
+ * - 逻辑服务键与真实服务名不一致的两项单独映射：`msg → msgrs-svr`、
+ *   `dtw → dtwrs-svr`，其余仍按 `${service}-svr` 兜底
  *
  * 可通过 `VITE_SERVICE_BASES` 覆盖任意服务的基地址，例如：
  * `VITE_SERVICE_BASES='{"jobx":"/jobx-svr","oss":"https://gateway.example/oss-svr"}'`
@@ -27,12 +29,18 @@ try {
   serviceOverrides = {};
 }
 
+/** 逻辑服务键 → 网关服务前缀；与后端实际服务名不一致的项在此映射 */
+const SERVICE_PREFIX: Record<string, string> = {
+  msg: "msgrs-svr",
+  dtw: "dtwrs-svr",
+};
+
 /** 逻辑服务键 → 请求基地址（只在前端寻址，不含任何后端注册表） */
 export function serviceBase(service: string): string {
   const override = serviceOverrides[service];
   if (override) return override.replace(/\/+$/, "");
   if (service === "adm") return API_BASE;
-  return `${GATEWAY_BASE}/${service}-svr`;
+  return `${GATEWAY_BASE}/${SERVICE_PREFIX[service] ?? `${service}-svr`}`;
 }
 
 export interface WidgetFetchInput {
