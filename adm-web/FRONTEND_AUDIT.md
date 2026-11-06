@@ -52,7 +52,7 @@
   - 新建/编辑 Modal `dismissable={false}`，误点遮罩不再丢失表单。
 - 页面落地：
   - `MenusPage`：父节点按当前 `appId` 动态过滤且 `resetOn: ["appId"]`；`component` 改 `PAGE_COMPONENTS` 下拉、`icon` 改 `ICON_NAMES` 白名单下拉；`linkType` 校验内链 `/` 开头、外链 / iframe 需完整 URL。
-  - `RoleGroupsPage` / `PermissionGroupsPage`：父分组按当前 `realmId` 动态过滤且 `resetOn: ["realmId"]`，避免跨领域 treeCode 被服务端拒绝。
+  - `RoleGroupsPage` / `PermissionGroupsPage`：父分组按当前 `realmId` 动态过滤且 `resetOn: ["realmId"]`，避免跨领域 treeCode 被服务端拒绝。（**第四轮已撤销**：分组树与领域脱钩，父分组列出全局全部节点，不再有 resetOn。）
   - `UsersPage`：登录名 / 手机号 / 邮箱 `validate`；create/edit 里重名的 `loginPswd` 用 `key` 区分；`groupName.get(...) ?? shortId(...)`。
   - `RolesPage`：授权保存成功后 `await refreshAuthz()`，当前账号自己的侧栏与页面门禁立即刷新。
 
@@ -116,10 +116,10 @@
 - `initialScopeValue()` 恒返回 `null`：**「只有一个应用」的含义是不分组展示，不是隐式筛选**。分组栏隐藏时用户没有任何筛选入口，一旦默认收窄到唯一分组，`appId` 为空或指向已删除分组的历史数据会凭空消失，列表还会随选项加载完成无声跳变。
 - `effectiveScopeValue()`：分组栏不可见时恒为「全部」；选项被删除后回落「全部」，不让列表停在永远查不到数据的范围上。
 - `scopeCreateValue()`：新建时优先当前范围、否则第一个分组；与 `initialScopeValue` 解耦。
-- `treeGroupQuery()`：选中树形父分组时展开为「本组 + 同领域所有子孙」的 `il`（is_in）条件，参数形如 `group_id-op=il` + `group_id-0..n`，与 `robotech` 的 `SearchParams::from_pairs()` 契约一致。要求 `extra % 3 === 0`，`0010` 这类脏编码不会被误判为 `001` 的子孙；跨 `realmId` 同编码分组一律排除。
+- `treeGroupQuery()`：选中树形父分组时展开为「本组 + 全局树中所有子孙」的 `il`（is_in）条件，参数形如 `group_id-op=il` + `group_id-0..n`，与 `robotech` 的 `SearchParams::from_pairs()` 契约一致。要求 `extra % 3 === 0`，`0010` 这类脏编码不会被误判为 `001` 的子孙。（第四轮起不再按 `realmId` 排除：`treeCode` 已全局唯一。）
 - `CrudPage`：`scope` 支持 `queryFor`、`scopeKey` 进 `queryKey`、切换分组时丢弃未提交排序预览、空状态识别当前分组并提供「查看全部分组」、`ScopePanel` 高亮用真实生效值 `effectiveScope`。
 
-落地页面：`MenusPage`（按应用）、`PermissionsPage` / `RolesPage`（按分组树，含子分组）、`RoleGroupsPage` / `PermissionGroupsPage`（按领域）。原先这些页面的 `app_id` / `group_id` / `realm_id` 只是普通筛选项，现在统一成左侧分组栏。
+落地页面：`MenusPage`（按应用）、`PermissionsPage` / `RolesPage`（按分组树，含子分组）。（第四轮起 `RoleGroupsPage` / `PermissionGroupsPage` 不再有领域分组栏，`AppsPage` 也不再有领域筛选下拉。）原先这些页面的 `app_id` / `group_id` 只是普通筛选项，现在统一成左侧分组栏。
 
 #### 树形页面行内「添加子级」
 
@@ -132,16 +132,16 @@ setScope(value | null)       // 切换左侧分组
 canCreate                    // 当前账号是否可新建
 ```
 
-`MenusPage` / `RoleGroupsPage` / `PermissionGroupsPage` 每行加「添加子级」：先 `setScope(父所属应用/领域)`，再 `openCreate({ appId|realmId, parentCode })`，弹窗里写明「将在「X」· 001001 下创建子节点」。
+`MenusPage` / `RoleGroupsPage` / `PermissionGroupsPage` 每行加「添加子级」：先 `setScope(父所属应用/领域)`，再 `openCreate({ appId|realmId, parentCode })`，弹窗里写明「将在「X」· 001001 下创建子节点」。（第四轮起分组页只预填 `parentCode`，不再调用 `setScope`。）
 
 #### 授权清单按分组批量勾选
 
-`src/components/crud/tree-utils.ts`（新增，纯逻辑）：`buildTree(items, scopeOf?)` 按 `treeCode` 前缀还原任意层级树；`scopeOf` 用来隔离作用域（菜单按 `appId`、分组按 `realmId`）；clone 入参，绝不往 React Query 缓存对象上挂 `children`；`depth` 按真实可见父链计算。新增 `flattenTreeIds()`。
+`src/components/crud/tree-utils.ts`（新增，纯逻辑）：`buildTree(items, scopeOf?)` 按 `treeCode` 前缀还原任意层级树；`scopeOf` 用来隔离作用域（目前只有菜单按 `appId`；第四轮起分组树全局唯一，无需隔离）；clone 入参，绝不往 React Query 缓存对象上挂 `children`；`depth` 按真实可见父链计算。新增 `flattenTreeIds()`。
 
 `src/components/crud/tree.tsx`：
 
 - `PermCheckList` / `MenuCheckList` 每组（每个应用）显示「已选/总数」与「全选本组 / 清空本组」；菜单按应用分段、段内独立建树。
-- `useGroupedOptions()`：分组记录缺失时进「未分组（分组已删除或不在当前领域）」兜底桶，绝不静默丢弃；分组顺序按「领域顺序 → `treeCode`」排列；**多个领域时标题前置领域名**，跨领域同名分组不再出现两个一模一样的标题。
+- `useGroupedOptions()`：分组记录缺失时进「未分组（分组已删除）」兜底桶，绝不静默丢弃；分组顺序按 `treeCode` 排列。（第四轮：全局一棵分组树，`treeCode` 唯一，标题不再加领域前缀，排序不再按领域分段。）
 - 删除从未被引用的 `useRoleTree` / `RoleTable` / `useMenuTree`。
 
 `src/pages/UsersPage.tsx`：用户角色抽屉同样补「已选/总数 + 全选本组 / 清空本组」，分组顺序改为跟随分组树而非角色出现顺序。
@@ -150,7 +150,21 @@ canCreate                    // 当前账号是否可新建
 
 `src/lib/queries.ts`（新增）：`useAppOptions / useRealmOptions / useMenuOptions / usePermOptions / useRoleOptions / useRoleGroupOptions / usePermGroupOptions`。
 
-统一约定 `queryKey = [<crud 前缀>, "options"]`。原来同一份数据在不同调用点有 `app/options`、`app/nav-groups`、`app/check-list`、`roleGroup/tree`、`roleGroup/options`、`roleGroup/all-for-user` 等别名 key，既重复请求，又因为 `CrudPage` 只失效 `[prefix]`（分页列表）而带不走选项缓存，下拉框会长期停在旧数据上。现在前缀匹配会一并失效。
+统一约定 `queryKey = [<crud 前缀>, "options"]`。原来同一份数据在不同调用点有 `app/options`、`app/nav-groups`、`app/check-list`、`roleGroup/tree`、`roleGroup/options`、`roleGroup/all-for-user` 等别名 key，既重复请求，又因为 `CrudPage` 只失效 `[prefix]`（分页列表）而带不走选项缓存，下拉框会长期停在旧数据上。现在前缀匹配会一并失效。`useRealmOptions` 第四轮起只服务用户/组织数据域与角色数据范围，不再被资产页面调用。
+
+### 2.8 第四轮：应用 / 角色 / 权限与领域脱钩
+
+**概念定死**：领域（`adm_realm`）只是**用户 / 组织的数据域划分单位**——决定用户/组织归属（`adm_realm_org` / `adm_realm_user`）与角色的数据可见范围（`adm_role_scope`）；应用、菜单、角色、权限及其分组是**全局功能与授权资产**，与领域无关。数据范围（`adm_role_scope`）本轮不改结构、不改逻辑，原样保留。
+
+改动从 PowerDesigner 模型起，贯穿 SQL、Rust 后端、前端：
+
+- 删除 `adm_app` / `adm_role_group` / `adm_perm_group` 的 `realm_id` 列、外键、FK 索引、组合唯一键；分组唯一键改为 `AK_TREE_CODE_* unique (tree_code)`，`tree_code` 全局唯一。
+- 后端：`mo` 删 `realm_id` 与 `BelongsTo` / `HasMany`；`dto` / `vo` 删字段；DAO 唯一键改 `("tree_code", "树编码")`；`#[sortable]` 去掉 `group` / `scope`；`SORT_APP` / `SORT_ROLE_GROUP` / `SORT_PERM_GROUP` 去掉 `.with_group("realm_id")` / `.with_scope("realm_id")`，改为全局一组 / 全局一棵树（与 `SORT_ORG` 同构）。
+- 前端：`AppsPage` 删领域列 / 下拉 / 筛选 / `sortable.scope`；`RoleGroupsPage` / `PermissionGroupsPage` 删领域列 / 字段 / 左侧领域分组栏 / `sortable.scope`，父分组列出全局节点，行内「添加子级」只预填 `parentCode`；`tree.tsx` 的 `useGroupedOptions()` 不再加领域前缀与按领域排序；`scope.ts::treeGroupQuery()` 改为全局 `treeCode` 前缀判定。
+- 类型：`AdmAppVo` / `AdmRoleGroupVo` / `AdmPermGroupVo` 删 `realmId`；`AdmRoleScopeVo.realmId` **保留**（数据范围）。
+- 概念文案：`RealmsPage`、`adm_realm` 的 DTO / VO / DAO 注释、建表 SQL 与 PD 模型注释统一改成「用户/组织数据域划分，与全局配置无关」。
+- 保留第三轮成果：按应用/分组管理树形数据、行内添加子级、侧栏空目录剪枝、选项查询统一。
+- 验证：`cargo check --workspace --all-targets --offline`、`pnpm typecheck`、`pnpm test`（11 文件 / 79 用例）、`pnpm build` 全部通过；未做浏览器 E2E 与真实数据库迁移实测（初始化脚本按「不考虑旧数据」直接改，未写旧库升级迁移）。
 
 ## 3. 问题清单与状态
 
@@ -195,13 +209,15 @@ canCreate                    // 当前账号是否可新建
 - `pnpm test`：**11 个文件 / 79 个用例全部通过**。第三轮新增 `crud/scope.test.ts`(14)、`crud/tree-utils.test.ts`(7)，`layout/nav.test.ts` 由 6 个扩到 13 个（新增 `buildNavSections` / `pruneNav` / `sectionNodes` 覆盖）；原有 51 个用例未回归。
 - `pnpm build`：通过。`dist/assets/index-Cul0RQaP.js` 464.85 kB（gzip 143.14 kB）、`index-CWZvVy2o.css` 33.40 kB（gzip 7.20 kB）；`dist/` 已被 `.gitignore` 排除。
 
-第一轮另曾做过真实链路实测（`adm-svr` 9007 + Vite 5181，登录、用户搜索、首页 6 张 widget、配置页 6 条配置均正常）；**第二、三轮只做了静态验证**，未重启后端做浏览器实测。
+第四轮（领域脱钩）复验：`cargo check --workspace --all-targets --offline` 通过、`pnpm typecheck` 通过、`pnpm test` 11 文件 / 79 用例全通过、`pnpm build` 通过（`index-D7V3ZU9H.js` 461.62 kB / gzip 142.70 kB，`index-CWZvVy2o.css` 33.40 kB）。`scope.test.ts` / `fields.test.ts` / `tree-utils.test.ts` 的领域样例已改为全局树与 `appId` 样例。
+
+第一轮另曾做过真实链路实测（`adm-svr` 9007 + Vite 5181，登录、用户搜索、首页 6 张 widget、配置页 6 条配置均正常）；**第二、三、四轮只做了静态验证**，未重启后端做浏览器实测，也未在真实数据库上跑迁移。
 
 ## 5. 已知边界 / 未做
 
 - `useUnsavedGuard` 覆盖刷新/关闭标签页与站内 `<Link>` 点击；浏览器前进/后退（`popstate`）无法在 `BrowserRouter` 下可靠取消，未伪装支持。若后续需要完整拦截，应迁移到 `createBrowserRouter + RouterProvider` 再用 `useBlocker`。
 - 树形页面只在**新建**时能选父节点（`parentCode` 是 `createOnly`），不支持把已有节点移动到别的父节点下；因此也不存在「把父节点设成自己的子孙」形成环的路径。若后续要做移动，必须同时排除自身与子孙。
-- `AppsPage` 的领域仍是普通筛选下拉而非左侧分组栏：`realmId` 可留空表示「跨领域通用应用」，用下拉能同时表达「全部 / 某领域」，比分组栏更贴合语义。
+- （第四轮已消除）`AppsPage` 不再有领域下拉 / 领域列 / `realm_id` 筛选；应用是全局配置，与领域无关。
 - 未做真实浏览器 E2E：拖拽排序（鼠标/触屏）、多级侧栏、多应用分段、401 自动登出、会话切换、子路径部署与 `HashRouter` 模式，均只有代码层与单测覆盖。
 - 未做移动端真机视觉走查。
 - 未做「切换第二个账号后 dashboard 内容变化」「仅 role-group 权限」等账号级 E2E（需要额外账号与授权数据）。

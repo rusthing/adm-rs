@@ -40,16 +40,16 @@ update adm_perm_group
        update_ms = (extract(epoch from now()) * 1000)::int8
  where id = 1;
 
-insert into adm_perm_group (id, realm_id, tree_code, name, remark, enabled,
+insert into adm_perm_group (id, tree_code, name, remark, enabled,
                            creater_id, create_ms, updater_id, update_ms)
 values
-  (1001, 1, '001001', '用户与身份管理', '账号 / 人员 / 口令', true,
+  (1001, '001001', '用户与身份管理', '账号 / 人员 / 口令', true,
    0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
-  (1002, 1, '001002', '角色与授权管理', '角色 / 菜单 / 权限 / 分组', true,
+  (1002, '001002', '角色与授权管理', '角色 / 菜单 / 权限 / 分组', true,
    0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
-  (1003, 1, '001003', '系统配置', '领域 / 应用 / 组织 / 人员编码', true,
+  (1003, '001003', '系统配置', '领域 / 应用 / 组织 / 人员编码', true,
    0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
-  (1004, 1, '001004', '日志审计', '登录 / 操作日志只读查询', true,
+  (1004, '001004', '日志审计', '登录 / 操作日志只读查询', true,
    0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict do nothing;
 
@@ -124,9 +124,9 @@ update adm_role_group
        update_ms = (extract(epoch from now()) * 1000)::int8
  where id = 1;
 
-insert into adm_role_group (id, realm_id, tree_code, name, remark, enabled,
+insert into adm_role_group (id, tree_code, name, remark, enabled,
                            creater_id, create_ms, updater_id, update_ms)
-values (2, 1, '002', '审计', '审计员角色，只读日志', true,
+values (2, '002', '审计', '审计员角色，只读日志', true,
         0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict do nothing;
 

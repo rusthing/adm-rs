@@ -16,10 +16,10 @@ use robotech::dao::{begin_transaction, commit_transaction};
 use robotech::db::get_db_conn;
 use robotech::svc::SvcError;
 
-/// 领域：全局一组
+/// 领域：全局一组（用户/组织的数据域划分单位）
 pub const SORT_REALM: FlatSort = FlatSort::new("adm_realm");
-/// 应用：按领域隔离
-pub const SORT_APP: FlatSort = FlatSort::new("adm_app").with_group("realm_id");
+/// 应用：全局配置，不按领域隔离
+pub const SORT_APP: FlatSort = FlatSort::new("adm_app");
 /// 角色：按角色分组隔离
 pub const SORT_ROLE: FlatSort = FlatSort::new("adm_role").with_group("group_id");
 /// 权限：按权限分组隔离
@@ -33,10 +33,10 @@ pub const SORT_PERSON_CODE_TYPE: FlatSort = FlatSort::new("adm_person_code_type"
 
 /// 菜单：按应用隔离的树
 pub const SORT_MENU: TreeSort = TreeSort::new("adm_menu").with_scope("app_id");
-/// 角色分组：按领域隔离的树
-pub const SORT_ROLE_GROUP: TreeSort = TreeSort::new("adm_role_group").with_scope("realm_id");
-/// 权限分组：按领域隔离的树
-pub const SORT_PERM_GROUP: TreeSort = TreeSort::new("adm_perm_group").with_scope("realm_id");
+/// 角色分组：全局配置，全局一棵树（tree_code 全局唯一）
+pub const SORT_ROLE_GROUP: TreeSort = TreeSort::new("adm_role_group");
+/// 权限分组：全局配置，全局一棵树（tree_code 全局唯一）
+pub const SORT_PERM_GROUP: TreeSort = TreeSort::new("adm_perm_group");
 /// 组织：全局一棵树
 pub const SORT_ORG: TreeSort = TreeSort::new("adm_org");
 

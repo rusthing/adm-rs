@@ -21,15 +21,9 @@ pub struct Model {
     pub updater_id: i64,
     pub update_ms: i64,
     #[sea_orm(has_many)]
-    pub adm_apps: HasMany<super::adm_app::Entity>,
-    #[sea_orm(has_many)]
-    pub adm_perm_groups: HasMany<super::adm_perm_group::Entity>,
-    #[sea_orm(has_many)]
     pub adm_realm_orgs: HasMany<super::adm_realm_org::Entity>,
     #[sea_orm(has_many)]
     pub adm_realm_users: HasMany<super::adm_realm_user::Entity>,
-    #[sea_orm(has_many)]
-    pub adm_role_groups: HasMany<super::adm_role_group::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

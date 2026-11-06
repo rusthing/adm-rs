@@ -3,7 +3,7 @@ import type { AdmMenuVo, AdmPermGroupVo, AdmPermVo, AdmRoleGroupVo } from "@/lib
 import { shortId } from "@/lib/utils";
 import { Badge, Checkbox } from "@/components/ui/primitives";
 import { FolderTree } from "lucide-react";
-import { useAppOptions, usePermGroupOptions, useRealmOptions, useRoleGroupOptions } from "@/lib/queries";
+import { useAppOptions, usePermGroupOptions, useRoleGroupOptions } from "@/lib/queries";
 import { buildTree, flattenTreeIds } from "./tree-utils";
 import type { TreeItem, TreeNode } from "./tree-utils";
 
@@ -90,16 +90,17 @@ function TreeRow<T extends TreeNode>({
 export interface GroupedOptionRows<T> {
   key: string;
   label: string;
-  /** 分组树编码，用于标题后缀展示与排序。 */
+  /** 分组树编码，用于标题后缀展示与排序（脱钩领域后全局唯一）。 */
   treeCode: string;
-  /** 所属领域：分组树按 realm 隔离，跨领域同名分组必须能区分。 */
-  realmId: string;
   rows: T[];
 }
 
 /**
- * 按 groupId 分桶。分组记录缺失（被删了或跨领域没加载）时单独放进「未分组」，
+ * 按 groupId 分桶。分组记录缺失（被删了或没加载）时单独放进「未分组」，
  * 绝不能静默丢弃这些条目——否则授权抽屉会凭空少掉一批权限 / 角色。
+ *
+ * 权限/角色分组已与领域脱钩：全局只有一棵分组树，标题不用加领域前缀，
+ * 直接按 treeCode（全局唯一）排序即可。
  */
 export function useGroupedOptions<T extends { groupId: string }>({
   groupApi,
@@ -112,15 +113,10 @@ export function useGroupedOptions<T extends { groupId: string }>({
   const permGroupQuery = usePermGroupOptions(groupApi === "permGroup");
   const roleGroupQuery = useRoleGroupOptions(groupApi === "roleGroup");
   const query = groupApi === "permGroup" ? permGroupQuery : roleGroupQuery;
-  // 分组树按领域隔离：跨领域会出现同名分组，只显示 name 会让两段标题一模一样。
-  const realmsQuery = useRealmOptions();
   const groups = query.data ?? [];
-  const realms = realmsQuery.data ?? [];
 
   const grouped = useMemo<GroupedOptionRows<T>[]>(() => {
     const byId = new Map<string, AdmPermGroupVo | AdmRoleGroupVo>(groups.map((group) => [group.id, group]));
-    const realmName = new Map(realms.map((realm) => [realm.id, realm.name]));
-    const realmRank = new Map(realms.map((realm, index) => [realm.id, index]));
     const buckets = new Map<string, GroupedOptionRows<T>>();
     for (const item of items) {
       const group = byId.get(item.groupId);
@@ -129,33 +125,18 @@ export function useGroupedOptions<T extends { groupId: string }>({
         buckets.get(key) ??
         ({
           key,
-          label: group?.name ?? "未分组（分组已删除或不在当前领域）",
+          label: group?.name ?? "未分组（分组已删除）",
           treeCode: group?.treeCode ?? "\uffff",
-          realmId: group?.realmId ?? "",
           rows: [],
         } satisfies GroupedOptionRows<T>);
       entry.rows.push(item);
       buckets.set(key, entry);
     }
 
-    const entries = [...buckets.values()];
-    // 只在确实出现多个领域时才加前缀，单领域下保持标题简洁。
-    const realmCount = new Set(entries.map((entry) => entry.realmId).filter(Boolean)).size;
-    const labelOf = (entry: GroupedOptionRows<T>) => {
-      if (!entry.realmId || realmCount <= 1) return entry.label;
-      const realm = realmName.get(entry.realmId) ?? `领域 ${shortId(entry.realmId)}`;
-      return `${realm} · ${entry.label}`;
-    };
-    return entries
-      .sort(
-        (a, b) =>
-          (realmRank.get(a.realmId) ?? Number.MAX_SAFE_INTEGER) -
-            (realmRank.get(b.realmId) ?? Number.MAX_SAFE_INTEGER) ||
-          a.treeCode.localeCompare(b.treeCode) ||
-          a.key.localeCompare(b.key),
-      )
-      .map((entry) => ({ ...entry, label: labelOf(entry) }));
-  }, [items, groups, realms]);
+    return [...buckets.values()].sort(
+      (a, b) => a.treeCode.localeCompare(b.treeCode) || a.key.localeCompare(b.key),
+    );
+  }, [items, groups]);
 
   return { groups, grouped, loading: query.isLoading };
 }

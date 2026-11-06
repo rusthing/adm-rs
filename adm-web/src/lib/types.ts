@@ -100,7 +100,6 @@ export interface AdmRoleVo extends AuditFields {
 
 export interface AdmRoleGroupVo extends AuditFields {
   id: string;
-  realmId: string;
   treeCode: string;
   name: string;
   remark?: string;
@@ -109,7 +108,6 @@ export interface AdmRoleGroupVo extends AuditFields {
 
 export interface AdmPermGroupVo extends AuditFields {
   id: string;
-  realmId: string;
   treeCode: string;
   name: string;
   remark?: string;
@@ -154,7 +152,6 @@ export interface AdmRealmVo extends AuditFields {
 
 export interface AdmAppVo extends AuditFields {
   id: string;
-  realmId?: string;
   code: string;
   name: string;
   sortOrder: number;

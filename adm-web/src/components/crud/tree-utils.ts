@@ -18,8 +18,8 @@ export type TreeItem<T> = T & {
 };
 
 /**
- * `scopeOf` 是关键：菜单 treeCode 只在应用内唯一、分组 treeCode 只在领域内唯一。
- * 不隔离的话两个作用域的同编码节点会互相认父，勾一个应用的节点会串到另一个应用。
+ * `scopeOf` 是关键：菜单 treeCode 只在应用内唯一（分组树脱钩领域后全局唯一，无需隔离）。
+ * 不隔离的话同编码节点会互相认父，勾一个应用的节点会串到另一个应用。
  * 函数会 clone 入参，绝不往 React Query 缓存对象上挂 `children`。
  */
 export function buildTree<T extends TreeNode>(

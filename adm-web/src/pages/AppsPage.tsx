@@ -1,44 +1,24 @@
-import { useMemo } from "react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import type { AdmAppVo, FormValues } from "@/lib/types";
-import { useRealmOptions } from "@/lib/queries";
-import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | undefined {
   const text = typeof value === "string" ? value.trim() : "";
   return text ? text : undefined;
 }
 
+/**
+ * 应用是全局功能配置，与领域无关：
+ * 领域只用于划分用户/组织的数据域，不参与应用、菜单、角色、权限的归属与隔离。
+ */
 export function AppsPage() {
-  const realmsQuery = useRealmOptions();
-
-  const realmName = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const realm of realmsQuery.data ?? []) map.set(realm.id, realm.name);
-    return map;
-  }, [realmsQuery.data]);
-
   const columns: CrudColumn<AdmAppVo>[] = [
     { key: "name", label: "应用", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
-    {
-      key: "realmId",
-      label: "领域",
-      render: (row) =>
-        row.realmId ? realmName.get(row.realmId) ?? shortId(row.realmId) : "--",
-    },
     { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
   ];
 
   const fields: CrudField[] = [
-    {
-      name: "realmId",
-      label: "归属领域",
-      type: "select",
-      options: (realmsQuery.data ?? []).map((realm) => ({ value: realm.id, label: `${realm.name}（${realm.code}）` })),
-      hint: "可留空表示跨领域通用应用。",
-    },
     { name: "code", label: "应用编码", required: true, placeholder: "全局唯一，如 adm-console" },
     { name: "name", label: "名称", required: true, placeholder: "全局唯一" },
     { name: "enabled", label: "启用", type: "switch", defaultValue: true },
@@ -46,7 +26,6 @@ export function AppsPage() {
   ];
 
   const toForm = (row: AdmAppVo): FormValues => ({
-    realmId: row.realmId ?? "",
     code: row.code,
     name: row.name,
     enabled: row.enabled,
@@ -54,7 +33,6 @@ export function AppsPage() {
   });
 
   const toPayload = (values: FormValues) => ({
-    realmId: optionalText(values.realmId),
     code: String(values.code ?? "").trim(),
     name: String(values.name ?? "").trim(),
     enabled: Boolean(values.enabled),
@@ -64,23 +42,15 @@ export function AppsPage() {
   return (
     <CrudPage<AdmAppVo>
       title="应用管理"
-      subtitle="菜单树归属于应用：同一个领域可以有后台、前台、移动端等多个应用，每个应用一棵菜单树。"
+      subtitle="菜单树归属于应用：应用是全局配置，后台、前台、移动端各一棵菜单树，与领域无关。"
       prefix="/adm/app"
       columns={columns}
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="sort_order:asc"
-      sortable={{ kind: "number", orderValue: (row) => row.sortOrder, scope: (row) => row.realmId ?? "__none__" }}
+      sortable={{ kind: "number", orderValue: (row) => row.sortOrder }}
       searchPlaceholder="搜索应用名 / 编码"
-      filters={[
-        {
-          type: "select",
-          name: "realm_id",
-          label: "领域",
-          options: (realmsQuery.data ?? []).map((realm) => ({ value: realm.id, label: realm.name })),
-        },
-        { type: "boolean", name: "enabled", label: "启用" },
-      ]}
+      filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
       emptyDescription="后端种子没有应用行。先建应用，再到「菜单管理」建菜单树。"
       toForm={toForm}
       toPayload={toPayload}

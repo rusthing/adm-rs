@@ -5,7 +5,7 @@ import { scopeIndent } from "./scope";
 import type { CrudScopeDef } from "./scope";
 
 /**
- * 列表页左侧的分组栏（应用 / 领域 / 权限分组）。
+ * 列表页左侧的分组栏（应用 / 权限分组）。
  *
  * 选中项通过 `CrudPage` 的 `scope.param` 变成后端筛选条件，同时预填新建表单的
  * `scope.field`，这样「在某个分组下新增」不再需要用户再选一次。

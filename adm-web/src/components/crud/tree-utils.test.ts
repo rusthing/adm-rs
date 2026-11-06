@@ -7,7 +7,6 @@ interface Row {
   treeCode: string;
   enabled: boolean;
   appId?: string;
-  realmId?: string;
 }
 
 function row(overrides: Partial<Row> & Pick<Row, "id" | "treeCode">): Row {
@@ -37,7 +36,7 @@ describe("buildTree", () => {
     expect(tree[0].children?.[0].depth).toBe(1);
   });
 
-  it("scopeOf 隔离作用域：跨应用 / 跨领域的同编码节点不会互相认父", () => {
+  it("scopeOf 隔离作用域：跨应用的同编码节点不会互相认父", () => {
     const menus = [
       row({ id: "a1", treeCode: "001", appId: "app-a" }),
       row({ id: "a2", treeCode: "001001", appId: "app-a" }),

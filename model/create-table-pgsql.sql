@@ -9,7 +9,6 @@
 /*==============================================================*/
 create table adm_app (
    id                   INT8                 not null,
-   realm_id             INT8                 null,
    code                 VARCHAR(50)          not null,
    name                 VARCHAR(50)          not null,
    sort_order           INT4                 not null,
@@ -26,15 +25,11 @@ create table adm_app (
 
 comment on table adm_app is
 '应用
-菜单树的归属单位，一个领域下可以有多个应用（后台、前台、移动端）';
+菜单树的归属单位，全局配置：后台、前台、移动端各一棵菜单树，与领域无关';
 
 comment on column adm_app.id is
 '主键
 代理键，由框架生成（雪花 ID），业务层不需要关心取值';
-
-comment on column adm_app.realm_id is
-'归属领域 ID
-关联 realm；为空表示跨领域通用应用';
 
 comment on column adm_app.code is
 '应用编码
@@ -49,7 +44,7 @@ comment on column adm_app.name is
 
 comment on column adm_app.sort_order is
 '排序值
-同一领域内排序，越小越靠前
+全局排序，越小越靠前
 @range 0..=9999';
 
 comment on column adm_app.remark is
@@ -84,13 +79,6 @@ comment on column adm_app.update_ms is
 /*==============================================================*/
 create unique index adm_app_PK on adm_app (
 id
-);
-
-/*==============================================================*/
-/* Index: Relationship_22_FK                                    */
-/*==============================================================*/
-create  index Relationship_22_FK on adm_app (
-realm_id
 );
 
 /*==============================================================*/
@@ -1040,7 +1028,6 @@ op_type_code
 /*==============================================================*/
 create table adm_perm_group (
    id                   INT8                 not null,
-   realm_id             INT8                 not null,
    tree_code            VARCHAR(30)          not null,
    name                 VARCHAR(50)          not null,
    remark               VARCHAR(50)          null,
@@ -1050,20 +1037,16 @@ create table adm_perm_group (
    updater_id           INT8                 not null,
    update_ms            INT8                 not null,
    constraint PK_ADM_PERM_GROUP primary key (id),
-   constraint AK_REALM_ID_AND_TREE_CODE_ADM_PERM_GROUP unique (realm_id, tree_code)
+   constraint AK_TREE_CODE_ADM_PERM_GROUP unique (tree_code)
 );
 
 comment on table adm_perm_group is
 '权限分组
-按领域隔离的两级结构（分组 → 权限），树形由 tree_code 表达';
+全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一';
 
 comment on column adm_perm_group.id is
 '主键
 代理键，由框架生成（雪花 ID），业务层不需要关心取值';
-
-comment on column adm_perm_group.realm_id is
-'领域 ID
-关联 realm；分组的 (realm_id, tree_code) 唯一，权限树按领域隔离';
 
 comment on column adm_perm_group.tree_code is
 '树编码
@@ -1111,13 +1094,6 @@ comment on column adm_perm_group.update_ms is
 /*==============================================================*/
 create unique index adm_perm_group_PK on adm_perm_group (
 id
-);
-
-/*==============================================================*/
-/* Index: Relationship_19_FK                                    */
-/*==============================================================*/
-create  index Relationship_19_FK on adm_perm_group (
-realm_id
 );
 
 /*==============================================================*/
@@ -1330,8 +1306,8 @@ create table adm_realm (
 
 comment on table adm_realm is
 '领域
-权限与数据隔离的顶层单位：用户、组织、角色分组、权限分组都按领域隔离
-一个组织/用户可以归属多个领域，关联见 realm_org / realm_user';
+用户与组织的数据域划分单位：只用于界定用户/组织归属与角色的数据可见范围，与应用、菜单、角色、权限等全局配置无关
+一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的数据范围见 adm_role_scope';
 
 comment on column adm_realm.id is
 '主键
@@ -1339,7 +1315,7 @@ comment on column adm_realm.id is
 
 comment on column adm_realm.code is
 '编码
-全局唯一（AK），创建后不改：数据隔离与迁移脚本都按它定位领域
+全局唯一（AK），创建后不改：数据域与迁移脚本都按它定位领域
 @len 1..=50
 @check is_code';
 
@@ -1613,7 +1589,6 @@ group_id
 /*==============================================================*/
 create table adm_role_group (
    id                   INT8                 not null,
-   realm_id             INT8                 not null,
    tree_code            VARCHAR(30)          not null,
    name                 VARCHAR(50)          not null,
    remark               VARCHAR(50)          null,
@@ -1623,20 +1598,16 @@ create table adm_role_group (
    updater_id           INT8                 not null,
    update_ms            INT8                 not null,
    constraint PK_ADM_ROLE_GROUP primary key (id),
-   constraint AK_REALM_ID_AND_TREE_CODE_ADM_ROLE_GROUP unique (realm_id, tree_code)
+   constraint AK_TREE_CODE_ADM_ROLE_GROUP unique (tree_code)
 );
 
 comment on table adm_role_group is
 '角色分组
-按领域隔离的两级结构（分组 → 角色），树形由 tree_code 表达';
+全局两级结构（分组 → 角色），树形由 tree_code 表达，tree_code 全局唯一';
 
 comment on column adm_role_group.id is
 '主键
 代理键，由框架生成（雪花 ID），业务层不需要关心取值';
-
-comment on column adm_role_group.realm_id is
-'领域 ID
-关联 realm；分组的 (realm_id, tree_code) 唯一，角色树按领域隔离';
 
 comment on column adm_role_group.tree_code is
 '树编码
@@ -1684,13 +1655,6 @@ comment on column adm_role_group.update_ms is
 /*==============================================================*/
 create unique index adm_role_group_PK on adm_role_group (
 id
-);
-
-/*==============================================================*/
-/* Index: Relationship_15_FK                                    */
-/*==============================================================*/
-create  index Relationship_15_FK on adm_role_group (
-realm_id
 );
 
 /*==============================================================*/
@@ -2135,11 +2099,6 @@ create  index Relationship_13_FK on adm_user (
 person_id
 );
 
-alter table adm_app
-   add constraint fk_realm_id__from__adm_realm foreign key (realm_id)
-      references adm_realm (id)
-      on delete restrict on update restrict;
-
 alter table adm_lock_log
    add constraint fk_user_id__from__adm_user foreign key (user_id)
       references adm_user (id)
@@ -2200,11 +2159,6 @@ alter table adm_perm
       references adm_op_type (code)
       on delete restrict on update restrict;
 
-alter table adm_perm_group
-   add constraint fk_realm_id__from__adm_realm foreign key (realm_id)
-      references adm_realm (id)
-      on delete restrict on update restrict;
-
 alter table adm_person
    add constraint fk_code_type_id__from__adm_person_code_type foreign key (code_type_id)
       references adm_person_code_type (id)
@@ -2233,11 +2187,6 @@ alter table adm_realm_user
 alter table adm_role
    add constraint fk_group_id__from__adm_role_group foreign key (group_id)
       references adm_role_group (id)
-      on delete restrict on update restrict;
-
-alter table adm_role_group
-   add constraint fk_realm_id__from__adm_realm foreign key (realm_id)
-      references adm_realm (id)
       on delete restrict on update restrict;
 
 alter table adm_role_menu

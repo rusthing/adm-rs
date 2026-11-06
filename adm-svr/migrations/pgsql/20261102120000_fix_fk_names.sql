@@ -17,7 +17,6 @@ declare
 begin
     for r in
         select * from (values
-            ('adm_app',        'fk_realm_id__from__adm_realm',         'adm_app_realm_id_adm_realm',                 'realm_id',       'adm_realm',           'id',   'restrict'),
             ('adm_lock_log',   'fk_user_id__from__adm_user',           'adm_lock_log_user_id_adm_user',               'user_id',        'adm_user',            'id',   'cascade'),
             ('adm_login_log',  'fk_user_id__from__adm_user',           'adm_login_log_user_id_adm_user',              'user_id',        'adm_user',            'id',   'cascade'),
             ('adm_menu',       'fk_app_id__from__adm_app',             'adm_menu_app_id_adm_app',                     'app_id',         'adm_app',             'id',   'restrict'),
@@ -30,14 +29,12 @@ begin
             ('adm_org_user',   'fk_user_id__from__adm_user',           'adm_org_user_user_id_adm_user',               'user_id',        'adm_user',            'id',   'restrict'),
             ('adm_perm',       'fk_group_id__from__adm_perm_group',    'adm_perm_group_id_adm_perm_group',            'group_id',       'adm_perm_group',      'id',   'restrict'),
             ('adm_perm',       'fk_op_type_code__from__adm_op_type',   'adm_perm_op_type_code_adm_op_type',           'op_type_code',   'adm_op_type',         'code', 'restrict'),
-            ('adm_perm_group', 'fk_realm_id__from__adm_realm',         'adm_perm_group_realm_id_adm_realm',           'realm_id',       'adm_realm',           'id',   'restrict'),
             ('adm_person',     'fk_code_type_id__from__adm_person_code_type', 'adm_person_code_type_id_adm_person_code_type', 'code_type_id', 'adm_person_code_type', 'id', 'restrict'),
             ('adm_realm_org',  'fk_org_id__from__adm_org',             'adm_realm_org_org_id_adm_org',                'org_id',         'adm_org',             'id',   'restrict'),
             ('adm_realm_org',  'fk_realm_id__from__adm_realm',         'adm_realm_org_realm_id_adm_realm',            'realm_id',       'adm_realm',           'id',   'restrict'),
             ('adm_realm_user', 'fk_realm_id__from__adm_realm',         'adm_realm_user_realm_id_adm_realm',           'realm_id',       'adm_realm',           'id',   'restrict'),
             ('adm_realm_user', 'fk_user_id__from__adm_user',           'adm_realm_user_user_id_adm_user',             'user_id',        'adm_user',            'id',   'restrict'),
             ('adm_role',       'fk_group_id__from__adm_role_group',    'adm_role_group_id_adm_role_group',            'group_id',       'adm_role_group',      'id',   'restrict'),
-            ('adm_role_group', 'fk_realm_id__from__adm_realm',         'adm_role_group_realm_id_adm_realm',           'realm_id',       'adm_realm',           'id',   'restrict'),
             ('adm_role_menu',  'fk_menu_id__from__adm_menu',           'adm_role_menu_menu_id_adm_menu',              'menu_id',        'adm_menu',            'id',   'restrict'),
             ('adm_role_menu',  'fk_role_id__from__adm_role',           'adm_role_menu_role_id_adm_role',              'role_id',        'adm_role',            'id',   'restrict'),
             ('adm_role_perm',  'fk_perm_id__from__adm_perm',           'adm_role_perm_perm_id_adm_perm',              'perm_id',        'adm_perm',            'id',   'restrict'),

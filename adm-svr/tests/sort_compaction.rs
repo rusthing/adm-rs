@@ -510,27 +510,13 @@ async fn tree_move_rejects_own_descendant_as_parent() {
     tx.rollback().await.unwrap();
 }
 
-/// 建一对真实的领域与应用，供菜单树测试使用
-async fn seed_menu_scope<C: ConnectionTrait>(
-    db: &C,
-    realm_id: i64,
-    app_id: i64,
-    suffix: &str,
-) {
+/// 建一个应用，供菜单树测试使用；应用是全局配置，不依赖领域。
+async fn seed_menu_scope<C: ConnectionTrait>(db: &C, app_id: i64, suffix: &str) {
     exec(
         db,
         &format!(
-            "INSERT INTO adm_realm (id, code, name, sort_order, creater_id, create_ms, updater_id, update_ms)
-             VALUES ({realm_id}, 'realm-{suffix}', '领域{suffix}', 1, 0, 0, 0, 0)"
-        ),
-    )
-    .await
-    .unwrap();
-    exec(
-        db,
-        &format!(
-            "INSERT INTO adm_app (id, realm_id, code, name, sort_order, creater_id, create_ms, updater_id, update_ms)
-             VALUES ({app_id}, {realm_id}, 'app-{suffix}', '应用{suffix}', 1, 0, 0, 0, 0)"
+            "INSERT INTO adm_app (id, code, name, sort_order, creater_id, create_ms, updater_id, update_ms)
+             VALUES ({app_id}, 'app-{suffix}', '应用{suffix}', 1, 0, 0, 0, 0)"
         ),
     )
     .await
@@ -543,10 +529,9 @@ async fn menu_cascade_delete_preview_and_compaction() {
         return;
     };
     let tx = db.begin().await.unwrap();
-    let realm_id = 910_000_000_000_000_001i64;
     let app_id = 910_000_000_000_000_101i64;
     let root_id = 910_000_000_000_000_111i64;
-    seed_menu_scope(&tx, realm_id, app_id, "cascade").await;
+    seed_menu_scope(&tx, app_id, "cascade").await;
     exec(
         &tx,
         &format!(
@@ -616,13 +601,12 @@ async fn menu_cascade_delete_rejects_when_descendant_is_bound() {
         return;
     };
     let tx = db.begin().await.unwrap();
-    let realm_id = 920_000_000_000_000_001i64;
     let app_id = 920_000_000_000_000_101i64;
     let root_id = 920_000_000_000_000_111i64;
     let child_id = root_id + 1;
     let group_id = root_id + 10;
     let role_id = root_id + 20;
-    seed_menu_scope(&tx, realm_id, app_id, "guard").await;
+    seed_menu_scope(&tx, app_id, "guard").await;
     exec(
         &tx,
         &format!(
@@ -638,8 +622,8 @@ async fn menu_cascade_delete_rejects_when_descendant_is_bound() {
         &tx,
         &format!(
             "INSERT INTO adm_role_group
-             (id, realm_id, tree_code, name, creater_id, create_ms, updater_id, update_ms)
-             VALUES ({group_id}, {realm_id}, '001', '保护测试分组', 0, 0, 0, 0)"
+             (id, tree_code, name, creater_id, create_ms, updater_id, update_ms)
+             VALUES ({group_id}, '001', '保护测试分组', 0, 0, 0, 0)"
         ),
     )
     .await

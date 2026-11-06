@@ -88,25 +88,24 @@ describe("scopeIndent", () => {
 });
 
 describe("treeGroupQuery", () => {
+  // 分组树脱钩领域后 treeCode 全局唯一，子孙判定只看前缀
   const groups = [
-    { id: "g1", treeCode: "001", realmId: "r1" },
-    { id: "g2", treeCode: "001001", realmId: "r1" },
-    { id: "g3", treeCode: "001002", realmId: "r1" },
-    { id: "g4", treeCode: "002", realmId: "r1" },
-    // 另一个领域的同编码分组：不能因为 treeCode 相同被误纳
-    { id: "x1", treeCode: "001001", realmId: "r2" },
+    { id: "g1", treeCode: "001" },
+    { id: "g2", treeCode: "001001" },
+    { id: "g3", treeCode: "001002" },
+    { id: "g4", treeCode: "002" },
   ];
 
-  it("选中父分组时展开为本组 + 同领域所有子孙，走 Bean Searcher 的 il 运算符", () => {
+  it("选中父分组时展开为本组 + 全局树中所有子孙，走 Bean Searcher 的 il 运算符", () => {
     const params = treeGroupQuery("group_id", "g1", groups);
     expect(params["group_id-op"]).toBe("il");
     expect([params["group_id-0"], params["group_id-1"], params["group_id-2"]]).toEqual(["g1", "g2", "g3"]);
     expect(params["group_id-3"]).toBeUndefined();
   });
 
-  it("跨领域同编码分组不会串进来", () => {
-    // g2 在 r1 下没有子孙；r2 的 x1 虽然 treeCode 相同，但不是同一个领域，必须排除
+  it("叶子分组退化成等值查询，兄弟根分组不会被误纳", () => {
     expect(treeGroupQuery("group_id", "g2", groups)).toEqual({ group_id: "g2" });
+    expect(treeGroupQuery("group_id", "g4", groups)).toEqual({ group_id: "g4" });
   });
 
   it("未知分组退化成等值查询", () => {
@@ -115,9 +114,9 @@ describe("treeGroupQuery", () => {
 
   it("前缀必须按整层对齐，脏编码 0010 不算 001 的子孙", () => {
     const dirty = [
-      { id: "g1", treeCode: "001", realmId: "r1" },
-      { id: "bad", treeCode: "0010", realmId: "r1" },
-      { id: "ok", treeCode: "001001", realmId: "r1" },
+      { id: "g1", treeCode: "001" },
+      { id: "bad", treeCode: "0010" },
+      { id: "ok", treeCode: "001001" },
     ];
     const params = treeGroupQuery("group_id", "g1", dirty);
     const ids = [params["group_id-0"], params["group_id-1"]].filter(Boolean);

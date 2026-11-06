@@ -29,18 +29,18 @@ values (1, 'adm', '管理后台', 10, '内置管理后台领域', true,
         0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict do nothing;
 
-insert into adm_app (id, realm_id, code, name, sort_order, remark, enabled,
+insert into adm_app (id, code, name, sort_order, remark, enabled,
                      creater_id, create_ms, updater_id, update_ms)
-values (1, 1, 'adm', '管理后台', 10, '内置管理后台应用', true,
+values (1, 'adm', '管理后台', 10, '内置管理后台应用', true,
         0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict do nothing;
 
 /*--------------------------------------------------------------*/
 /* 3. 角色分组与角色                                              */
 /*--------------------------------------------------------------*/
-insert into adm_role_group (id, realm_id, tree_code, name, remark, enabled,
+insert into adm_role_group (id, tree_code, name, remark, enabled,
                             creater_id, create_ms, updater_id, update_ms)
-values (1, 1, '001', '超级管理员组', '内置角色分组', true,
+values (1, '001', '超级管理员组', '内置角色分组', true,
         0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict do nothing;
 
@@ -53,9 +53,9 @@ on conflict do nothing;
 /*--------------------------------------------------------------*/
 /* 4. 权限分组                                                    */
 /*--------------------------------------------------------------*/
-insert into adm_perm_group (id, realm_id, tree_code, name, remark, enabled,
+insert into adm_perm_group (id, tree_code, name, remark, enabled,
                             creater_id, create_ms, updater_id, update_ms)
-values (1, 1, '001', '管理后台权限', '内置权限分组', true,
+values (1, '001', '管理后台权限', '内置权限分组', true,
         0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict do nothing;
 

@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, unique)]
     pub id: i64,
-    pub realm_id: Option<i64>,
     #[sea_orm(unique)]
     pub code: String,
     #[sea_orm(unique)]
@@ -23,14 +22,6 @@ pub struct Model {
     pub update_ms: i64,
     #[sea_orm(has_many)]
     pub adm_menus: HasMany<super::adm_menu::Entity>,
-    #[sea_orm(
-        belongs_to,
-        from = "realm_id",
-        to = "id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    pub adm_realm: BelongsTo<Option<super::adm_realm::Entity>>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -21,11 +21,11 @@ export interface CrudField {
   required?: boolean;
   placeholder?: string;
   hint?: string;
-  /** 静态选项，或按当前表单值动态计算（父节点按 appId / realmId 过滤等）。 */
+  /** 静态选项，或按当前表单值动态计算（父菜单按 appId 过滤等）。 */
   options?: CrudFieldOption[] | ((values: FormValues, mode: FormMode) => CrudFieldOption[]);
   /** 自定义校验：返回错误文案，null 表示通过。 */
   validate?: (value: FormValues[string], values: FormValues, mode: FormMode) => string | null;
-  /** 列出的字段变化时清空本字段，避免留下跨应用 / 跨领域的失效引用。 */
+  /** 列出的字段变化时清空本字段，避免留下跨应用的失效引用。 */
   resetOn?: string[];
   span?: 2;
   createOnly?: boolean;

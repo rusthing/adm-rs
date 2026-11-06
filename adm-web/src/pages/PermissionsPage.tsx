@@ -27,7 +27,7 @@ export function PermissionsPage() {
     return map;
   }, [groupsQuery.data]);
 
-  /** 选中父分组时连同同一领域下的子孙分组一起展示。 */
+  /** 选中父分组时连同全局分组树中的子孙分组一起展示。 */
   const groupQueryFor = (groupId: string) =>
     treeGroupQuery("group_id", groupId, groupsQuery.data ?? []);
 

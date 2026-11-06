@@ -17,8 +17,8 @@ export interface CrudSortable<T> {
   /** tree：读取树编码 */
   treeCode?: (row: T) => string;
   /**
-   * 分组隔离键：数字实体通常为 `realmId` / `groupId`；
-   * 树形实体为 `appId` / `realmId`；不声明时整页视为一组。
+   * 分组隔离键：数字实体通常为 `groupId`；树形实体为 `appId`；
+   * 不声明时整页视为一组（应用、角色/权限分组、组织都是全局一组）。
    */
   scope?: (row: T) => string | null | undefined;
   /** 拉取全量列表时使用的排序，缺省沿用页面 `defaultOrderBy`。 */

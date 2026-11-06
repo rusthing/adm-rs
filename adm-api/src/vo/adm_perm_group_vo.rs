@@ -1,6 +1,6 @@
 //! # 权限分组 VO
 //!
-//! 按领域隔离的两级结构（分组 → 权限），树形由 tree_code 表达
+//! 全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一
 
 use robotech::macros::vo;
 
@@ -8,9 +8,6 @@ use robotech::macros::vo;
 pub struct AdmPermGroupVo {
     /// 主键
     pub id: u64,
-    /// 领域 ID
-    /// 关联 realm；分组的 (realm_id, tree_code) 唯一，权限树按领域隔离
-    pub realm_id: u64,
     /// 树编码
     /// 路径枚举存树：字典序即树的前序，子节点紧跟在父节点之后，排序直接用 ORDER BY tree_code，不需要额外排序列
     /// 每层固定 3 位数字（不足左补 0），不加分隔符：001 → 001002 → 001002003

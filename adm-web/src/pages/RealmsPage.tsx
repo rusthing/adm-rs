@@ -15,7 +15,7 @@ const columns: CrudColumn<AdmRealmVo>[] = [
 ];
 
 const fields: CrudField[] = [
-  { name: "code", label: "编码", required: true, placeholder: "全局唯一，创建后不改", hint: "数据隔离与迁移脚本都按 code 定位领域。" },
+  { name: "code", label: "编码", required: true, placeholder: "全局唯一，创建后不改", hint: "数据域与迁移脚本都按 code 定位领域。" },
   { name: "name", label: "名称", required: true, placeholder: "全局唯一，展示用" },
   { name: "enabled", label: "启用", type: "switch", defaultValue: true },
   { name: "remark", label: "备注", type: "textarea" },
@@ -39,7 +39,7 @@ export function RealmsPage() {
   return (
     <CrudPage<AdmRealmVo>
       title="领域管理"
-      subtitle="领域是权限与数据隔离的顶层单位。角色分组、权限分组、组织与用户都可以按领域隔离。"
+      subtitle="领域是用户与组织的数据域划分单位：决定用户/组织归属与角色的数据可见范围；应用、菜单、角色、权限是全局配置，与领域无关。"
       prefix="/adm/realm"
       columns={columns}
       fields={fields}
@@ -48,7 +48,7 @@ export function RealmsPage() {
       sortable={{ kind: "number", orderValue: (row) => row.sortOrder }}
       searchPlaceholder="搜索领域名 / 编码"
       filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
-      emptyDescription="后端种子没有领域行。建议先建一个默认领域，再建应用与分组。"
+      emptyDescription="后端种子没有领域行。建议先建一个默认领域，再划分用户与组织的数据域。"
       toForm={toForm}
       toPayload={toPayload}
     />

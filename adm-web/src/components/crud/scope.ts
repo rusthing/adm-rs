@@ -1,8 +1,8 @@
 /**
  * CrudPage 左侧分组栏的纯逻辑。
  *
- * 分页列表本身是「平的」，用户要管理的是树/分组：菜单按应用、权限按权限分组、
- * 分组按领域。这里把「是否显示分组栏 / 默认选中哪个分组 / 缩进层级」抽成纯函数，
+ * 分页列表本身是「平的」，用户要管理的是树/分组：菜单按应用、权限按权限分组。
+ * 这里把「是否显示分组栏 / 默认选中哪个分组 / 缩进层级」抽成纯函数，
  * 渲染放在 `./scope-panel.tsx`，逻辑可以直接单测。
  */
 
@@ -11,7 +11,7 @@ import type { PageQuery } from "@/lib/types";
 export interface CrudScopeOption {
   value: string;
   label: string;
-  /** 树形编码；有值时按层级缩进，平级分组（应用 / 领域）不传。 */
+  /** 树形编码；有值时按层级缩进，平级分组（应用）不传。 */
   treeCode?: string;
   /** 副标题，如应用 code、分组 treeCode。 */
   description?: string;
@@ -20,11 +20,11 @@ export interface CrudScopeOption {
 }
 
 export interface CrudScopeDef {
-  /** 分组栏标题，如「应用」「权限分组」「领域」。 */
+  /** 分组栏标题，如「应用」「权限分组」。 */
   title: string;
-  /** 后端筛选参数名（snake_case），如 `app_id` / `group_id` / `realm_id`。 */
+  /** 后端筛选参数名（snake_case），如 `app_id` / `group_id`。 */
   param: string;
-  /** 新建表单里对应的字段名（camelCase），如 `appId` / `groupId` / `realmId`。 */
+  /** 新建表单里对应的字段名（camelCase），如 `appId` / `groupId`。 */
   field: string;
   options: CrudScopeOption[];
   /**
@@ -56,7 +56,7 @@ export function scopePanelVisible(scope?: CrudScopeDef): boolean {
  *
  * ⚠️ 这里**不能**因为「分组栏隐藏且恰好一个选项」就默认收窄到它：
  * 分组栏隐藏时用户看不到任何筛选入口，也就无法取消；一旦选项列表还在加载、
- * 或者存在 appId/realmId 为空、指向已删除分组的历史数据，这些记录会凭空消失，
+ * 或者存在 appId 为空、指向已删除分组的历史数据，这些记录会凭空消失，
  * 而且列表会随选项加载完成发生一次无声跳变。「只有一个应用」的含义是
  * *不分组展示*，不是*隐式筛选*。新建表单的预填由 `scopeCreateValue` 单独负责。
  */
@@ -94,22 +94,21 @@ export function scopeIndent(option: CrudScopeOption): number {
 }
 
 /**
- * 把「选中树分组」展开成 `本组 + 同领域所有子孙组` 的 is_in 条件。
+ * 把「选中树分组」展开成 `本组 + 全局树中所有子孙组` 的 is_in 条件。
  *
  * 父分组自身往往一条数据都没有，只按 group_id 等值查会莫名其妙显示空列表。
- * treeCode 只在领域内唯一，所以必须同时限定 realmId。Bean Searcher 的 `il`
- * 是 is_in 运算符，取值走 `${param}-0`、`${param}-1`…
+ * 权限/角色分组脱钩领域后 treeCode 全局唯一，直接按前缀判定子孙即可。
+ * Bean Searcher 的 `il` 是 is_in 运算符，取值走 `${param}-0`、`${param}-1`…
  */
 export function treeGroupQuery(
   param: string,
   value: string,
-  groups: Array<{ id: string; treeCode: string; realmId?: string }>,
+  groups: Array<{ id: string; treeCode: string }>,
 ): PageQuery {
   const target = groups.find((group) => group.id === value);
   if (!target) return { [param]: value };
   const ids = groups
     .filter((group) => {
-      if ((group.realmId ?? "") !== (target.realmId ?? "")) return false;
       // 每层 3 位：仅当前缀按整层对齐时才算子孙，避免 "0010" 这类脏编码被误纳。
       const extra = group.treeCode.length - target.treeCode.length;
       return extra >= 0 && extra % 3 === 0 && group.treeCode.startsWith(target.treeCode);

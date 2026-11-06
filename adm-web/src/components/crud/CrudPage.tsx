@@ -76,7 +76,7 @@ export interface CrudColumn<T> {
 
 /**
  * 行操作能拿到的能力。`openCreate` 用于树形实体「在此节点下添加子节点」：
- * 传入预填值后直接打开新建表单，不必先点新建、再逐个手选父节点与所属应用/领域。
+ * 传入预填值后直接打开新建表单，不必先点新建、再逐个手选父节点与所属应用/分组。
  */
 export interface CrudRowHelpers {
   reload: () => void;
@@ -109,8 +109,8 @@ interface CrudPageProps<T extends { id: string }> {
   rowActions?: (row: T, helpers: CrudRowHelpers) => ReactNode;
   emptyDescription?: string;
   /**
-   * 左侧分组栏：菜单按应用、权限按权限分组、分组按领域……
-   * 选项数少于两个时自动隐藏（见 `./scope.ts`），列表与新建仍会自动收窄到唯一分组。
+   * 左侧分组栏：菜单按应用、权限按权限分组……
+   * 选项数少于两个时自动隐藏（见 `./scope.ts`），但不会隐式收窄列表。
    */
   scope?: CrudScopeDef;
   /**

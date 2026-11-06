@@ -1,6 +1,6 @@
 //! # 应用 VO
 //!
-//! 菜单树的归属单位，一个领域下可以有多个应用（后台、前台、移动端）
+//! 菜单树的归属单位，全局配置：后台、前台、移动端各一棵菜单树，与领域无关
 
 use robotech::macros::vo;
 
@@ -8,9 +8,6 @@ use robotech::macros::vo;
 pub struct AdmAppVo {
     /// 主键
     pub id: u64,
-    /// 归属领域 ID
-    /// 关联 realm；为空表示跨领域通用应用
-    pub realm_id: Option<u64>,
     /// 应用编码
     /// 全局唯一（AK），前端用它区分路由与请求来源
     /// @len 1..=50
@@ -21,7 +18,7 @@ pub struct AdmAppVo {
     /// @len 1..=50
     pub name: String,
     /// 排序值
-    /// 同一领域内排序，越小越靠前
+    /// 全局排序，越小越靠前
     /// @range 0..=9999
     pub sort_order: i32,
     /// 备注

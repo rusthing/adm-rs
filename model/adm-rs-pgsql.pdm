@@ -5590,7 +5590,6 @@ DESTINATION 0 新宋体,8,N</a:FontList>
 <o:TableSymbol Ref="o48"/>
 </c:DestinationSymbol>
 <c:Object>
-<o:Reference Ref="o49"/>
 </c:Object>
 </o:ReferenceSymbol>
 <o:ReferenceSymbol Id="o50">
@@ -6523,7 +6522,6 @@ DESTINATION 0 新宋体,8,N</a:FontList>
 <o:TableSymbol Ref="o73"/>
 </c:DestinationSymbol>
 <c:Object>
-<o:Reference Ref="o74"/>
 </c:Object>
 </o:ReferenceSymbol>
 <o:ReferenceSymbol Id="o75">
@@ -7480,7 +7478,6 @@ DESTINATION 0 新宋体,8,N</a:FontList>
 <o:TableSymbol Ref="o98"/>
 </c:DestinationSymbol>
 <c:Object>
-<o:Reference Ref="o99"/>
 </c:Object>
 </o:ReferenceSymbol>
 <o:ReferenceSymbol Id="o100">
@@ -9105,8 +9102,8 @@ LABL 0 新宋体,8,N</a:FontList>
 <a:ModificationDate>1793541529</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>领域
-权限与数据隔离的顶层单位：用户、组织、角色分组、权限分组都按领域隔离
-一个组织/用户可以归属多个领域，关联见 realm_org / realm_user</a:Comment>
+用户与组织的数据域划分单位：只用于界定用户/组织归属与角色的数据可见范围，与应用、菜单、角色、权限等全局配置无关
+一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的数据范围见 adm_role_scope</a:Comment>
 <a:History>ORG {92622F27-B716-4E12-82D6-8C5CF47BFEB6}
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
@@ -9138,7 +9135,7 @@ DAT 1793541529</a:History>
 <a:ModificationDate>1793541527</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>编码
-全局唯一（AK），创建后不改：数据隔离与迁移脚本都按它定位领域
+全局唯一（AK），创建后不改：数据域与迁移脚本都按它定位领域
 @len 1..=50
 @check is_code</a:Comment>
 <a:History>ORG {1539E01A-696E-45C9-97E9-9B24F9447770}
@@ -12750,7 +12747,7 @@ DAT 1793541529</a:History>
 <a:ModificationDate>1793541529</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>角色分组
-按领域隔离的两级结构（分组 → 角色），树形由 tree_code 表达</a:Comment>
+全局两级结构（分组 → 角色），树形由 tree_code 表达，tree_code 全局唯一</a:Comment>
 <a:History>ORG {8903F7B5-7DFB-48DC-B67A-E6CADC4D115B}
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
@@ -12767,23 +12764,6 @@ DAT 1793541529</a:History>
 <a:Comment>主键
 代理键，由框架生成（雪花 ID），业务层不需要关心取值</a:Comment>
 <a:History>ORG {304EDB8C-02AA-4773-BCBA-712E5377639B}
-DAT 1793541529</a:History>
-<a:DataType>INT8</a:DataType>
-<a:Length>8</a:Length>
-<a:Column.Mandatory>1</a:Column.Mandatory>
-<a:GlobalObjectID/>
-</o:Column>
-<o:Column Id="o334">
-<a:ObjectID>1E8F49B8-D1D8-4C40-B6B4-2EADF7437A1E</a:ObjectID>
-<a:Name>领域ID</a:Name>
-<a:Code>realm_id</a:Code>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:Comment>领域 ID
-关联 realm；分组的 (realm_id, tree_code) 唯一，角色树按领域隔离</a:Comment>
-<a:History>ORG {26D89A58-47F9-4AD2-B5FE-0E762EFCFAA3}
 DAT 1793541529</a:History>
 <a:DataType>INT8</a:DataType>
 <a:Length>8</a:Length>
@@ -12954,7 +12934,7 @@ DAT 1793541529</a:History>
 <o:Key Id="o344">
 <a:ObjectID>45F447B6-F3DD-4FBF-B71D-5E199EC8EC71</a:ObjectID>
 <a:Name>树编码</a:Name>
-<a:Code>realm_id_and_tree_code</a:Code>
+<a:Code>tree_code</a:Code>
 <a:CreationDate>1793541527</a:CreationDate>
 <a:Creator>张柏子</a:Creator>
 <a:ModificationDate>1793541527</a:ModificationDate>
@@ -12963,7 +12943,6 @@ DAT 1793541529</a:History>
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
 <c:Key.Columns>
-<o:Column Ref="o334"/>
 <o:Column Ref="o335"/>
 </c:Key.Columns>
 </o:Key>
@@ -12999,35 +12978,6 @@ DAT 1793541529</a:History>
 </o:IndexColumn>
 </c:IndexColumns>
 </o:Index>
-<o:Index Id="o347">
-<a:ObjectID>FF4DDB55-B47E-485B-AD24-F20ED0D3D6B6</a:ObjectID>
-<a:Name>Relationship_15_FK</a:Name>
-<a:Code>Relationship_15_FK</a:Code>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:LinkedObject>
-<o:Reference Ref="o49"/>
-</c:LinkedObject>
-<c:IndexColumns>
-<o:IndexColumn Id="o348">
-<a:ObjectID>647C1E63-9ED4-412C-95C5-DC57CA1C464C</a:ObjectID>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Column>
-<o:Column Ref="o334"/>
-</c:Column>
-<c:Elements>
-<o:Column Ref="o334"/>
-</c:Elements>
-</o:IndexColumn>
-</c:IndexColumns>
-</o:Index>
 <o:Index Id="o349">
 <a:ObjectID>F0C936F4-CD44-4480-8D92-F24516CBF87C</a:ObjectID>
 <a:Name>adm_role_group_AK</a:Name>
@@ -13042,20 +12992,6 @@ DAT 1793541529</a:History>
 <o:Key Ref="o344"/>
 </c:LinkedObject>
 <c:IndexColumns>
-<o:IndexColumn Id="o350">
-<a:ObjectID>36E483AC-F6E4-4433-AAFC-E02B0F632642</a:ObjectID>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Column>
-<o:Column Ref="o334"/>
-</c:Column>
-<c:Elements>
-<o:Column Ref="o334"/>
-</c:Elements>
-</o:IndexColumn>
 <o:IndexColumn Id="o351">
 <a:ObjectID>1014CF46-0FE5-44DD-97D7-24FEDD1B1CAE</a:ObjectID>
 <a:CreationDate>1793541529</a:CreationDate>
@@ -13726,7 +13662,7 @@ DAT 1793541529</a:History>
 <a:ModificationDate>1793541529</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>权限分组
-按领域隔离的两级结构（分组 → 权限），树形由 tree_code 表达</a:Comment>
+全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一</a:Comment>
 <a:History>ORG {2BF68F90-A783-4438-9623-F0639FAB2694}
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
@@ -13743,23 +13679,6 @@ DAT 1793541529</a:History>
 <a:Comment>主键
 代理键，由框架生成（雪花 ID），业务层不需要关心取值</a:Comment>
 <a:History>ORG {7B9E15E6-01B3-4CDA-A846-C0C61DFA249E}
-DAT 1793541529</a:History>
-<a:DataType>INT8</a:DataType>
-<a:Length>8</a:Length>
-<a:Column.Mandatory>1</a:Column.Mandatory>
-<a:GlobalObjectID/>
-</o:Column>
-<o:Column Id="o390">
-<a:ObjectID>7079AD99-0CD9-469F-AEB1-4486BACA7703</a:ObjectID>
-<a:Name>领域ID</a:Name>
-<a:Code>realm_id</a:Code>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:Comment>领域 ID
-关联 realm；分组的 (realm_id, tree_code) 唯一，权限树按领域隔离</a:Comment>
-<a:History>ORG {868A09C5-F492-491B-9BF2-BC99282FDE2D}
 DAT 1793541529</a:History>
 <a:DataType>INT8</a:DataType>
 <a:Length>8</a:Length>
@@ -13930,7 +13849,7 @@ DAT 1793541529</a:History>
 <o:Key Id="o400">
 <a:ObjectID>EBA3919E-EE3C-4161-BEDD-AF442781F3F8</a:ObjectID>
 <a:Name>树编码</a:Name>
-<a:Code>realm_id_and_tree_code</a:Code>
+<a:Code>tree_code</a:Code>
 <a:CreationDate>1793541527</a:CreationDate>
 <a:Creator>张柏子</a:Creator>
 <a:ModificationDate>1793541527</a:ModificationDate>
@@ -13939,7 +13858,6 @@ DAT 1793541529</a:History>
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
 <c:Key.Columns>
-<o:Column Ref="o390"/>
 <o:Column Ref="o391"/>
 </c:Key.Columns>
 </o:Key>
@@ -13975,35 +13893,6 @@ DAT 1793541529</a:History>
 </o:IndexColumn>
 </c:IndexColumns>
 </o:Index>
-<o:Index Id="o403">
-<a:ObjectID>B18FE012-BD8E-4D06-9A9A-611CF165F1E1</a:ObjectID>
-<a:Name>Relationship_19_FK</a:Name>
-<a:Code>Relationship_19_FK</a:Code>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:LinkedObject>
-<o:Reference Ref="o74"/>
-</c:LinkedObject>
-<c:IndexColumns>
-<o:IndexColumn Id="o404">
-<a:ObjectID>7ED68985-FEFD-4414-9403-D417FBAA7E27</a:ObjectID>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Column>
-<o:Column Ref="o390"/>
-</c:Column>
-<c:Elements>
-<o:Column Ref="o390"/>
-</c:Elements>
-</o:IndexColumn>
-</c:IndexColumns>
-</o:Index>
 <o:Index Id="o405">
 <a:ObjectID>49678486-5464-4D63-AA02-C716570CAB78</a:ObjectID>
 <a:Name>adm_perm_group_AK</a:Name>
@@ -14018,20 +13907,6 @@ DAT 1793541529</a:History>
 <o:Key Ref="o400"/>
 </c:LinkedObject>
 <c:IndexColumns>
-<o:IndexColumn Id="o406">
-<a:ObjectID>7F05C0ED-44BB-4E95-A4C6-FE61AF52C640</a:ObjectID>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Column>
-<o:Column Ref="o390"/>
-</c:Column>
-<c:Elements>
-<o:Column Ref="o390"/>
-</c:Elements>
-</o:IndexColumn>
 <o:IndexColumn Id="o407">
 <a:ObjectID>A1D541C7-7374-4CA6-89B5-B746516EF824</a:ObjectID>
 <a:CreationDate>1793541529</a:CreationDate>
@@ -14813,7 +14688,7 @@ DAT 1793541529</a:History>
 <a:ModificationDate>1793541529</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>应用
-菜单树的归属单位，一个领域下可以有多个应用（后台、前台、移动端）</a:Comment>
+菜单树的归属单位，全局配置：后台、前台、移动端各一棵菜单树，与领域无关</a:Comment>
 <a:History>ORG {AD505472-CB79-42B0-82F9-674BF4CE2A62}
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
@@ -14834,22 +14709,6 @@ DAT 1793541529</a:History>
 <a:DataType>INT8</a:DataType>
 <a:Length>8</a:Length>
 <a:Column.Mandatory>1</a:Column.Mandatory>
-<a:GlobalObjectID/>
-</o:Column>
-<o:Column Id="o453">
-<a:ObjectID>B2AD93FE-8606-47DE-9EA2-383423808C45</a:ObjectID>
-<a:Name>领域ID</a:Name>
-<a:Code>realm_id</a:Code>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:Comment>归属领域 ID
-关联 realm；为空表示跨领域通用应用</a:Comment>
-<a:History>ORG {1B8FC090-FEF1-405F-99DC-A4FAD40BC3A4}
-DAT 1793541529</a:History>
-<a:DataType>INT8</a:DataType>
-<a:Length>8</a:Length>
 <a:GlobalObjectID/>
 </o:Column>
 <o:Column Id="o454">
@@ -14898,7 +14757,7 @@ DAT 1793541529</a:History>
 <a:ModificationDate>1793541527</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>排序值
-同一领域内排序，越小越靠前
+全局排序，越小越靠前
 @range 0..=9999</a:Comment>
 <a:History>ORG {D3566317-4515-4114-A456-C0DCA8C98550}
 DAT 1793541529</a:History>
@@ -15086,35 +14945,6 @@ DAT 1793541529</a:History>
 </c:Column>
 <c:Elements>
 <o:Column Ref="o452"/>
-</c:Elements>
-</o:IndexColumn>
-</c:IndexColumns>
-</o:Index>
-<o:Index Id="o468">
-<a:ObjectID>DB87C937-0FF8-400C-99D6-FAF7D3834A4F</a:ObjectID>
-<a:Name>Relationship_22_FK</a:Name>
-<a:Code>Relationship_22_FK</a:Code>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:LinkedObject>
-<o:Reference Ref="o99"/>
-</c:LinkedObject>
-<c:IndexColumns>
-<o:IndexColumn Id="o469">
-<a:ObjectID>A6617A35-BB74-42D7-A187-CF615616D6B7</a:ObjectID>
-<a:CreationDate>1793541529</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Column>
-<o:Column Ref="o453"/>
-</c:Column>
-<c:Elements>
-<o:Column Ref="o453"/>
 </c:Elements>
 </o:IndexColumn>
 </c:IndexColumns>
@@ -18225,48 +18055,6 @@ DAT 1793541529</a:History>
 </o:ReferenceJoin>
 </c:Joins>
 </o:Reference>
-<o:Reference Id="o49">
-<a:ObjectID>1036310C-DA81-4DF6-A336-4335523109BF</a:ObjectID>
-<a:Name>Relationship_15</a:Name>
-<a:Code>Relationship_15</a:Code>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:History>ORG {F404BB6A-D107-4B75-86E8-CA7ED9B36655}
-DAT 1793541529</a:History>
-<a:GlobalObjectID/>
-<a:Cardinality>0..*</a:Cardinality>
-<a:UpdateConstraint>1</a:UpdateConstraint>
-<a:DeleteConstraint>1</a:DeleteConstraint>
-<c:ParentTable>
-<o:Table Ref="o33"/>
-</c:ParentTable>
-<c:ChildTable>
-<o:Table Ref="o62"/>
-</c:ChildTable>
-<c:ParentKey>
-<o:Key Ref="o134"/>
-</c:ParentKey>
-<c:Joins>
-<o:ReferenceJoin Id="o633">
-<a:ObjectID>CED54FE6-903F-451F-B67E-5F979FE42D48</a:ObjectID>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:History>ORG {FE4499A0-1E23-4F3C-A668-C69B0295E5F2}
-DAT 1793541529</a:History>
-<a:GlobalObjectID/>
-<c:Object1>
-<o:Column Ref="o124"/>
-</c:Object1>
-<c:Object2>
-<o:Column Ref="o334"/>
-</c:Object2>
-</o:ReferenceJoin>
-</c:Joins>
-</o:Reference>
 <o:Reference Id="o53">
 <a:ObjectID>D4B58FEF-2087-4CDF-AE08-BF3415821B55</a:ObjectID>
 <a:Name>Relationship_16</a:Name>
@@ -18393,48 +18181,6 @@ DAT 1793541529</a:History>
 </o:ReferenceJoin>
 </c:Joins>
 </o:Reference>
-<o:Reference Id="o74">
-<a:ObjectID>75822A46-EC00-4E80-A27C-D856D462BD7D</a:ObjectID>
-<a:Name>Relationship_18</a:Name>
-<a:Code>Relationship_19</a:Code>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:History>ORG {7A542964-4BD3-499D-945C-23CE221FA01A}
-DAT 1793541529</a:History>
-<a:GlobalObjectID/>
-<a:Cardinality>0..*</a:Cardinality>
-<a:UpdateConstraint>1</a:UpdateConstraint>
-<a:DeleteConstraint>1</a:DeleteConstraint>
-<c:ParentTable>
-<o:Table Ref="o33"/>
-</c:ParentTable>
-<c:ChildTable>
-<o:Table Ref="o90"/>
-</c:ChildTable>
-<c:ParentKey>
-<o:Key Ref="o134"/>
-</c:ParentKey>
-<c:Joins>
-<o:ReferenceJoin Id="o637">
-<a:ObjectID>9935632C-4AB9-495D-8D86-A67FC9CADDFD</a:ObjectID>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:History>ORG {D2476815-1F65-44D9-B545-71C15C10EC4F}
-DAT 1793541529</a:History>
-<a:GlobalObjectID/>
-<c:Object1>
-<o:Column Ref="o124"/>
-</c:Object1>
-<c:Object2>
-<o:Column Ref="o390"/>
-</c:Object2>
-</o:ReferenceJoin>
-</c:Joins>
-</o:Reference>
 <o:Reference Id="o78">
 <a:ObjectID>6F9357D0-0DCB-4B9C-BB8C-6B05845434FF</a:ObjectID>
 <a:Name>Relationship_19</a:Name>
@@ -18515,48 +18261,6 @@ DAT 1793541529</a:History>
 </c:Object1>
 <c:Object2>
 <o:Column Ref="o436"/>
-</c:Object2>
-</o:ReferenceJoin>
-</c:Joins>
-</o:Reference>
-<o:Reference Id="o99">
-<a:ObjectID>857F8343-1C44-4DBA-B5EE-72BB82583D14</a:ObjectID>
-<a:Name>Relationship_21</a:Name>
-<a:Code>Relationship_22</a:Code>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:History>ORG {3D1B0B1A-BC36-45FF-BDF7-D59552EA6A0F}
-DAT 1793541529</a:History>
-<a:GlobalObjectID/>
-<a:Cardinality>0..*</a:Cardinality>
-<a:UpdateConstraint>1</a:UpdateConstraint>
-<a:DeleteConstraint>1</a:DeleteConstraint>
-<c:ParentTable>
-<o:Table Ref="o33"/>
-</c:ParentTable>
-<c:ChildTable>
-<o:Table Ref="o103"/>
-</c:ChildTable>
-<c:ParentKey>
-<o:Key Ref="o134"/>
-</c:ParentKey>
-<c:Joins>
-<o:ReferenceJoin Id="o640">
-<a:ObjectID>92213FF5-7785-4C8F-A117-65AD33026D34</a:ObjectID>
-<a:CreationDate>1793541527</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541527</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:History>ORG {2427F6EC-31EB-484D-B105-1298F9379EE9}
-DAT 1793541529</a:History>
-<a:GlobalObjectID/>
-<c:Object1>
-<o:Column Ref="o124"/>
-</c:Object1>
-<c:Object2>
-<o:Column Ref="o453"/>
 </c:Object2>
 </o:ReferenceJoin>
 </c:Joins>

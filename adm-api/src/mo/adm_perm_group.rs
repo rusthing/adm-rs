@@ -9,9 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, unique)]
     pub id: i64,
-    #[sea_orm(unique_key = "ak_realm_id_and_tree_code_adm_perm_group")]
-    pub realm_id: i64,
-    #[sea_orm(unique_key = "ak_realm_id_and_tree_code_adm_perm_group")]
+    #[sea_orm(unique)]
     pub tree_code: String,
     pub name: String,
     pub remark: Option<String>,
@@ -22,14 +20,6 @@ pub struct Model {
     pub update_ms: i64,
     #[sea_orm(has_many)]
     pub adm_perms: HasMany<super::adm_perm::Entity>,
-    #[sea_orm(
-        belongs_to,
-        from = "realm_id",
-        to = "id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    pub adm_realm: BelongsTo<super::adm_realm::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

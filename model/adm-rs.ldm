@@ -2350,7 +2350,6 @@ DESTINATION 0 新宋体,8,N</a:FontList>
 <o:EntitySymbol Ref="o43"/>
 </c:DestinationSymbol>
 <c:Object>
-<o:Relationship Ref="o48"/>
 </c:Object>
 </o:RelationshipSymbol>
 <o:RelationshipSymbol Id="o49">
@@ -3049,7 +3048,6 @@ DESTINATION 0 新宋体,8,N</a:FontList>
 <o:EntitySymbol Ref="o68"/>
 </c:DestinationSymbol>
 <c:Object>
-<o:Relationship Ref="o73"/>
 </c:Object>
 </o:RelationshipSymbol>
 <o:RelationshipSymbol Id="o74">
@@ -3774,7 +3772,6 @@ DESTINATION 0 新宋体,8,N</a:FontList>
 <o:EntitySymbol Ref="o97"/>
 </c:DestinationSymbol>
 <c:Object>
-<o:Relationship Ref="o98"/>
 </c:Object>
 </o:RelationshipSymbol>
 <o:RelationshipSymbol Id="o99">
@@ -4907,8 +4904,8 @@ LABL 0 新宋体,8,N</a:FontList>
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>领域
-权限与数据隔离的顶层单位：用户、组织、角色分组、权限分组都按领域隔离
-一个组织/用户可以归属多个领域，关联见 realm_org / realm_user</a:Comment>
+用户与组织的数据域划分单位：只用于界定用户/组织归属与角色的数据可见范围，与应用、菜单、角色、权限等全局配置无关
+一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的数据范围见 adm_role_scope</a:Comment>
 <a:GlobalObjectID/>
 <c:Identifiers>
 <o:Identifier Id="o123">
@@ -4978,7 +4975,7 @@ LABL 0 新宋体,8,N</a:FontList>
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>编码
-全局唯一（AK），创建后不改：数据隔离与迁移脚本都按它定位领域
+全局唯一（AK），创建后不改：数据域与迁移脚本都按它定位领域
 @len 1..=50
 @check is_code</a:Comment>
 <a:DataType>VA50</a:DataType>
@@ -7061,7 +7058,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>角色分组
-按领域隔离的两级结构（分组 → 角色），树形由 tree_code 表达</a:Comment>
+全局两级结构（分组 → 角色），树形由 tree_code 表达，tree_code 全局唯一</a:Comment>
 <a:GlobalObjectID/>
 <c:Identifiers>
 <o:Identifier Id="o256">
@@ -7080,14 +7077,13 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <o:Identifier Id="o258">
 <a:ObjectID>24899C55-C576-4072-90EF-186C552D1CF8</a:ObjectID>
 <a:Name>树编码</a:Name>
-<a:Code>realm_id_and_tree_code</a:Code>
+<a:Code>tree_code</a:Code>
 <a:CreationDate>1793505967</a:CreationDate>
 <a:Creator>张柏子</a:Creator>
 <a:ModificationDate>1793506281</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:GlobalObjectID/>
 <c:Identifier.Attributes>
-<o:EntityAttribute Ref="o259"/>
 <o:EntityAttribute Ref="o260"/>
 </c:Identifier.Attributes>
 </o:Identifier>
@@ -7109,21 +7105,6 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
-</o:EntityAttribute>
-<o:EntityAttribute Id="o259">
-<a:ObjectID>26D89A58-47F9-4AD2-B5FE-0E762EFCFAA3</a:ObjectID>
-<a:Name>领域ID</a:Name>
-<a:Code>realm_id</a:Code>
-<a:CreationDate>1793511738</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793550000</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:Comment>领域 ID
-关联 realm；分组的 (realm_id, tree_code) 唯一，角色树按领域隔离</a:Comment>
-<a:DataType>LI</a:DataType>
-<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
-<a:GlobalObjectID/>
-<a:AutoMigrated>1</a:AutoMigrated>
 </o:EntityAttribute>
 <o:EntityAttribute Id="o260">
 <a:ObjectID>0A3D516F-3494-4631-822E-77DA9454DB6E</a:ObjectID>
@@ -7602,7 +7583,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>权限分组
-按领域隔离的两级结构（分组 → 权限），树形由 tree_code 表达</a:Comment>
+全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一</a:Comment>
 <a:GlobalObjectID/>
 <c:Identifiers>
 <o:Identifier Id="o289">
@@ -7621,14 +7602,13 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <o:Identifier Id="o291">
 <a:ObjectID>8599334D-BDF4-4E6A-BB04-301110E9DCBD</a:ObjectID>
 <a:Name>树编码</a:Name>
-<a:Code>realm_id_and_tree_code</a:Code>
+<a:Code>tree_code</a:Code>
 <a:CreationDate>1793514236</a:CreationDate>
 <a:Creator>张柏子</a:Creator>
 <a:ModificationDate>1793514236</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:GlobalObjectID/>
 <c:Identifier.Attributes>
-<o:EntityAttribute Ref="o292"/>
 <o:EntityAttribute Ref="o293"/>
 </c:Identifier.Attributes>
 </o:Identifier>
@@ -7650,21 +7630,6 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
-</o:EntityAttribute>
-<o:EntityAttribute Id="o292">
-<a:ObjectID>868A09C5-F492-491B-9BF2-BC99282FDE2D</a:ObjectID>
-<a:Name>领域ID</a:Name>
-<a:Code>realm_id</a:Code>
-<a:CreationDate>1793514371</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793550000</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:Comment>领域 ID
-关联 realm；分组的 (realm_id, tree_code) 唯一，权限树按领域隔离</a:Comment>
-<a:DataType>LI</a:DataType>
-<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
-<a:GlobalObjectID/>
-<a:AutoMigrated>1</a:AutoMigrated>
 </o:EntityAttribute>
 <o:EntityAttribute Id="o293">
 <a:ObjectID>BFC47790-3BD7-4888-8721-5FDED1D69FA4</a:ObjectID>
@@ -8190,7 +8155,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>应用
-菜单树的归属单位，一个领域下可以有多个应用（后台、前台、移动端）</a:Comment>
+菜单树的归属单位，全局配置：后台、前台、移动端各一棵菜单树，与领域无关</a:Comment>
 <a:GlobalObjectID/>
 <c:Identifiers>
 <o:Identifier Id="o325">
@@ -8251,20 +8216,6 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
 </o:EntityAttribute>
-<o:EntityAttribute Id="o331">
-<a:ObjectID>1B8FC090-FEF1-405F-99DC-A4FAD40BC3A4</a:ObjectID>
-<a:Name>领域ID</a:Name>
-<a:Code>realm_id</a:Code>
-<a:CreationDate>1793522064</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793550000</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:Comment>归属领域 ID
-关联 realm；为空表示跨领域通用应用</a:Comment>
-<a:DataType>LI</a:DataType>
-<a:GlobalObjectID/>
-<a:AutoMigrated>1</a:AutoMigrated>
-</o:EntityAttribute>
 <o:EntityAttribute Id="o328">
 <a:ObjectID>19F3911E-4C4C-4A1A-8907-6366A2E43368</a:ObjectID>
 <a:Name>编码</a:Name>
@@ -8307,7 +8258,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>排序值
-同一领域内排序，越小越靠前
+全局排序，越小越靠前
 @range 0..=9999</a:Comment>
 <a:DataType>I</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -10310,43 +10261,6 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <o:Identifier Ref="o256"/>
 </c:ParentIdentifier>
 </o:Relationship>
-<o:Relationship Id="o48">
-<a:ObjectID>F404BB6A-D107-4B75-86E8-CA7ED9B36655</a:ObjectID>
-<a:Name>Relationship_15</a:Name>
-<a:Code>Relationship_15</a:Code>
-<a:CreationDate>1793511738</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793511738</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<a:Entity1ToEntity2RoleCardinality>0,n</a:Entity1ToEntity2RoleCardinality>
-<a:Entity2ToEntity1RoleCardinality>1,1</a:Entity2ToEntity1RoleCardinality>
-<c:Object1>
-<o:Entity Ref="o61"/>
-</c:Object1>
-<c:Object2>
-<o:Entity Ref="o32"/>
-</c:Object2>
-<c:Joins>
-<o:RelationshipJoin Id="o443">
-<a:ObjectID>FE4499A0-1E23-4F3C-A668-C69B0295E5F2</a:ObjectID>
-<a:CreationDate>1793511738</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793511738</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Object1>
-<o:EntityAttribute Ref="o124"/>
-</c:Object1>
-<c:Object2>
-<o:EntityAttribute Ref="o259"/>
-</c:Object2>
-</o:RelationshipJoin>
-</c:Joins>
-<c:ParentIdentifier>
-<o:Identifier Ref="o123"/>
-</c:ParentIdentifier>
-</o:Relationship>
 <o:Relationship Id="o52">
 <a:ObjectID>426DF88A-1C08-4588-929A-63939985E423</a:ObjectID>
 <a:Name>Relationship_16</a:Name>
@@ -10458,43 +10372,6 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <o:Identifier Ref="o289"/>
 </c:ParentIdentifier>
 </o:Relationship>
-<o:Relationship Id="o73">
-<a:ObjectID>7A542964-4BD3-499D-945C-23CE221FA01A</a:ObjectID>
-<a:Name>Relationship_18</a:Name>
-<a:Code>Relationship_19</a:Code>
-<a:CreationDate>1793514371</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793514371</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<a:Entity1ToEntity2RoleCardinality>0,n</a:Entity1ToEntity2RoleCardinality>
-<a:Entity2ToEntity1RoleCardinality>1,1</a:Entity2ToEntity1RoleCardinality>
-<c:Object1>
-<o:Entity Ref="o89"/>
-</c:Object1>
-<c:Object2>
-<o:Entity Ref="o32"/>
-</c:Object2>
-<c:Joins>
-<o:RelationshipJoin Id="o447">
-<a:ObjectID>D2476815-1F65-44D9-B545-71C15C10EC4F</a:ObjectID>
-<a:CreationDate>1793514371</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793514371</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Object1>
-<o:EntityAttribute Ref="o124"/>
-</c:Object1>
-<c:Object2>
-<o:EntityAttribute Ref="o292"/>
-</c:Object2>
-</o:RelationshipJoin>
-</c:Joins>
-<c:ParentIdentifier>
-<o:Identifier Ref="o123"/>
-</c:ParentIdentifier>
-</o:Relationship>
 <o:Relationship Id="o77">
 <a:ObjectID>F0230BD3-8C41-4E84-B6B9-BCBC150F1C1A</a:ObjectID>
 <a:Name>Relationship_19</a:Name>
@@ -10567,43 +10444,6 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 </c:Joins>
 <c:ParentIdentifier>
 <o:Identifier Ref="o301"/>
-</c:ParentIdentifier>
-</o:Relationship>
-<o:Relationship Id="o98">
-<a:ObjectID>3D1B0B1A-BC36-45FF-BDF7-D59552EA6A0F</a:ObjectID>
-<a:Name>Relationship_21</a:Name>
-<a:Code>Relationship_22</a:Code>
-<a:CreationDate>1793522064</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793522064</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<a:Entity1ToEntity2RoleCardinality>0,n</a:Entity1ToEntity2RoleCardinality>
-<a:Entity2ToEntity1RoleCardinality>0,1</a:Entity2ToEntity1RoleCardinality>
-<c:Object1>
-<o:Entity Ref="o102"/>
-</c:Object1>
-<c:Object2>
-<o:Entity Ref="o32"/>
-</c:Object2>
-<c:Joins>
-<o:RelationshipJoin Id="o450">
-<a:ObjectID>2427F6EC-31EB-484D-B105-1298F9379EE9</a:ObjectID>
-<a:CreationDate>1793522064</a:CreationDate>
-<a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793522064</a:ModificationDate>
-<a:Modifier>张柏子</a:Modifier>
-<a:GlobalObjectID/>
-<c:Object1>
-<o:EntityAttribute Ref="o124"/>
-</c:Object1>
-<c:Object2>
-<o:EntityAttribute Ref="o331"/>
-</c:Object2>
-</o:RelationshipJoin>
-</c:Joins>
-<c:ParentIdentifier>
-<o:Identifier Ref="o123"/>
 </c:ParentIdentifier>
 </o:Relationship>
 <o:Relationship Id="o101">

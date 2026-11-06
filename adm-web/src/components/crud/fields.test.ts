@@ -11,21 +11,21 @@ import {
 
 const fields: CrudField[] = [
   {
-    name: "realmId",
-    label: "领域",
+    name: "appId",
+    label: "应用",
     type: "select",
     required: true,
     createOnly: true,
-    options: [{ value: "r1", label: "领域一" }],
+    options: [{ value: "a1", label: "应用一" }],
   },
   {
     name: "parentCode",
-    label: "父分组",
+    label: "父菜单",
     type: "select",
     createOnly: true,
-    resetOn: ["realmId"],
+    resetOn: ["appId"],
     options: (values) =>
-      values.realmId === "r1"
+      values.appId === "a1"
         ? [{ value: "001", label: "根一" }]
         : [{ value: "002", label: "根二" }],
   },
@@ -42,7 +42,7 @@ const fields: CrudField[] = [
 describe("CrudPage 表单 schema 纯逻辑", () => {
   it("按 create / edit 过滤字段，同名重名字段可用 key 区分", () => {
     expect(visibleFieldsOf(fields, "create").map((field) => field.name)).toEqual([
-      "realmId",
+      "appId",
       "parentCode",
       "name",
       "mobile",
@@ -52,7 +52,7 @@ describe("CrudPage 表单 schema 纯逻辑", () => {
       "name",
       "mobile",
     ]);
-    expect(fieldKey(fields[0], 0)).toBe("realmId-0");
+    expect(fieldKey(fields[0], 0)).toBe("appId-0");
     expect(fieldKey({ ...fields[0], key: "loginPswd-create" }, 0)).toBe("loginPswd-create");
   });
 
@@ -60,25 +60,25 @@ describe("CrudPage 表单 schema 纯逻辑", () => {
     const values = defaultsOf(fields);
     expect(values.enabled).toBe(true);
     expect(values.name).toBe("");
-    expect(values.realmId).toBe("");
+    expect(values.appId).toBe("");
   });
 
   it("动态 options 随当前表单值重算，静态 options 原样返回", () => {
-    expect(resolveFieldOptions(fields[1], { realmId: "r1" }, "create")).toEqual([
+    expect(resolveFieldOptions(fields[1], { appId: "a1" }, "create")).toEqual([
       { value: "001", label: "根一" },
     ]);
-    expect(resolveFieldOptions(fields[1], { realmId: "r2" }, "create")).toEqual([
+    expect(resolveFieldOptions(fields[1], { appId: "a2" }, "create")).toEqual([
       { value: "002", label: "根二" },
     ]);
-    expect(resolveFieldOptions(fields[0], {}, "edit")).toEqual([{ value: "r1", label: "领域一" }]);
+    expect(resolveFieldOptions(fields[0], {}, "edit")).toEqual([{ value: "a1", label: "应用一" }]);
     expect(resolveFieldOptions({ name: "x", label: "x" }, {}, "create")).toEqual([]);
   });
 
   it("切换依赖字段时清空依赖它的字段，其它值不变", () => {
-    const values = { realmId: "r1", parentCode: "001", enabled: true, name: "张三" };
-    expect(applyFieldChange(fields, values, "realmId", "r2")).toEqual({
+    const values = { appId: "a1", parentCode: "001", enabled: true, name: "张三" };
+    expect(applyFieldChange(fields, values, "appId", "a2")).toEqual({
       ...values,
-      realmId: "r2",
+      appId: "a2",
       parentCode: "",
     });
     // 原对象不被修改
@@ -97,8 +97,8 @@ describe("CrudPage 表单 schema 纯逻辑", () => {
   });
 
   it("必填与自定义校验返回第一条错误，全通过时返回 null", () => {
-    expect(validateForm(fields, "create", { realmId: "", parentCode: "", name: "", mobile: "" })).toBe(
-      "请填写「领域」",
+    expect(validateForm(fields, "create", { appId: "", parentCode: "", name: "", mobile: "" })).toBe(
+      "请填写「应用」",
     );
     expect(validateForm(fields, "edit", { name: "张三", mobile: "123" })).toBe("手机号格式不正确");
     expect(validateForm(fields, "edit", { name: "张三", mobile: "13800138000" })).toBeNull();

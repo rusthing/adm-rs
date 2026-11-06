@@ -88,7 +88,7 @@ pub async fn reorder_realm(
     flat_response(&SORT_REALM, headers, body).await
 }
 
-/// # 应用重排（按领域分组）
+/// # 应用重排（全局一组，与领域无关）
 #[utoipa::path(
     post,
     path = "/adm/app/reorder",
@@ -207,7 +207,7 @@ pub async fn reorder_menu(
     tree_response(&SORT_MENU, headers, body).await
 }
 
-/// # 角色分组重排（按领域 + 父节点）
+/// # 角色分组重排（全局树，按父节点分组）
 #[utoipa::path(
     post,
     path = "/adm/role-group/reorder",
@@ -224,7 +224,7 @@ pub async fn reorder_role_group(
     tree_response(&SORT_ROLE_GROUP, headers, body).await
 }
 
-/// # 权限分组重排（按领域 + 父节点）
+/// # 权限分组重排（全局树，按父节点分组）
 #[utoipa::path(
     post,
     path = "/adm/perm-group/reorder",
