@@ -1307,7 +1307,7 @@ create table adm_realm (
 comment on table adm_realm is
 '领域
 用户与组织的数据域划分单位：只用于界定用户/组织归属与角色的数据可见范围，与应用、菜单、角色、权限等全局配置无关
-一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的数据范围见 adm_role_scope';
+一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的可见范围见 adm_role_realm_scope / adm_role_org_scope / adm_role_app_scope';
 
 comment on column adm_realm.id is
 '主键
@@ -2093,6 +2093,72 @@ create  index Relationship_13_FK on adm_user (
 person_id
 );
 
+
+/*==============================================================*/
+/* 角色可见范围：领域 / 组织 / 应用，三条独立轴各一张表 */
+/* 只管可见范围白名单，不管功能权限；配了才限制，多角色取并集 */
+/*==============================================================*/
+
+create table adm_role_realm_scope (
+    id         bigint primary key,
+    role_id    bigint not null references adm_role(id)
+                 on update cascade on delete cascade,
+    realm_id   bigint not null references adm_realm(id)
+                 on update cascade on delete cascade,
+    creater_id bigint not null default 0,
+    create_ms  bigint not null default 0,
+    updater_id bigint not null default 0,
+    update_ms  bigint not null default 0
+);
+
+create unique index ak_role_id_and_realm_id_adm_role_realm_scope
+    on adm_role_realm_scope (role_id, realm_id);
+
+create index idx_realm_id_adm_role_realm_scope
+    on adm_role_realm_scope (realm_id);
+
+create table adm_role_org_scope (
+    id         bigint primary key,
+    role_id    bigint not null references adm_role(id)
+                 on update cascade on delete cascade,
+    org_id     bigint not null references adm_org(id)
+                 on update cascade on delete cascade,
+    creater_id bigint not null default 0,
+    create_ms  bigint not null default 0,
+    updater_id bigint not null default 0,
+    update_ms  bigint not null default 0
+);
+
+create unique index ak_role_id_and_org_id_adm_role_org_scope
+    on adm_role_org_scope (role_id, org_id);
+
+create index idx_org_id_adm_role_org_scope
+    on adm_role_org_scope (org_id);
+
+create table adm_role_app_scope (
+    id         bigint primary key,
+    role_id    bigint not null references adm_role(id)
+                 on update cascade on delete cascade,
+    app_id     bigint not null references adm_app(id)
+                 on update cascade on delete cascade,
+    creater_id bigint not null default 0,
+    create_ms  bigint not null default 0,
+    updater_id bigint not null default 0,
+    update_ms  bigint not null default 0
+);
+
+create unique index ak_role_id_and_app_id_adm_role_app_scope
+    on adm_role_app_scope (role_id, app_id);
+
+create index idx_app_id_adm_role_app_scope
+    on adm_role_app_scope (app_id);
+
+/* 按 user_id 反查归属：现有唯一键前缀是 org_id / realm_id，用不上 */
+create index idx_user_id_adm_org_user
+    on adm_org_user (user_id);
+
+create index idx_user_id_adm_realm_user
+    on adm_realm_user (user_id);
 alter table adm_lock_log
    add constraint fk_user_id__from__adm_user foreign key (user_id)
       references adm_user (id)

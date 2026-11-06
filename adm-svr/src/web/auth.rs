@@ -23,8 +23,12 @@
 //! 本中间件只证明「请求来自哪个用户」，不按权限 URN 拒绝请求。
 //! 接口级授权（`GET:/adm/user` 这类 URN 的匹配与拒止）后续在 gatex-rs 实现；
 //! 前端菜单与页面门禁只是展示层，不能替代服务端授权。
+//!
+//! 校验通过后还会调用 [`crate::svc::load_scope_ctx`] 计算该用户的角色可见范围，
+//! 并用 [`crate::svc::with_scope`] 包住下游 handler，使 `#[dao]` 层强制过滤生效。
 
 use crate::cst::ADM_CODE_TOKEN_INVALID;
+use crate::svc::{load_scope_ctx, with_scope};
 use crate::utils::AdmTokenUtils;
 use axum::extract::Request;
 use axum::http::header::AUTHORIZATION;
@@ -90,7 +94,16 @@ pub async fn require_auth(mut request: Request, next: Next) -> Response {
         .headers_mut()
         .insert(USER_ID_HEADER_NAME, value);
 
-    next.run(request).await
+    // 数据范围在中间件里算一次，包进 task_local；之后所有 #[dao] 生成的
+    // 读写方法都会自动叠加同一套条件。查库失败不能放行，否则等于整片越权。
+    let ctx = match load_scope_ctx(user_id).await {
+        Ok(ctx) => ctx,
+        Err(error) => {
+            tracing::error!("[adm] 计算角色可见范围失败: {error}");
+            return scope_error(&error.to_string());
+        }
+    };
+    with_scope(ctx, next.run(request)).await
 }
 
 /// 统一 401 响应
@@ -100,6 +113,42 @@ fn unauthorized(detail: &str) -> Response {
         Json(
             Ro::<()>::warn("未登录或令牌已失效".to_string())
                 .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))
+                .detail(Some(detail.to_string())),
+        ),
+    )
+        .into_response()
+}
+
+/// # 从 `X-User-Id` 建立数据范围上下文
+///
+/// 供首页 / widget 这类不挂 [`require_auth`]、由网关注入用户头的路由复用，
+/// 让 KPI 统计与业务列表走同一套过滤。身份本身仍由网关负责，这里只是
+/// 把「这个用户能看到什么」包进 `task_local`。
+pub async fn scope_from_user_header(request: Request, next: Next) -> Response {
+    let user_id = request
+        .headers()
+        .get(USER_ID_HEADER_NAME)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|text| text.parse::<u64>().ok());
+    let Some(user_id) = user_id else {
+        return next.run(request).await;
+    };
+    let ctx = match load_scope_ctx(user_id).await {
+        Ok(ctx) => ctx,
+        Err(error) => {
+            tracing::error!("[adm] 计算角色可见范围失败: {error}");
+            return scope_error(&error.to_string());
+        }
+    };
+    with_scope(ctx, next.run(request)).await
+}
+
+/// 数据范围计算失败：返回 500，不放行任何业务查询
+fn scope_error(detail: &str) -> Response {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(
+            Ro::<()>::warn("数据范围计算失败".to_string())
                 .detail(Some(detail.to_string())),
         ),
     )

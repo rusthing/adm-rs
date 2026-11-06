@@ -144,7 +144,7 @@ insert into adm_role (id, group_id, name, sort_order, remark, enabled,
 values
   (2, 1, '系统管理员', 20, '给客户管理员使用；隐藏底层权限管理 / 菜单管理等可能误操作的入口',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
-  (3, 1, '组织管理员', 30, '只管指定组织下的人员 / 组织成员绑定；scope 由 adm_role_scope 决定',
+  (3, 1, '组织管理员', 30, '只管指定领域 / 组织 / 应用内的人员与组织；可见范围由三张 adm_role_*_scope 表决定',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
   (4, 2, '审计员',     10, '只读登录 / 操作日志，不能改任何配置',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
@@ -253,11 +253,19 @@ values
 on conflict do nothing;
 
 /*--------------------------------------------------------------*/
-/* 7. adm_role_scope：组织管理员绑定 realm=adm（全量 org 范围）*/
+/* 7. 角色可见范围：三张表各自独立，均为「配了才限制」的白名单   */
+/*    组织管理员绑定 realm=adm；应用只放行管理后台 app=1         */
+/*    平台/系统管理员不配置任何行 ⇒ 三个维度全量可见             */
 /*--------------------------------------------------------------*/
-insert into adm_role_scope (id, role_id, realm_id, org_id, creater_id, create_ms, updater_id, update_ms)
-values (1, 3, 1, null, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
+insert into adm_role_realm_scope (id, role_id, realm_id, creater_id, create_ms, updater_id, update_ms)
+values (1, 3, 1, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict do nothing;
+
+insert into adm_role_app_scope (id, role_id, app_id, creater_id, create_ms, updater_id, update_ms)
+values (1, 3, 1, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
+on conflict do nothing;
+
+/* adm_role_org_scope 暂无种子：adm_org 初始化为空，不伪造组织 ID */
 
 /*--------------------------------------------------------------*/
 /* 8. 角色 ↔ 菜单 / 权限 授权；平台管理员保留全量，其它重新算   */
@@ -339,7 +347,7 @@ values
 /* 组织管理员（role=3）：
  *   菜单 → 用户 / 组织管理 / 人员管理 / 登录日志
  *   权限 → 用户 CRUD / 组织 CRUD / 组织类型 CRUD / 人员 CRUD / 组织成员 / 登录日志
- *   （CRUD 真正 scope 由 adm_role_scope + 后续 service 层过滤决定）
+ *   （CRUD 的可见范围由 adm_role_realm_scope / adm_role_org_scope / adm_role_app_scope 强制过滤）
  */
 insert into adm_role_menu (id, menu_id, role_id, creater_id, create_ms, updater_id, update_ms)
 values

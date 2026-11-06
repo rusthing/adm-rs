@@ -8,7 +8,7 @@ use super::adm_dashboard_svc::AdmDashboardSvc;
 use crate::dic::UserStatus;
 use crate::mo::{
     adm_login_log, adm_menu, adm_op_log, adm_org, adm_perm, adm_person, adm_realm, adm_role,
-    adm_role_scope, adm_user,
+    adm_user,
 };
 use chrono::TimeZone;
 use robotech::db::get_db_conn;
@@ -58,6 +58,7 @@ impl AdmWidgetDataSvc {
         let (value, default_label, default_path): (u64, &str, &str) = match metric {
             "users" => (
                 adm_user::Entity::find()
+                    .filter(scoped("adm_user"))
                     .count(db.as_ref())
                     .await
                     .map_err(robotech::dao::DaoError::parse_db_err)?,
@@ -74,6 +75,7 @@ impl AdmWidgetDataSvc {
             ),
             "menus" => (
                 adm_menu::Entity::find()
+                    .filter(scoped("adm_menu"))
                     .count(db.as_ref())
                     .await
                     .map_err(robotech::dao::DaoError::parse_db_err)?,
@@ -90,6 +92,7 @@ impl AdmWidgetDataSvc {
             ),
             "orgs" => (
                 adm_org::Entity::find()
+                    .filter(scoped("adm_org"))
                     .count(db.as_ref())
                     .await
                     .map_err(robotech::dao::DaoError::parse_db_err)?,
@@ -98,6 +101,7 @@ impl AdmWidgetDataSvc {
             ),
             "persons" => (
                 adm_person::Entity::find()
+                    .filter(scoped("adm_person"))
                     .count(db.as_ref())
                     .await
                     .map_err(robotech::dao::DaoError::parse_db_err)?,
@@ -106,6 +110,7 @@ impl AdmWidgetDataSvc {
             ),
             "realms" => (
                 adm_realm::Entity::find()
+                    .filter(scoped("adm_realm"))
                     .count(db.as_ref())
                     .await
                     .map_err(robotech::dao::DaoError::parse_db_err)?,
@@ -397,10 +402,10 @@ impl AdmWidgetDataSvc {
     async fn my_permissions(user_id: u64) -> Result<Value, SvcError> {
         let ctx = AdmDashboardSvc::load_user_context(user_id).await?;
         let scope_note = if ctx.scopes.is_empty() {
-            "当前为全局数据：未配置数据范围（adm_role_scope），也没有启用过滤".to_string()
+            "未配置角色可见范围，统计为全量数据（领域 / 组织 / 应用配了才限制）".to_string()
         } else {
             format!(
-                "当前为全局数据：已下发 {} 条数据范围，但本轮未启用组织过滤",
+                "数据已按 {} 条角色可见范围（领域 / 组织 / 应用）强制过滤",
                 ctx.scopes.len()
             )
         };
@@ -424,8 +429,7 @@ fn validation_error(message: String) -> validator::ValidationError {
     error
 }
 
-/// 保留给后续按组织范围过滤时使用；本轮不调用
-#[allow(dead_code)]
-fn scope_ids(scopes: &[adm_role_scope::Model]) -> Vec<i64> {
-    scopes.iter().filter_map(|scope| scope.org_id).collect()
+/// 统计端点与 DAO 层共用同一套数据范围条件，避免「列表受限、KPI 泄漏」。
+fn scoped(table: &str) -> Condition {
+    robotech::dao::data_scope_condition(table, Condition::all())
 }

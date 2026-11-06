@@ -38,7 +38,7 @@ export function useAppOptions(enabled = true) {
   });
 }
 
-/** 领域列表：用户/组织数据域归属与角色数据范围选择；应用、菜单、角色、权限不选领域。 */
+/** 领域列表：用户/组织数据域归属与角色领域可见范围选择；应用、菜单、角色、权限不选领域。 */
 export function useRealmOptions(enabled = true) {
   return useQuery({
     queryKey: optionKeys.realm,

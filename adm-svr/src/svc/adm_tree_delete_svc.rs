@@ -65,9 +65,9 @@ const ORG_REFS: &[TreeReference] = &[
         label: "领域组织绑定",
     },
     TreeReference {
-        table: "adm_role_scope",
+        table: "adm_role_org_scope",
         col: "org_id",
-        label: "角色数据范围",
+        label: "角色组织可见范围",
     },
 ];
 

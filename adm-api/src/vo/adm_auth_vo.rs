@@ -80,9 +80,10 @@ pub struct AdmMeVo {
     ///
     /// 与 `perms` 的内容重复，单独给出是为了前端按前缀匹配时不用再 map 一次。
     pub perm_urns: Vec<String>,
-    /// 当前用户的数据范围（adm_role_scope）
+    /// 当前用户的角色可见范围（领域 / 组织 / 应用三条轴）
     ///
-    /// 本轮只下发、不强制过滤；前端据此如实标注「当前为全局数据」。
+    /// 三张 `adm_role_*_scope` 表合并下发；后端在 DAO 层按此范围强制过滤，
+    /// 没配某一轴就表示该维度全量可见，配了才限制，多角色取并集。
     pub scopes: Vec<AdmRoleScopeVo>,
     /// 当前生效的首页配置
     ///

@@ -119,9 +119,10 @@ export function DashboardPage() {
     };
   });
 
-  const scopeNames = (authz?.scopes ?? [])
-    .map((scope) => scope.roleName || scope.scopeType)
-    .filter(Boolean);
+  const scopes = authz?.scopes ?? [];
+  const axisCount = (type: string) => scopes.filter((scope) => scope.scopeType === type).length;
+  const scopeSummary = `领域 ${axisCount("realm")} / 组织 ${axisCount("org")} / 应用 ${axisCount("app")}`;
+  const hasScopeConfig = scopes.length > 0;
   const anyScopeAware = configWidgets.some((widget) => widget.scopeAware);
   const sourceText =
     dashboard?.source === "global"
@@ -171,13 +172,13 @@ export function DashboardPage() {
         }
       />
 
-      {anyScopeAware && (
-        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-warn/25 bg-warn-soft px-3.5 py-3 text-[12px] leading-relaxed text-warn">
+      {(anyScopeAware || hasScopeConfig) && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-3 text-[12px] leading-relaxed text-ink-soft">
           <Globe size={15} className="mt-0.5 shrink-0" />
           <span>
-            当前为<strong className="font-semibold">全局数据</strong>：本轮只下发角色数据范围
-            （{scopeNames.length > 0 ? scopeNames.join("、") : "暂无范围配置"}），
-            widget 查询尚未按组织过滤。卡片上的「全局数据」标记即为如实说明。
+            统计口径<strong className="font-semibold">已按角色可见范围过滤</strong>：{scopeSummary}
+            （{hasScopeConfig ? "配了才限制，多角色取并集" : "未配置可见范围，统计为全局数据"}）。
+            可见范围只决定「能看哪些领域 / 组织 / 应用」，功能权限仍由角色菜单与权限决定。
           </span>
         </div>
       )}
@@ -249,8 +250,8 @@ export function DashboardPage() {
             ) : (
               "无配置"
             )}{" "}
-            · {(authz?.scopes ?? []).length} 个数据范围 ·{" "}
-            {anyScopeAware ? "全局数据" : "未启用数据范围"}
+            · 可见范围 {scopeSummary} ·{" "}
+            {hasScopeConfig ? "已按范围过滤" : "全量可见"}
           </span>
           <span className="tnum font-mono">
             {generatedMs ? `生成于 ${formatMs(generatedMs)}` : "等待数据…"}

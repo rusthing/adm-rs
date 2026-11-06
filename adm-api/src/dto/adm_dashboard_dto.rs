@@ -24,7 +24,7 @@ pub struct AdmDashboardWidgetDto {
     pub params: Option<Value>,
     /// 权限 URN 前缀；空 / null 表示所有登录用户可见
     pub perm_urn: Option<String>,
-    /// 数据范围标记
+    /// 是否按角色可见范围（领域 / 组织 / 应用）过滤该 widget 的统计口径
     pub scope_aware: Option<bool>,
     /// 是否启用
     pub enabled: Option<bool>,

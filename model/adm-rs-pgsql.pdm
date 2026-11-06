@@ -4908,6 +4908,246 @@ LABL 0 新宋体,8,N</a:FontList>
 <o:Table Ref="o41"/>
 </c:Object>
 </o:TableSymbol>
+<o:TableSymbol Id="o729">
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:IconMode>-1</a:IconMode>
+<a:Rect>((58000,-14000), (66000,-6000))</a:Rect>
+<a:LineColor>11881048</a:LineColor>
+<a:FillColor>16777215</a:FillColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>STRN 0 新宋体,8,N
+DISPNAME 0 新宋体,8,N
+OWNRDISPNAME 0 新宋体,8,N
+Columns 0 新宋体,8,N
+TablePkColumns 0 新宋体,8,U
+TableFkColumns 0 新宋体,8,N
+Keys 0 新宋体,8,N
+Indexes 0 新宋体,8,N
+Triggers 0 新宋体,8,N
+LABL 0 新宋体,8,N</a:FontList>
+<a:BrushStyle>6</a:BrushStyle>
+<a:GradientFillMode>65</a:GradientFillMode>
+<a:GradientEndColor>16777215</a:GradientEndColor>
+<c:Object>
+<o:Table Ref="o63"/>
+</c:Object>
+</o:TableSymbol>
+<o:TableSymbol Id="o730">
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:IconMode>-1</a:IconMode>
+<a:Rect>((58000,10000), (66000,18000))</a:Rect>
+<a:LineColor>11881048</a:LineColor>
+<a:FillColor>16777215</a:FillColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>STRN 0 新宋体,8,N
+DISPNAME 0 新宋体,8,N
+OWNRDISPNAME 0 新宋体,8,N
+Columns 0 新宋体,8,N
+TablePkColumns 0 新宋体,8,U
+TableFkColumns 0 新宋体,8,N
+Keys 0 新宋体,8,N
+Indexes 0 新宋体,8,N
+Triggers 0 新宋体,8,N
+LABL 0 新宋体,8,N</a:FontList>
+<a:BrushStyle>6</a:BrushStyle>
+<a:GradientFillMode>65</a:GradientFillMode>
+<a:GradientEndColor>16777215</a:GradientEndColor>
+<c:Object>
+<o:Table Ref="o103"/>
+</c:Object>
+</o:TableSymbol>
+<o:TableSymbol Id="o731">
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:IconMode>-1</a:IconMode>
+<a:Rect>((40000,-14000), (48000,-6000))</a:Rect>
+<a:LineColor>11881048</a:LineColor>
+<a:FillColor>16777215</a:FillColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>STRN 0 新宋体,8,N
+DISPNAME 0 新宋体,8,N
+OWNRDISPNAME 0 新宋体,8,N
+Columns 0 新宋体,8,N
+TablePkColumns 0 新宋体,8,U
+TableFkColumns 0 新宋体,8,N
+Keys 0 新宋体,8,N
+Indexes 0 新宋体,8,N
+Triggers 0 新宋体,8,N
+LABL 0 新宋体,8,N</a:FontList>
+<a:BrushStyle>6</a:BrushStyle>
+<a:GradientFillMode>65</a:GradientFillMode>
+<a:GradientEndColor>16777215</a:GradientEndColor>
+<c:Object>
+<o:Table Ref="o654"/>
+</c:Object>
+</o:TableSymbol>
+<o:TableSymbol Id="o732">
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:IconMode>-1</a:IconMode>
+<a:Rect>((40000,-2000), (48000,6000))</a:Rect>
+<a:LineColor>11881048</a:LineColor>
+<a:FillColor>16777215</a:FillColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>STRN 0 新宋体,8,N
+DISPNAME 0 新宋体,8,N
+OWNRDISPNAME 0 新宋体,8,N
+Columns 0 新宋体,8,N
+TablePkColumns 0 新宋体,8,U
+TableFkColumns 0 新宋体,8,N
+Keys 0 新宋体,8,N
+Indexes 0 新宋体,8,N
+Triggers 0 新宋体,8,N
+LABL 0 新宋体,8,N</a:FontList>
+<a:BrushStyle>6</a:BrushStyle>
+<a:GradientFillMode>65</a:GradientFillMode>
+<a:GradientEndColor>16777215</a:GradientEndColor>
+<c:Object>
+<o:Table Ref="o679"/>
+</c:Object>
+</o:TableSymbol>
+<o:TableSymbol Id="o733">
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:IconMode>-1</a:IconMode>
+<a:Rect>((40000,10000), (48000,18000))</a:Rect>
+<a:LineColor>11881048</a:LineColor>
+<a:FillColor>16777215</a:FillColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>STRN 0 新宋体,8,N
+DISPNAME 0 新宋体,8,N
+OWNRDISPNAME 0 新宋体,8,N
+Columns 0 新宋体,8,N
+TablePkColumns 0 新宋体,8,U
+TableFkColumns 0 新宋体,8,N
+Keys 0 新宋体,8,N
+Indexes 0 新宋体,8,N
+Triggers 0 新宋体,8,N
+LABL 0 新宋体,8,N</a:FontList>
+<a:BrushStyle>6</a:BrushStyle>
+<a:GradientFillMode>65</a:GradientFillMode>
+<a:GradientEndColor>16777215</a:GradientEndColor>
+<c:Object>
+<o:Table Ref="o704"/>
+</c:Object>
+</o:TableSymbol>
+<o:ReferenceSymbol Id="o734">
+<a:Rect>((44000,-10000), (62000,-10000))</a:Rect>
+<a:ListOfPoints>((44000,-10000),(62000,-10000))</a:ListOfPoints>
+<a:CornerStyle>1</a:CornerStyle>
+<a:ArrowStyle>1</a:ArrowStyle>
+<a:LineColor>11881048</a:LineColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>CENTER 0 新宋体,8,N
+SOURCE 0 新宋体,8,N
+DESTINATION 0 新宋体,8,N</a:FontList>
+<c:SourceSymbol>
+<o:TableSymbol Ref="o731"/>
+</c:SourceSymbol>
+<c:DestinationSymbol>
+<o:TableSymbol Ref="o729"/>
+</c:DestinationSymbol>
+<c:Object>
+<o:Reference Ref="o664"/>
+</c:Object>
+</o:ReferenceSymbol>
+<o:ReferenceSymbol Id="o735">
+<a:Rect>((-5651,-10000), (44000,33972))</a:Rect>
+<a:ListOfPoints>((44000,-10000),(-5651,33972))</a:ListOfPoints>
+<a:CornerStyle>1</a:CornerStyle>
+<a:ArrowStyle>1</a:ArrowStyle>
+<a:LineColor>11881048</a:LineColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>CENTER 0 新宋体,8,N
+SOURCE 0 新宋体,8,N
+DESTINATION 0 新宋体,8,N</a:FontList>
+<c:SourceSymbol>
+<o:TableSymbol Ref="o731"/>
+</c:SourceSymbol>
+<c:DestinationSymbol>
+<o:TableSymbol Ref="o12"/>
+</c:DestinationSymbol>
+<c:Object>
+<o:Reference Ref="o666"/>
+</c:Object>
+</o:ReferenceSymbol>
+<o:ReferenceSymbol Id="o736">
+<a:Rect>((44000,-10000), (62000,2000))</a:Rect>
+<a:ListOfPoints>((44000,2000),(62000,-10000))</a:ListOfPoints>
+<a:CornerStyle>1</a:CornerStyle>
+<a:ArrowStyle>1</a:ArrowStyle>
+<a:LineColor>11881048</a:LineColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>CENTER 0 新宋体,8,N
+SOURCE 0 新宋体,8,N
+DESTINATION 0 新宋体,8,N</a:FontList>
+<c:SourceSymbol>
+<o:TableSymbol Ref="o732"/>
+</c:SourceSymbol>
+<c:DestinationSymbol>
+<o:TableSymbol Ref="o729"/>
+</c:DestinationSymbol>
+<c:Object>
+<o:Reference Ref="o689"/>
+</c:Object>
+</o:ReferenceSymbol>
+<o:ReferenceSymbol Id="o737">
+<a:Rect>((-15150,2000), (44000,5700))</a:Rect>
+<a:ListOfPoints>((44000,2000),(-15150,5700))</a:ListOfPoints>
+<a:CornerStyle>1</a:CornerStyle>
+<a:ArrowStyle>1</a:ArrowStyle>
+<a:LineColor>11881048</a:LineColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>CENTER 0 新宋体,8,N
+SOURCE 0 新宋体,8,N
+DESTINATION 0 新宋体,8,N</a:FontList>
+<c:SourceSymbol>
+<o:TableSymbol Ref="o732"/>
+</c:SourceSymbol>
+<c:DestinationSymbol>
+<o:TableSymbol Ref="o7"/>
+</c:DestinationSymbol>
+<c:Object>
+<o:Reference Ref="o691"/>
+</c:Object>
+</o:ReferenceSymbol>
+<o:ReferenceSymbol Id="o738">
+<a:Rect>((44000,-10000), (62000,14000))</a:Rect>
+<a:ListOfPoints>((44000,14000),(62000,-10000))</a:ListOfPoints>
+<a:CornerStyle>1</a:CornerStyle>
+<a:ArrowStyle>1</a:ArrowStyle>
+<a:LineColor>11881048</a:LineColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>CENTER 0 新宋体,8,N
+SOURCE 0 新宋体,8,N
+DESTINATION 0 新宋体,8,N</a:FontList>
+<c:SourceSymbol>
+<o:TableSymbol Ref="o733"/>
+</c:SourceSymbol>
+<c:DestinationSymbol>
+<o:TableSymbol Ref="o729"/>
+</c:DestinationSymbol>
+<c:Object>
+<o:Reference Ref="o714"/>
+</c:Object>
+</o:ReferenceSymbol>
+<o:ReferenceSymbol Id="o739">
+<a:Rect>((44000,14000), (62000,14000))</a:Rect>
+<a:ListOfPoints>((44000,14000),(62000,14000))</a:ListOfPoints>
+<a:CornerStyle>1</a:CornerStyle>
+<a:ArrowStyle>1</a:ArrowStyle>
+<a:LineColor>11881048</a:LineColor>
+<a:ShadowColor>12632256</a:ShadowColor>
+<a:FontList>CENTER 0 新宋体,8,N
+SOURCE 0 新宋体,8,N
+DESTINATION 0 新宋体,8,N</a:FontList>
+<c:SourceSymbol>
+<o:TableSymbol Ref="o733"/>
+</c:SourceSymbol>
+<c:DestinationSymbol>
+<o:TableSymbol Ref="o730"/>
+</c:DestinationSymbol>
+<c:Object>
+<o:Reference Ref="o716"/>
+</c:Object>
+</o:ReferenceSymbol>
 </c:Symbols>
 </o:PhysicalDiagram>
 <o:PhysicalDiagram Id="o42">
@@ -9103,7 +9343,7 @@ LABL 0 新宋体,8,N</a:FontList>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>领域
 用户与组织的数据域划分单位：只用于界定用户/组织归属与角色的数据可见范围，与应用、菜单、角色、权限等全局配置无关
-一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的数据范围见 adm_role_scope</a:Comment>
+一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的可见范围见 adm_role_realm_scope / adm_role_org_scope / adm_role_app_scope</a:Comment>
 <a:History>ORG {92622F27-B716-4E12-82D6-8C5CF47BFEB6}
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
@@ -17633,6 +17873,924 @@ DAT 1793541529</a:History>
 <o:Key Ref="o617"/>
 </c:PrimaryKey>
 </o:Table>
+<o:Table Id="o654">
+<a:ObjectID>F6A6B377-F57B-598A-9927-3B903921F088</a:ObjectID>
+<a:Name>角色领域可见范围</a:Name>
+<a:Code>adm_role_realm_scope</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>角色领域可见范围
+角色可见范围白名单：该角色可以看哪些领域。只管可见范围，不管功能权限；功能权限由 adm_role_menu / adm_role_perm 决定。
+角色没有对应行 = 该维度全量可见（配了才限制）；多角色取并集</a:Comment>
+<a:GlobalObjectID/>
+<a:TotalSavingCurrency/>
+<c:Columns>
+<o:Column Id="o655">
+<a:ObjectID>980430CA-6707-56A3-99F6-F7025C15D5C2</a:ObjectID>
+<a:Name>ID</a:Name>
+<a:Code>id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o657">
+<a:ObjectID>52E756B3-FBA7-52CB-9FE3-44492E4041D0</a:ObjectID>
+<a:Name>角色ID</a:Name>
+<a:Code>role_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>角色 ID
+关联 role；(realm_id, role_id) 唯一（AK）</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o656">
+<a:ObjectID>77036750-4A51-5B32-88C0-F244637E063A</a:ObjectID>
+<a:Name>领域ID</a:Name>
+<a:Code>realm_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>领域 ID
+关联 realm；(realm_id, role_id) 唯一（AK）</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o658">
+<a:ObjectID>87F95879-EE3C-5035-BBC8-FFF60156102F</a:ObjectID>
+<a:Name>创建者ID</a:Name>
+<a:Code>creater_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o659">
+<a:ObjectID>00DD0FC0-B8F4-5B5C-8714-ACA1C44E0F01</a:ObjectID>
+<a:Name>创建时间戳</a:Name>
+<a:Code>create_ms</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o660">
+<a:ObjectID>85B53F08-163D-5409-A787-9297A599ACC3</a:ObjectID>
+<a:Name>更新者ID</a:Name>
+<a:Code>updater_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o661">
+<a:ObjectID>BFA1B133-6A6F-5909-85F5-11E10128FE6E</a:ObjectID>
+<a:Name>更新时间戳</a:Name>
+<a:Code>update_ms</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column></c:Columns>
+<c:Keys>
+<o:Key Id="o662">
+<a:ObjectID>366ABE5A-42B7-581F-90D8-942BEA858921</a:ObjectID>
+<a:Name>Identifier_1</a:Name>
+<a:Code>Identifier_1</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Key.Columns>
+<o:Column Ref="o655"/>
+</c:Key.Columns>
+</o:Key>
+<o:Key Id="o663">
+<a:ObjectID>3E5DE8EC-8EB0-5B87-A014-A5ECD3A7DFB9</a:ObjectID>
+<a:Name>角色与领域</a:Name>
+<a:Code>role_id_and_realm_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Key.Columns>
+<o:Column Ref="o657"/>
+<o:Column Ref="o656"/>
+</c:Key.Columns>
+</o:Key>
+</c:Keys>
+<c:Indexes>
+<o:Index Id="o668">
+<a:ObjectID>9AA2B8CB-2947-5F46-8922-B0452BBA8AC7</a:ObjectID>
+<a:Name>adm_role_realm_scope_PK</a:Name>
+<a:Code>adm_role_realm_scope_PK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Unique>1</a:Unique>
+<c:LinkedObject>
+<o:Key Ref="o662"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o669">
+<a:ObjectID>325FE299-98A6-5AC8-96E2-E743C8A9FD80</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o655"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o655"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o670">
+<a:ObjectID>C87FA737-5CA9-5190-8636-EDC6131C7F59</a:ObjectID>
+<a:Name>adm_role_realm_scope_role_FK</a:Name>
+<a:Code>adm_role_realm_scope_role_FK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:LinkedObject>
+<o:Reference Ref="o664"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o671">
+<a:ObjectID>09B9152F-C2B9-554B-A5C8-47A50F57C846</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o657"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o657"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o672">
+<a:ObjectID>BDB8276A-72C5-5F5A-B2DF-93A797F46BC7</a:ObjectID>
+<a:Name>adm_role_realm_scope_realm_FK</a:Name>
+<a:Code>adm_role_realm_scope_realm_FK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:LinkedObject>
+<o:Reference Ref="o666"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o673">
+<a:ObjectID>2707C089-D425-5211-98E8-64A10D33E689</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o656"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o656"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o674">
+<a:ObjectID>478975E8-C067-5C21-958E-9DB0F6D8EE6E</a:ObjectID>
+<a:Name>adm_role_realm_scope_AK</a:Name>
+<a:Code>adm_role_realm_scope_AK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Unique>1</a:Unique>
+<c:LinkedObject>
+<o:Key Ref="o663"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o675">
+<a:ObjectID>88C947AF-49EC-5D1B-9598-4BA9BA573CC0</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o657"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o657"/>
+</c:Elements>
+</o:IndexColumn>
+<o:IndexColumn Id="o676">
+<a:ObjectID>871C8242-01DA-527B-BF7F-878905BC13E8</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o656"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o656"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o677">
+<a:ObjectID>1938EB01-AEDA-5EFD-A750-09723B9F690B</a:ObjectID>
+<a:Name>idx_realm_id_adm_role_realm_scope</a:Name>
+<a:Code>idx_realm_id_adm_role_realm_scope</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:IndexColumns>
+<o:IndexColumn Id="o678">
+<a:ObjectID>CF94EE75-593B-5C78-9377-D7C2805549DF</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o656"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o656"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index></c:Indexes>
+<c:PrimaryKey>
+<o:Key Ref="o662"/>
+</c:PrimaryKey>
+</o:Table>
+<o:Table Id="o679">
+<a:ObjectID>F29F1B8E-6C5B-56F1-BBB5-8FD5C378E0D1</a:ObjectID>
+<a:Name>角色组织可见范围</a:Name>
+<a:Code>adm_role_org_scope</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>角色组织可见范围
+角色可见范围白名单：该角色可以看哪些组织。只管可见范围，不管功能权限；功能权限由 adm_role_menu / adm_role_perm 决定。
+角色没有对应行 = 该维度全量可见（配了才限制）；多角色取并集</a:Comment>
+<a:GlobalObjectID/>
+<a:TotalSavingCurrency/>
+<c:Columns>
+<o:Column Id="o680">
+<a:ObjectID>E3068E86-DD39-52BF-B371-6DAD0996504F</a:ObjectID>
+<a:Name>ID</a:Name>
+<a:Code>id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o682">
+<a:ObjectID>4DFB255E-48C4-57AC-A8CA-079AA463C56D</a:ObjectID>
+<a:Name>角色ID</a:Name>
+<a:Code>role_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>角色 ID
+关联 role；(org_id, role_id) 唯一（AK）</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o681">
+<a:ObjectID>53491F23-1894-5151-8C08-878C21CA7FC4</a:ObjectID>
+<a:Name>组织ID</a:Name>
+<a:Code>org_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>组织 ID
+关联 org；(org_id, role_id) 唯一（AK）</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o683">
+<a:ObjectID>CBD3C4E3-6437-576F-8CC9-1C912A4D4A7B</a:ObjectID>
+<a:Name>创建者ID</a:Name>
+<a:Code>creater_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o684">
+<a:ObjectID>EE111D69-A00F-5ACD-B9B9-2757B238568D</a:ObjectID>
+<a:Name>创建时间戳</a:Name>
+<a:Code>create_ms</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o685">
+<a:ObjectID>0F3FA300-203D-52B7-B334-B8E6AA1EC766</a:ObjectID>
+<a:Name>更新者ID</a:Name>
+<a:Code>updater_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o686">
+<a:ObjectID>D5079142-99D1-50DA-8C0D-A623AB1FFA6F</a:ObjectID>
+<a:Name>更新时间戳</a:Name>
+<a:Code>update_ms</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column></c:Columns>
+<c:Keys>
+<o:Key Id="o687">
+<a:ObjectID>EC19507D-B9C5-54F2-B77D-B3D73270CBD4</a:ObjectID>
+<a:Name>Identifier_1</a:Name>
+<a:Code>Identifier_1</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Key.Columns>
+<o:Column Ref="o680"/>
+</c:Key.Columns>
+</o:Key>
+<o:Key Id="o688">
+<a:ObjectID>2BE66ADE-C877-54E1-9F7F-216176E96D60</a:ObjectID>
+<a:Name>角色与组织</a:Name>
+<a:Code>role_id_and_org_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Key.Columns>
+<o:Column Ref="o682"/>
+<o:Column Ref="o681"/>
+</c:Key.Columns>
+</o:Key>
+</c:Keys>
+<c:Indexes>
+<o:Index Id="o693">
+<a:ObjectID>B3C564FD-D2E0-5171-A373-FCF34F0A71D8</a:ObjectID>
+<a:Name>adm_role_org_scope_PK</a:Name>
+<a:Code>adm_role_org_scope_PK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Unique>1</a:Unique>
+<c:LinkedObject>
+<o:Key Ref="o687"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o694">
+<a:ObjectID>9E656230-4EA8-55F8-AE9F-3C9A1D6DDDCA</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o680"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o680"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o695">
+<a:ObjectID>DDFD5450-D36E-5141-A0CC-EBE2E9E2E276</a:ObjectID>
+<a:Name>adm_role_org_scope_role_FK</a:Name>
+<a:Code>adm_role_org_scope_role_FK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:LinkedObject>
+<o:Reference Ref="o689"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o696">
+<a:ObjectID>2BCBC675-0BFD-5886-B27F-3F81BCC5AD8F</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o682"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o682"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o697">
+<a:ObjectID>2B04BB1F-9451-5130-B16E-4170387BC3FD</a:ObjectID>
+<a:Name>adm_role_org_scope_org_FK</a:Name>
+<a:Code>adm_role_org_scope_org_FK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:LinkedObject>
+<o:Reference Ref="o691"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o698">
+<a:ObjectID>BED708EB-006A-5AD8-A79B-C61D47581EF2</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o681"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o681"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o699">
+<a:ObjectID>ECB9DFA0-8640-5A01-8F4E-DCEDD46FB9E9</a:ObjectID>
+<a:Name>adm_role_org_scope_AK</a:Name>
+<a:Code>adm_role_org_scope_AK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Unique>1</a:Unique>
+<c:LinkedObject>
+<o:Key Ref="o688"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o700">
+<a:ObjectID>92B5053B-D36F-55CF-A27C-50AE320FF9BC</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o682"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o682"/>
+</c:Elements>
+</o:IndexColumn>
+<o:IndexColumn Id="o701">
+<a:ObjectID>B10A4784-8CCE-5522-96B7-78362D835384</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o681"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o681"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o702">
+<a:ObjectID>E3CEDF73-C353-538E-A6FD-DD1C2877C843</a:ObjectID>
+<a:Name>idx_org_id_adm_role_org_scope</a:Name>
+<a:Code>idx_org_id_adm_role_org_scope</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:IndexColumns>
+<o:IndexColumn Id="o703">
+<a:ObjectID>C93B5527-68B8-5FE7-8AEF-4351D60477AA</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o681"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o681"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index></c:Indexes>
+<c:PrimaryKey>
+<o:Key Ref="o687"/>
+</c:PrimaryKey>
+</o:Table>
+<o:Table Id="o704">
+<a:ObjectID>ED63E01E-ABD9-5E7E-BD71-5B82F5AFAEE8</a:ObjectID>
+<a:Name>角色应用可见范围</a:Name>
+<a:Code>adm_role_app_scope</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>角色应用可见范围
+角色可见范围白名单：该角色可以看哪些应用。只管可见范围，不管功能权限；功能权限由 adm_role_menu / adm_role_perm 决定。
+角色没有对应行 = 该维度全量可见（配了才限制）；多角色取并集</a:Comment>
+<a:GlobalObjectID/>
+<a:TotalSavingCurrency/>
+<c:Columns>
+<o:Column Id="o705">
+<a:ObjectID>AB66CCE8-2B37-5EBF-85FD-F54EB9A581B3</a:ObjectID>
+<a:Name>ID</a:Name>
+<a:Code>id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o707">
+<a:ObjectID>0F786B28-1028-5F96-9E85-529315F310E2</a:ObjectID>
+<a:Name>角色ID</a:Name>
+<a:Code>role_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>角色 ID
+关联 role；(app_id, role_id) 唯一（AK）</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o706">
+<a:ObjectID>6F782B3F-A69B-5287-88F9-4E64918CBF4B</a:ObjectID>
+<a:Name>应用ID</a:Name>
+<a:Code>app_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>应用 ID
+关联 app；(app_id, role_id) 唯一（AK）</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o708">
+<a:ObjectID>B00BA593-9F98-59BD-98A6-978A2AF240FD</a:ObjectID>
+<a:Name>创建者ID</a:Name>
+<a:Code>creater_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o709">
+<a:ObjectID>0F5D92DE-6776-5C0D-ABC7-D2522B113B4C</a:ObjectID>
+<a:Name>创建时间戳</a:Name>
+<a:Code>create_ms</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o710">
+<a:ObjectID>94754067-8847-5FE6-88A9-AD20F88BA59C</a:ObjectID>
+<a:Name>更新者ID</a:Name>
+<a:Code>updater_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column><o:Column Id="o711">
+<a:ObjectID>F44AE748-18A9-5F5D-BAEB-6B5B6B38167A</a:ObjectID>
+<a:Name>更新时间戳</a:Name>
+<a:Code>update_ms</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms</a:Comment>
+<a:DataType>INT8</a:DataType>
+<a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column></c:Columns>
+<c:Keys>
+<o:Key Id="o712">
+<a:ObjectID>7F0C9AEB-F11C-5117-9BF0-30EF0E269DA3</a:ObjectID>
+<a:Name>Identifier_1</a:Name>
+<a:Code>Identifier_1</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Key.Columns>
+<o:Column Ref="o705"/>
+</c:Key.Columns>
+</o:Key>
+<o:Key Id="o713">
+<a:ObjectID>E0163C4A-28AB-5769-BDA1-68F76CB5AEE9</a:ObjectID>
+<a:Name>角色与应用</a:Name>
+<a:Code>role_id_and_app_id</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Key.Columns>
+<o:Column Ref="o707"/>
+<o:Column Ref="o706"/>
+</c:Key.Columns>
+</o:Key>
+</c:Keys>
+<c:Indexes>
+<o:Index Id="o718">
+<a:ObjectID>425F28C1-3A0B-52B8-95D4-58D66B2531D1</a:ObjectID>
+<a:Name>adm_role_app_scope_PK</a:Name>
+<a:Code>adm_role_app_scope_PK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Unique>1</a:Unique>
+<c:LinkedObject>
+<o:Key Ref="o712"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o719">
+<a:ObjectID>DC9EE442-B6B1-5FA5-9737-4D84F669FA1D</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o705"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o705"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o720">
+<a:ObjectID>FAA6425C-4AA4-5558-A4D3-A876C92ECE9B</a:ObjectID>
+<a:Name>adm_role_app_scope_role_FK</a:Name>
+<a:Code>adm_role_app_scope_role_FK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:LinkedObject>
+<o:Reference Ref="o714"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o721">
+<a:ObjectID>9434A85E-459D-5CA5-9C26-3A78E5C926F9</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o707"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o707"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o722">
+<a:ObjectID>099E01BD-0E5A-56BE-B7E2-2D1248F973A4</a:ObjectID>
+<a:Name>adm_role_app_scope_app_FK</a:Name>
+<a:Code>adm_role_app_scope_app_FK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:LinkedObject>
+<o:Reference Ref="o716"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o723">
+<a:ObjectID>22EBE1FE-A887-5B65-A0AE-E8A489AEBAEB</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o706"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o706"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o724">
+<a:ObjectID>DC8DC234-660A-56A9-854A-E5841DC5219D</a:ObjectID>
+<a:Name>adm_role_app_scope_AK</a:Name>
+<a:Code>adm_role_app_scope_AK</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Unique>1</a:Unique>
+<c:LinkedObject>
+<o:Key Ref="o713"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o725">
+<a:ObjectID>E70C71DE-7DF4-5F09-8BE8-A3559264B823</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o707"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o707"/>
+</c:Elements>
+</o:IndexColumn>
+<o:IndexColumn Id="o726">
+<a:ObjectID>251AA35F-CCD6-53D5-AD80-A09E67BA109D</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o706"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o706"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index><o:Index Id="o727">
+<a:ObjectID>51D1D135-F479-502F-BE11-9C67C0EA83CC</a:ObjectID>
+<a:Name>idx_app_id_adm_role_app_scope</a:Name>
+<a:Code>idx_app_id_adm_role_app_scope</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:IndexColumns>
+<o:IndexColumn Id="o728">
+<a:ObjectID>490B864A-1D29-5AAE-8ECA-C5FE22B62A63</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o706"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o706"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index></c:Indexes>
+<c:PrimaryKey>
+<o:Key Ref="o712"/>
+</c:PrimaryKey>
+</o:Table>
 </c:Tables>
 <c:References>
 <o:Reference Id="o9">
@@ -18681,6 +19839,234 @@ DAT 1793541529</a:History>
 </c:Object1>
 <c:Object2>
 <o:Column Ref="o410"/>
+</c:Object2>
+</o:ReferenceJoin>
+</c:Joins>
+</o:Reference>
+<o:Reference Id="o664">
+<a:ObjectID>8D0D6F88-C875-5027-9012-702460A01714</a:ObjectID>
+<a:Name>adm_role_realm_scope_role</a:Name>
+<a:Code>adm_role_realm_scope_role</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Cardinality>0..*</a:Cardinality>
+<a:UpdateConstraint>2</a:UpdateConstraint>
+<a:DeleteConstraint>2</a:DeleteConstraint>
+<c:ParentTable>
+<o:Table Ref="o63"/>
+</c:ParentTable>
+<c:ChildTable>
+<o:Table Ref="o654"/>
+</c:ChildTable>
+<c:ParentKey>
+<o:Key Ref="o362"/>
+</c:ParentKey>
+<c:Joins>
+<o:ReferenceJoin Id="o665">
+<a:ObjectID>8B751885-B238-5EAD-81FF-8B3180A4FD9E</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Object1>
+<o:Column Ref="o352"/>
+</c:Object1>
+<c:Object2>
+<o:Column Ref="o657"/>
+</c:Object2>
+</o:ReferenceJoin>
+</c:Joins>
+</o:Reference>
+<o:Reference Id="o666">
+<a:ObjectID>70FA1C49-E8CF-5DB9-A7EE-255179B9693B</a:ObjectID>
+<a:Name>adm_role_realm_scope_realm</a:Name>
+<a:Code>adm_role_realm_scope_realm</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Cardinality>0..*</a:Cardinality>
+<a:UpdateConstraint>2</a:UpdateConstraint>
+<a:DeleteConstraint>2</a:DeleteConstraint>
+<c:ParentTable>
+<o:Table Ref="o33"/>
+</c:ParentTable>
+<c:ChildTable>
+<o:Table Ref="o654"/>
+</c:ChildTable>
+<c:ParentKey>
+<o:Key Ref="o134"/>
+</c:ParentKey>
+<c:Joins>
+<o:ReferenceJoin Id="o667">
+<a:ObjectID>4EDE977F-C834-533B-B974-82AA7E1EF2FE</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Object1>
+<o:Column Ref="o124"/>
+</c:Object1>
+<c:Object2>
+<o:Column Ref="o656"/>
+</c:Object2>
+</o:ReferenceJoin>
+</c:Joins>
+</o:Reference>
+<o:Reference Id="o689">
+<a:ObjectID>9C7CF110-896B-5D2A-AA03-8AA43FD6A5D1</a:ObjectID>
+<a:Name>adm_role_org_scope_role</a:Name>
+<a:Code>adm_role_org_scope_role</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Cardinality>0..*</a:Cardinality>
+<a:UpdateConstraint>2</a:UpdateConstraint>
+<a:DeleteConstraint>2</a:DeleteConstraint>
+<c:ParentTable>
+<o:Table Ref="o63"/>
+</c:ParentTable>
+<c:ChildTable>
+<o:Table Ref="o679"/>
+</c:ChildTable>
+<c:ParentKey>
+<o:Key Ref="o362"/>
+</c:ParentKey>
+<c:Joins>
+<o:ReferenceJoin Id="o690">
+<a:ObjectID>84EBF808-F1A8-55A9-BAF4-AA34EFE99213</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Object1>
+<o:Column Ref="o352"/>
+</c:Object1>
+<c:Object2>
+<o:Column Ref="o682"/>
+</c:Object2>
+</o:ReferenceJoin>
+</c:Joins>
+</o:Reference>
+<o:Reference Id="o691">
+<a:ObjectID>112E9243-CD64-50D9-9EC3-CCA13C2B84A6</a:ObjectID>
+<a:Name>adm_role_org_scope_org</a:Name>
+<a:Code>adm_role_org_scope_org</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Cardinality>0..*</a:Cardinality>
+<a:UpdateConstraint>2</a:UpdateConstraint>
+<a:DeleteConstraint>2</a:DeleteConstraint>
+<c:ParentTable>
+<o:Table Ref="o34"/>
+</c:ParentTable>
+<c:ChildTable>
+<o:Table Ref="o679"/>
+</c:ChildTable>
+<c:ParentKey>
+<o:Key Ref="o155"/>
+</c:ParentKey>
+<c:Joins>
+<o:ReferenceJoin Id="o692">
+<a:ObjectID>E7D9A7C4-A0F2-5E80-8E92-F18362F1471D</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Object1>
+<o:Column Ref="o143"/>
+</c:Object1>
+<c:Object2>
+<o:Column Ref="o681"/>
+</c:Object2>
+</o:ReferenceJoin>
+</c:Joins>
+</o:Reference>
+<o:Reference Id="o714">
+<a:ObjectID>5899FFC6-CE65-547B-BA0A-C6C548FACC1D</a:ObjectID>
+<a:Name>adm_role_app_scope_role</a:Name>
+<a:Code>adm_role_app_scope_role</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Cardinality>0..*</a:Cardinality>
+<a:UpdateConstraint>2</a:UpdateConstraint>
+<a:DeleteConstraint>2</a:DeleteConstraint>
+<c:ParentTable>
+<o:Table Ref="o63"/>
+</c:ParentTable>
+<c:ChildTable>
+<o:Table Ref="o704"/>
+</c:ChildTable>
+<c:ParentKey>
+<o:Key Ref="o362"/>
+</c:ParentKey>
+<c:Joins>
+<o:ReferenceJoin Id="o715">
+<a:ObjectID>A7B399DF-CA1B-5D55-B479-4CE56DCFD93E</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Object1>
+<o:Column Ref="o352"/>
+</c:Object1>
+<c:Object2>
+<o:Column Ref="o707"/>
+</c:Object2>
+</o:ReferenceJoin>
+</c:Joins>
+</o:Reference>
+<o:Reference Id="o716">
+<a:ObjectID>E2472DE7-AACD-54EA-B429-4E79D4E6E519</a:ObjectID>
+<a:Name>adm_role_app_scope_app</a:Name>
+<a:Code>adm_role_app_scope_app</a:Code>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Cardinality>0..*</a:Cardinality>
+<a:UpdateConstraint>2</a:UpdateConstraint>
+<a:DeleteConstraint>2</a:DeleteConstraint>
+<c:ParentTable>
+<o:Table Ref="o103"/>
+</c:ParentTable>
+<c:ChildTable>
+<o:Table Ref="o704"/>
+</c:ChildTable>
+<c:ParentKey>
+<o:Key Ref="o463"/>
+</c:ParentKey>
+<c:Joins>
+<o:ReferenceJoin Id="o717">
+<a:ObjectID>7D74D0E1-C67C-5C35-8CB0-7AF93F6A96A5</a:ObjectID>
+<a:CreationDate>1793550000</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1793550000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Object1>
+<o:Column Ref="o452"/>
+</c:Object1>
+<c:Object2>
+<o:Column Ref="o706"/>
 </c:Object2>
 </o:ReferenceJoin>
 </c:Joins>

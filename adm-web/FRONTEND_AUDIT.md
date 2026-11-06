@@ -154,6 +154,8 @@ canCreate                    // 当前账号是否可新建
 
 ### 2.8 第四轮：应用 / 角色 / 权限与领域脱钩
 
+> **历史口径提示**：本节写于第四轮，当时 `adm_role_scope` 原样保留、只下发不过滤。该结构已在第五轮（见 2.9）拆成三张表并启用 DAO 层强制过滤，本节里「数据范围不改结构、不改逻辑」「全局数据」等表述不再成立，保留原文仅为记录演进。
+
 **概念定死**：领域（`adm_realm`）只是**用户 / 组织的数据域划分单位**——决定用户/组织归属（`adm_realm_org` / `adm_realm_user`）与角色的数据可见范围（`adm_role_scope`）；应用、菜单、角色、权限及其分组是**全局功能与授权资产**，与领域无关。数据范围（`adm_role_scope`）本轮不改结构、不改逻辑，原样保留。
 
 改动从 PowerDesigner 模型起，贯穿 SQL、Rust 后端、前端：
@@ -165,6 +167,30 @@ canCreate                    // 当前账号是否可新建
 - 概念文案：`RealmsPage`、`adm_realm` 的 DTO / VO / DAO 注释、建表 SQL 与 PD 模型注释统一改成「用户/组织数据域划分，与全局配置无关」。
 - 保留第三轮成果：按应用/分组管理树形数据、行内添加子级、侧栏空目录剪枝、选项查询统一。
 - 验证：`cargo check --workspace --all-targets --offline`、`pnpm typecheck`、`pnpm test`（11 文件 / 79 用例）、`pnpm build` 全部通过；未做浏览器 E2E 与真实数据库迁移实测（初始化脚本按「不考虑旧数据」直接改，未写旧库升级迁移）。
+
+### 2.9 第五轮：可见范围拆成三张表 + DAO 层强制过滤
+
+**概念定死**：领域（`adm_realm`）只划分用户 / 组织的数据域；角色可见范围是**三条独立轴**，各自一张关联表，都只是「能看哪些」的白名单，不管功能权限：
+
+| 表 | 列 | 语义 |
+| --- | --- | --- |
+| `adm_role_realm_scope` | `role_id, realm_id` | 角色可看哪些领域（及由领域推导出的用户/组织） |
+| `adm_role_org_scope` | `role_id, org_id` | 角色可看哪些组织（含 `tree_code` 子树） |
+| `adm_role_app_scope` | `role_id, app_id` | 角色可进哪些应用（菜单按 `adm_menu.app_id` 过滤） |
+
+- 功能权限仍由 `adm_role_menu` / `adm_role_perm` 决定；应用轴与 `role → menu → app` 取交集。
+- 没配某一轴 = 该维度全量可见（**配了才限制**）；多角色取并集；当前用户自己始终可见。
+- 为什么拆表：旧 `adm_role_scope` 把领域 / 组织塞进一张表，逼出 nullable 外键和 `check ((realm_id is not null) <> (org_id is not null))`，应用轴更无处安放。拆开后每张表都是干净的 `(role_id, target_id)` 关联表，外键与唯一键都无歧义。
+
+**强制过滤：机制在框架、语义在业务**
+
+- `robotech::dao::data_scope` 新增 `DataScope` trait、`set_data_scope()`、`data_scope_condition()`、`data_scope_only()`、`has_data_scope()`。框架不绑定用户来源；**未注册策略时完全透明**，其它服务行为不变。
+- `#[dao]` 宏把范围条件注入全部 `.filter(condition)` 路径，以及 `get_by_id` / `get_ex_by_id` / `update` / `delete`（执行前先确认目标在可见范围内）/ `update_if_older`——不只挡列表，也挡单条读、改、删。
+- `adm-svr` 用 `tokio::task_local!` 保存请求上下文，`load_scope_ctx(user_id)` 一次请求只算一次；`require_auth` 和不挂鉴权的 dashboard / widget 路由（`scope_from_user_header`）都包 `with_scope(...)`；查库失败直接 500，不放行业务查询。
+- 组织轴按 `adm_org.tree_code`（每层 3 位）前缀展开子树；空集合用 `vec![-1]` 哨兵表示「匹配不到任何行」，避免退化成全量或非法 `IN ()`。
+- 统计端点 `stats_count()` 与 DAO 共用 `data_scope_condition`，避免「列表受限、KPI 泄漏」。
+
+**同步范围**：PowerDesigner `.ldm/.ldb/.pdm/.pdb`（3 实体/表 + 6 关系 + 默认图符号）、`model/create-table-pgsql.sql` 与运行时建表迁移、`20261103113000_role_scope.sql`、RBAC/首页种子、SeaORM 实体与 `mo` 出口、`/me` 下发、首页 widget 文案、全仓旧口径文案（「本轮只下发、不强制过滤」「当前为全局数据」「数据范围标记」）一并改掉；`adm-api/src/dic/data_scope.rs` 标注为骨架期遗留字典（无字段引用），避免与框架 `DataScope` trait 混淆。
 
 ## 3. 问题清单与状态
 
@@ -199,6 +225,8 @@ canCreate                    // 当前账号是否可新建
 | 授权树跨应用同编码串挂 | **第三轮已修** | `crud/tree-utils.ts`（`scopeOf`） |
 | 选项列表重复请求且变更后不刷新 | **第三轮已修** | `lib/queries.ts` |
 | 多应用时默认落地页与侧栏顺序不一致 | **第三轮已修** | `App.tsx` |
+| 可见范围只下发、后端业务查询不过滤 | **第五轮已修（DAO 层强制注入）** | `robotech/src/dao/data_scope.rs`、`robotech-macros/src/dao/mod.rs`、`adm-svr/src/svc/adm_data_scope.rs` |
+| 可见范围没有配置入口，只能写 SQL | **待补管理界面** | 见第 5 节 |
 | 权限 URN 通配符（如 `*:/adm/**`） | **待后端确认语义** | 见第 6 节 |
 
 ## 4. 验证
@@ -211,10 +239,14 @@ canCreate                    // 当前账号是否可新建
 
 第四轮（领域脱钩）复验：`cargo check --workspace --all-targets --offline` 通过、`pnpm typecheck` 通过、`pnpm test` 11 文件 / 79 用例全通过、`pnpm build` 通过（`index-D7V3ZU9H.js` 461.62 kB / gzip 142.70 kB，`index-CWZvVy2o.css` 33.40 kB）。`scope.test.ts` / `fields.test.ts` / `tree-utils.test.ts` 的领域样例已改为全局树与 `appId` 样例。
 
+第五轮（三表拆分 + 强制过滤）复验：`robotech-rs` 与 `adm-rs` 的 `cargo check --workspace --offline`、`adm-rs cargo check --workspace --all-targets --offline` 通过；`pnpm typecheck` / `pnpm test` / `pnpm build` 通过；PowerDesigner 四个模型文件 XML 合法、对象 Id 唯一、`Ref` 无悬空引用；两份初始化 DDL 新增块逐字一致。仍未做真实数据库迁移执行与浏览器 E2E。
+
 第一轮另曾做过真实链路实测（`adm-svr` 9007 + Vite 5181，登录、用户搜索、首页 6 张 widget、配置页 6 条配置均正常）；**第二、三、四轮只做了静态验证**，未重启后端做浏览器实测，也未在真实数据库上跑迁移。
 
 ## 5. 已知边界 / 未做
 
+- **可见范围暂无管理界面**：三张 `adm_role_*_scope` 表目前只能通过初始化 SQL / 直接写库配置（种子里只给组织管理员角色配了领域 + 应用各一条），后端没有对应 CRUD 接口，前端也没有配置页；`/me` 只做只读下发与首页展示。若要在管理后台配置，需要补 3 组 DTO/VO/DAO/Svc/Ctrl/Router 与「角色 → 可见范围」配置页；组织轴因 `adm_org` 初始化为空，暂无种子数据。
+- **真实存量库升级未处理**：按「改初始化不用考虑旧数据」直接改初始化脚本，没有写旧 `adm_role_scope` → 三张新表的数据迁移，也没有写 `drop table adm_role_scope`；老库升级需另行设计。
 - `useUnsavedGuard` 覆盖刷新/关闭标签页与站内 `<Link>` 点击；浏览器前进/后退（`popstate`）无法在 `BrowserRouter` 下可靠取消，未伪装支持。若后续需要完整拦截，应迁移到 `createBrowserRouter + RouterProvider` 再用 `useBlocker`。
 - 树形页面只在**新建**时能选父节点（`parentCode` 是 `createOnly`），不支持把已有节点移动到别的父节点下；因此也不存在「把父节点设成自己的子孙」形成环的路径。若后续要做移动，必须同时排除自身与子孙。
 - （第四轮已消除）`AppsPage` 不再有领域下拉 / 领域列 / `realm_id` 筛选；应用是全局配置，与领域无关。

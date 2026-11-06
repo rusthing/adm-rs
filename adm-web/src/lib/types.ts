@@ -220,19 +220,21 @@ export interface AdmMeVo {
   perms: AdmPermVo[];
   menus: AdmMenuVo[];
   permUrns: string[];
-  /** 角色数据范围；本轮只下发，不做强制过滤 */
+  /** 角色可见范围（领域 / 组织 / 应用三条轴）；后端按此强制过滤 */
   scopes: AdmRoleScopeVo[];
   /** 当前生效的首页配置 */
   dashboard?: AdmDashboardVo;
 }
 
-/** 角色数据范围（`adm_role_scope`）。 */
+/** 角色可见范围：领域 / 组织 / 应用三条轴各一张表，合并下发。 */
 export interface AdmRoleScopeVo {
   id: string;
   roleId: string;
   roleName?: string;
   realmId?: string;
   orgId?: string;
+  appId?: string;
+  /** `realm` / `org` / `app` */
   scopeType: string;
 }
 
@@ -378,7 +380,7 @@ export interface Authz {
   menus: AdmMenuVo[];
   /** 权限 URN，形如 `GET:/adm/user` */
   permUrns: string[];
-  /** 角色数据范围；本轮只展示，不做强制过滤 */
+  /** 角色可见范围；仅用于展示，过滤由后端 DAO 层统一执行 */
   scopes: AdmRoleScopeVo[];
   /** 当前生效的首页配置 */
   dashboard?: AdmDashboardVo;

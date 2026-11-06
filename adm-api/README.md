@@ -15,7 +15,7 @@ DIC、DTO、VO 和 MO 类型定义。
 ```
 src/
 ├── dic/                    # 字典枚举
-│   ├── data_scope.rs       # 数据范围
+│   ├── data_scope.rs       # 数据范围（骨架期字典，已无字段引用）
 │   ├── menu_type.rs        # 菜单类型
 │   └── user_status.rs      # 用户状态
 ├── dto/                    # 写请求参数

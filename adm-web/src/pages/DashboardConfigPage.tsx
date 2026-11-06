@@ -756,7 +756,7 @@ export function DashboardConfigPage() {
                       onChange={(event) => patchWidget(widget.key, { paramsText: event.target.value })}
                     />
                   </Field>
-                  <Field label="数据范围标记">
+                  <Field label="按可见范围过滤">
                     <div className="flex h-9 items-center">
                       <Switch
                         checked={widget.scopeAware}

@@ -2,7 +2,7 @@
 //!
 //! 用户与组织的数据域划分单位：只用于界定用户/组织归属与角色的数据可见范围，
 //! 与应用、菜单、角色、权限等全局配置无关
-//! 一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的数据范围见 adm_role_scope
+//! 一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的可见范围见 adm_role_realm_scope / adm_role_org_scope / adm_role_app_scope
 
 use robotech::macros::vo;
 

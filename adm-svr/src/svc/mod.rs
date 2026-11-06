@@ -1,6 +1,7 @@
 mod adm_app_svc;
 mod adm_auth_svc;
 mod adm_dashboard_svc;
+mod adm_data_scope;
 mod adm_lock_log_svc;
 mod adm_login_log_svc;
 mod adm_menu_perm_svc;
@@ -31,6 +32,7 @@ mod adm_widget_data_svc;
 pub use adm_app_svc::*;
 pub use adm_auth_svc::*;
 pub use adm_dashboard_svc::*;
+pub use adm_data_scope::*;
 pub use adm_lock_log_svc::*;
 pub use adm_login_log_svc::*;
 pub use adm_menu_perm_svc::*;

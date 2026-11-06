@@ -41,6 +41,8 @@
 | `menu.shortcuts` | shortcuts | `{}` | `{items:[{id,label,path,icon,component}]}`（按当前用户菜单） |
 | `auth.my_permissions` | my_permissions | `{}` | `{roleCount,permCount,menuCount,roles,scopes,scopeNote}` |
 
+> `scopes` 来自 `adm_role_realm_scope` / `adm_role_org_scope` / `adm_role_app_scope` 三张可见范围白名单表，按 `scopeType`（`realm` / `org` / `app`）合并下发；`scopeNote` 说明统计口径是否已按范围过滤。三条轴只决定「能看哪些」，功能权限仍由 `adm_role_menu` / `adm_role_perm` 决定；没配某一轴表示该维度全量可见，多角色取并集。后端在 DAO 层强制注入范围条件，列表、单条读改删与 KPI 统计共用同一套口径。
+
 ### adm 建议追加（待办类细化，供首页按卡片粒度配置）
 
 | endpoint | 类型 | params | data | 说明 |

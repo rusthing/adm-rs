@@ -127,8 +127,8 @@ export function WidgetRenderer({ widget }: { widget: DashboardWidgetView }) {
           <p className="mt-0.5 text-[11px] text-muted">{typeLabel(widget.widgetType)}</p>
         </div>
         {widget.scopeAware && (
-          <Badge tone="warn">
-            <Globe size={11} className="mr-0.5" /> 全局数据
+          <Badge tone="neutral">
+            <Globe size={11} className="mr-0.5" /> 已按可见范围过滤
           </Badge>
         )}
       </header>
@@ -407,7 +407,7 @@ function PermissionsBody({ data }: { data: PermissionsData }) {
         </div>
       )}
       <p className="text-[10.5px] leading-relaxed text-muted">
-        {data?.scopeNote ?? "本轮未启用按组织过滤，统计为全局数据。"}
+        {data?.scopeNote ?? "未配置角色可见范围，统计为全局数据。"}
       </p>
     </div>
   );

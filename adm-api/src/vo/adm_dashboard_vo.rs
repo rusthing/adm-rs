@@ -36,7 +36,7 @@ pub struct AdmDashboardWidgetVo {
     pub params: Option<Value>,
     /// 查看该 widget 所需的权限 URN 前缀；为空表示所有登录用户可见
     pub perm_urn: Option<String>,
-    /// 是否受数据范围（adm_role_scope）影响。本轮只标记，不启用过滤
+    /// 是否按角色可见范围（领域 / 组织 / 应用）过滤统计口径
     pub scope_aware: bool,
     /// 排序值，越小越靠前
     pub sort_order: i32,
@@ -71,9 +71,12 @@ pub struct AdmDashboardVo {
     pub scope_aware: bool,
 }
 
-/// # 数据范围（adm_role_scope）
+/// # 角色可见范围
 ///
-/// 本轮只下发不强制过滤；前端据此如实标注「当前为全局数据」。
+/// 三条独立轴各一张表：`adm_role_realm_scope` / `adm_role_org_scope` /
+/// `adm_role_app_scope`，这里合并成一个带 `scopeType` 的列表下发给 `/me`。
+/// 可见范围是白名单，只决定「能看/能进哪些」，不决定功能权限；
+/// 角色没有配置任何行时该维度全量可见。
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -83,11 +86,13 @@ pub struct AdmRoleScopeVo {
     #[serde(with = "u64_serde")]
     pub role_id: u64,
     pub role_name: Option<String>,
-    /// 领域 / 租户 ID
+    /// 领域 ID（`scopeType=realm`）
     pub realm_id: Option<String>,
-    /// 组织 ID
+    /// 组织 ID（`scopeType=org`）
     pub org_id: Option<String>,
-    /// `realm` / `org` / `none`
+    /// 应用 ID（`scopeType=app`）
+    pub app_id: Option<String>,
+    /// `realm` / `org` / `app`
     pub scope_type: String,
 }
 

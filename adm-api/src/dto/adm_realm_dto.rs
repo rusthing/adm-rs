@@ -2,7 +2,7 @@
 //!
 //! 用户与组织的数据域划分单位：只用于界定用户/组织归属与角色的数据可见范围，
 //! 与应用、菜单、角色、权限等全局配置无关
-//! 一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的数据范围见 adm_role_scope
+//! 一个组织/用户可以归属多个领域，关联见 realm_org / realm_user；角色的可见范围见 adm_role_realm_scope / adm_role_org_scope / adm_role_app_scope
 //!
 //! 校验标签：`@len` / `@range` 是结构约束，`@check is_xxx` 调
 //! `wheel_rs::regex_utils` 的谓词做语义校验（能带校验位），`@unit` 只是单位说明。

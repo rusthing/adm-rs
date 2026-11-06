@@ -1,4 +1,5 @@
 use adm_svr::config::{AppConfig, get_adm_config, setup_app_config};
+use adm_svr::svc::AdmDataScope;
 use adm_svr::utils::{setup_adm_config, setup_adm_option_cache};
 // `db_migrate!` 展开后会用到 `anyhow!`，必须在调用点可见
 use anyhow::anyhow;
@@ -43,6 +44,10 @@ async fn setup(
     setup_id_worker(app_config.id_worker.clone(), changed).await?;
     setup_redis_conn(app_config.redis.clone(), changed).await?;
     setup_db_conn(app_config.db.clone(), changed).await?;
+    // 数据范围策略只需注册一次；热更新重复调用时忽略
+    if robotech::dao::set_data_scope(AdmDataScope).is_err() {
+        tracing::debug!("[adm] 数据范围策略已注册，跳过重复注册");
+    }
     setup_adm_config(app_config.adm.clone(), changed).await?;
     // 选项缓存要查库，必须排在 setup_db_conn 之后
     setup_adm_option_cache(changed).await?;

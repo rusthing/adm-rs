@@ -7,13 +7,15 @@
 //!
 //! adm-svr **不做 BFF 聚合、不转发 token、不探测下游健康**：前端通过 gatex
 //! 网关并行直连各服务；鉴权、路由、限流、降级由网关统一负责。
-//! `adm_role_scope` 本轮只下发不强制过滤，界面如实标注「全局数据」。
+//! 角色可见范围拆成 `adm_role_realm_scope` / `adm_role_org_scope` /
+//! `adm_role_app_scope` 三张表：只管可见范围（白名单），不管功能权限；
+//! 强制过滤由 `crate::svc::adm_data_scope` 在 DAO 层统一注入。
 
 use crate::dto::{AdmDashboardSaveDto, AdmWidgetDataReq};
 use crate::mo::{
-    adm_dashboard, adm_dashboard_widget, adm_menu, adm_perm, adm_role, adm_role_menu,
-    adm_role_perm, adm_role_scope, adm_role_user, adm_user, adm_widget_endpoint,
-    adm_widget_type,
+    adm_dashboard, adm_dashboard_widget, adm_menu, adm_perm, adm_role, adm_role_app_scope,
+    adm_role_menu, adm_role_org_scope, adm_role_perm, adm_role_realm_scope, adm_role_user,
+    adm_user, adm_widget_endpoint, adm_widget_type,
 };
 use crate::vo::{
     AdmDashboardVo, AdmDashboardWidgetVo, AdmRoleScopeVo, AdmWidgetDataVo, AdmWidgetEndpointVo,
@@ -48,7 +50,7 @@ pub struct AdmDashboardSvc;
 impl AdmDashboardSvc {
     /// # 当前用户上下文
     ///
-    /// 一次取出用户、角色、权限、可见菜单与数据范围；`/me`、生效配置和
+    /// 一次取出用户、角色、权限、可见菜单与角色可见范围；`/me`、生效配置和
     /// adm 域 widget 端点都复用这份逻辑，避免多套权限判断。
     pub async fn load_user_context(user_id: u64) -> Result<AdmDashboardUserContext, SvcError> {
         let db = get_db_conn()?;
@@ -114,10 +116,25 @@ impl AdmDashboardSvc {
         if menu_ids.is_empty() {
             return Ok(Vec::new());
         }
-        adm_menu::Entity::find()
+
+        // 应用可见范围只做「能进哪些应用」的收窄，与 role_menu/role_perm 的功能
+        // 授权取交集：配了 app_scope 才限制，没配则全部应用可见。
+        let app_ids: Vec<i64> = adm_role_app_scope::Entity::find()
+            .filter(adm_role_app_scope::Column::RoleId.is_in(role_ids.to_vec()))
+            .all(db)
+            .await
+            .map_err(DaoError::parse_db_err)?
+            .into_iter()
+            .map(|link| link.app_id)
+            .collect();
+        let mut query = adm_menu::Entity::find()
             .filter(adm_menu::Column::Id.is_in(menu_ids))
             .filter(adm_menu::Column::Enabled.eq(true))
-            .filter(adm_menu::Column::Visible.eq(true))
+            .filter(adm_menu::Column::Visible.eq(true));
+        if !app_ids.is_empty() {
+            query = query.filter(adm_menu::Column::AppId.is_in(app_ids));
+        }
+        query
             .order_by_asc(adm_menu::Column::TreeCode)
             .all(db)
             .await
@@ -154,6 +171,10 @@ impl AdmDashboardSvc {
             .map_err(Into::into)
     }
 
+    /// # 当前用户的角色可见范围
+    ///
+    /// 三条轴分别查三张表，再合成一个带 `scopeType` 的列表下发。
+    /// 白名单语义：某张表没有行，说明该维度没有限制（全量可见）。
     async fn load_scopes(
         role_ids: &[i64],
         roles: &[adm_role::Model],
@@ -162,34 +183,69 @@ impl AdmDashboardSvc {
         if role_ids.is_empty() {
             return Ok(Vec::new());
         }
-        let rows = adm_role_scope::Entity::find()
-            .filter(adm_role_scope::Column::RoleId.is_in(role_ids.to_vec()))
-            .order_by_asc(adm_role_scope::Column::RoleId)
-            .order_by_asc(adm_role_scope::Column::Id)
-            .all(db)
-            .await
-            .map_err(DaoError::parse_db_err)?;
+        let ids = role_ids.to_vec();
         let role_names: HashMap<i64, String> = roles
             .iter()
             .map(|role| (role.id, role.name.clone()))
             .collect();
-        Ok(rows
-            .into_iter()
-            .map(|row| AdmRoleScopeVo {
+
+        let realm_rows = adm_role_realm_scope::Entity::find()
+            .filter(adm_role_realm_scope::Column::RoleId.is_in(ids.clone()))
+            .all(db)
+            .await
+            .map_err(DaoError::parse_db_err)?;
+        let org_rows = adm_role_org_scope::Entity::find()
+            .filter(adm_role_org_scope::Column::RoleId.is_in(ids.clone()))
+            .all(db)
+            .await
+            .map_err(DaoError::parse_db_err)?;
+        let app_rows = adm_role_app_scope::Entity::find()
+            .filter(adm_role_app_scope::Column::RoleId.is_in(ids))
+            .all(db)
+            .await
+            .map_err(DaoError::parse_db_err)?;
+
+        let mut result = Vec::with_capacity(realm_rows.len() + org_rows.len() + app_rows.len());
+        for row in realm_rows {
+            result.push(AdmRoleScopeVo {
                 id: row.id as u64,
                 role_id: row.role_id as u64,
                 role_name: role_names.get(&row.role_id).cloned(),
-                realm_id: row.realm_id.map(|id| id.to_string()),
-                org_id: row.org_id.map(|id| id.to_string()),
-                scope_type: if row.org_id.is_some() {
-                    "org".to_string()
-                } else if row.realm_id.is_some() {
-                    "realm".to_string()
-                } else {
-                    "none".to_string()
-                },
-            })
-            .collect())
+                realm_id: Some(row.realm_id.to_string()),
+                org_id: None,
+                app_id: None,
+                scope_type: "realm".to_string(),
+            });
+        }
+        for row in org_rows {
+            result.push(AdmRoleScopeVo {
+                id: row.id as u64,
+                role_id: row.role_id as u64,
+                role_name: role_names.get(&row.role_id).cloned(),
+                realm_id: None,
+                org_id: Some(row.org_id.to_string()),
+                app_id: None,
+                scope_type: "org".to_string(),
+            });
+        }
+        for row in app_rows {
+            result.push(AdmRoleScopeVo {
+                id: row.id as u64,
+                role_id: row.role_id as u64,
+                role_name: role_names.get(&row.role_id).cloned(),
+                realm_id: None,
+                org_id: None,
+                app_id: Some(row.app_id.to_string()),
+                scope_type: "app".to_string(),
+            });
+        }
+        result.sort_by(|left, right| {
+            left.role_id
+                .cmp(&right.role_id)
+                .then_with(|| left.scope_type.cmp(&right.scope_type))
+                .then_with(|| left.id.cmp(&right.id))
+        });
+        Ok(result)
     }
 
     /// # 当前用户生效的首页配置

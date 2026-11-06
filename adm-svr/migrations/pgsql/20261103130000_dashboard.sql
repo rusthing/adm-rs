@@ -109,7 +109,7 @@ values
   (5, 'shortcuts', '快捷入口', 'adm', 'menu.shortcuts', '当前用户可见菜单里的快捷链接，参数 limit',
    '{"limit":8}', null, false,
    50, true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
-  (6, 'my_permissions', '我的权限摘要', 'adm', 'auth.my_permissions', '当前用户的角色 / 权限 / 菜单与数据范围说明',
+  (6, 'my_permissions', '我的权限摘要', 'adm', 'auth.my_permissions', '当前用户的角色 / 权限 / 菜单与可见范围说明',
    '{}', null, false,
    60, true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
 on conflict (id) do update
@@ -149,7 +149,7 @@ values
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
   (3, 2, '系统管理员首页', '客户管理员视图，聚焦账号与角色治理',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
-  (4, 3, '组织管理员首页', '组织与人员视图；数据范围仅标记，尚未启用过滤',
+  (4, 3, '组织管理员首页', '组织与人员视图；按领域 / 应用可见范围强制过滤',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
   (5, 4, '审计员首页', '登录趋势与日志只读视图',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8);

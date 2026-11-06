@@ -49,7 +49,7 @@ adm-rs/
 
 ### 角色 (Role)
 - 编码 / 名称双唯一
-- 数据范围（全部 / 指定部门 / 本部门及下级 / 仅本部门 / 仅本人）
+- 可见范围：领域 / 组织 / 应用三条独立轴的白名单（`adm_role_realm_scope` / `adm_role_org_scope` / `adm_role_app_scope`），只管「能看哪些」，功能权限由角色菜单 / 权限决定
 - 排序与启用状态
 
 ### 菜单 (Menu)
@@ -195,7 +195,6 @@ GET /adm/user/search/page?username-op=eq&username=admin&_page=1&_size=10&_orderB
 | `id` | `i64` | 主键 |
 | `code` | `String` | 角色编码（唯一） |
 | `name` | `String` | 角色名称（唯一） |
-| `data_scope` | `i16` | 数据范围，见 `DataScope` |
 | `sort` | `i32` | 排序 |
 | `enabled` | `bool` | 启用 |
 | `remark` | `Option<String>` | 备注 |
@@ -264,7 +263,7 @@ client.role.page_by_query_dto(dto, None).await?;
 1. `adm-web` 前端（Vite + React + antd，独立部署，走 dev proxy 到 9007）
 2. 登录与令牌：`/adm/auth/login`、JWT 签发与校验、失败锁定（把 `UserStatus::Locked` 用起来）
 3. 角色 ↔ 菜单授权：新增 `adm_role_menu` 关联表 + 按角色查菜单树的接口
-4. 部门表 `adm_dept`，让 `DataScope` 的「指定部门 / 本部门」有落点
+4. 可见范围管理界面：为三张 `adm_role_*_scope` 表提供配置入口（当前仅能通过初始化 SQL 写入）
 5. 操作日志 `adm_oper_log`，由 `#[svc]` 的 `after_write` 钩子统一落库
 
 ## 许可证
