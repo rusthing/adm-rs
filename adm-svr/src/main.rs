@@ -1,4 +1,4 @@
-use adm_svr::config::{AppConfig, get_adm_config, setup_app_config};
+use adm_svr::config::{AppConfig, setup_app_config};
 use adm_svr::svc::AdmDataScope;
 use adm_svr::utils::{setup_adm_config, setup_adm_option_cache};
 // `db_migrate!` 展开后会用到 `anyhow!`，必须在调用点可见
@@ -36,6 +36,11 @@ async fn setup(
     port: Option<u16>,
     old_pid: Option<u32>,
 ) -> Result<(), anyhow::Error> {
+    // 认证配置先校验再碰数据库：非 dev 开免登录、或仍用默认 jwt-secret，
+    // 都属于「能直接伪造身份」的配置，必须让进程起不来。
+    adm_svr::config::validate_auth_config(app_config.as_ref(), &app_config.adm)
+        .map_err(|error| anyhow!(error))?;
+
     // 迁移必须先于建连：迁移自己按 db url 建一条独立连接
     let db_url = app_config.db.get_url();
     db_migrate!(db_url);
@@ -52,14 +57,6 @@ async fn setup(
     // 选项缓存要查库，必须排在 setup_db_conn 之后
     setup_adm_option_cache(changed).await?;
     setup_web_server(app_config.web.clone(), port, old_pid, changed).await?;
-
-    // 默认令牌密钥写在代码里，谁都能伪造令牌：不拦住，但必须吵
-    if get_adm_config()
-        .map(|config| config.is_jwt_secret_default())
-        .unwrap_or(false)
-    {
-        tracing::warn!("[adm] jwt-secret 使用默认值，只能用于开发环境！");
-    }
 
     Ok(())
 }

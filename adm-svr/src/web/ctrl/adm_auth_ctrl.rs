@@ -101,6 +101,10 @@ pub async fn logout(headers: HeaderMap) -> Result<Json<Ro<AdmLogoutVo>>, CtrlErr
 #[debug_handler]
 #[allow(clippy::result_large_err)]
 pub async fn me(headers: HeaderMap) -> Result<Json<Ro<AdmMeVo>>, CtrlError> {
+    // dev-bypass：前端不带令牌，直接按系统账号 0 返回菜单与权限。
+    if crate::config::dev_bypass_enabled() {
+        return Ok(Json(AdmAuthSvc::me(0).await?));
+    }
     match verify_bearer(&headers).await {
         Ok(user_id) => Ok(Json(AdmAuthSvc::me(user_id).await?)),
         Err(detail) => Ok(Json(

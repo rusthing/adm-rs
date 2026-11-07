@@ -73,7 +73,15 @@ pub async fn verify_bearer(headers: &HeaderMap) -> Result<u64, String> {
 ///
 /// 校验通过后把令牌里的 `sub` 覆盖写入 `X-User-Id`，再交给下游处理器。
 /// 这样控制器继续用原来的 `get_current_user_id(&headers)`，不需要逐个改造。
+///
+/// 开发环境开启 `[auth] dev-bypass` 时跳过令牌校验，当前用户固定为
+/// 系统账号 `0`；客户端带来的 `X-User-Id` 一律被覆盖，避免有人借开发模式
+/// 冒充任意账号。
 pub async fn require_auth(mut request: Request, next: Next) -> Response {
+    if crate::config::dev_bypass_enabled() {
+        return dev_bypass(request, next).await;
+    }
+
     let Some(token) = bearer_token(request.headers()) else {
         return unauthorized("请求头缺少 Authorization Bearer");
     };
@@ -106,6 +114,24 @@ pub async fn require_auth(mut request: Request, next: Next) -> Response {
     with_scope(ctx, next.run(request)).await
 }
 
+/// # 开发环境免登录
+///
+/// 把当前用户固定为系统账号 `0`，再按正常流程计算数据范围。
+async fn dev_bypass(mut request: Request, next: Next) -> Response {
+    request
+        .headers_mut()
+        .insert(USER_ID_HEADER_NAME, HeaderValue::from_static("0"));
+
+    let ctx = match load_scope_ctx(0).await {
+        Ok(ctx) => ctx,
+        Err(error) => {
+            tracing::error!("[adm] 计算系统账号可见范围失败: {error}");
+            return scope_error(&error.to_string());
+        }
+    };
+    with_scope(ctx, next.run(request)).await
+}
+
 /// 统一 401 响应
 fn unauthorized(detail: &str) -> Response {
     (
@@ -117,30 +143,6 @@ fn unauthorized(detail: &str) -> Response {
         ),
     )
         .into_response()
-}
-
-/// # 从 `X-User-Id` 建立数据范围上下文
-///
-/// 供首页 / widget 这类不挂 [`require_auth`]、由网关注入用户头的路由复用，
-/// 让 KPI 统计与业务列表走同一套过滤。身份本身仍由网关负责，这里只是
-/// 把「这个用户能看到什么」包进 `task_local`。
-pub async fn scope_from_user_header(request: Request, next: Next) -> Response {
-    let user_id = request
-        .headers()
-        .get(USER_ID_HEADER_NAME)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|text| text.parse::<u64>().ok());
-    let Some(user_id) = user_id else {
-        return next.run(request).await;
-    };
-    let ctx = match load_scope_ctx(user_id).await {
-        Ok(ctx) => ctx,
-        Err(error) => {
-            tracing::error!("[adm] 计算角色可见范围失败: {error}");
-            return scope_error(&error.to_string());
-        }
-    };
-    with_scope(ctx, next.run(request)).await
 }
 
 /// 数据范围计算失败：返回 500，不放行任何业务查询

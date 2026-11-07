@@ -1,5 +1,10 @@
 # adm-svr 配置文件
-profile = "dev"
+#
+# 运行环境由 `profile` 决定，推荐用环境变量覆盖而不是写死在文件里：
+#   APP_PROFILE=dev  ./adm-svr          # 开发环境
+#   APP_PROFILE=prod ./adm-svr          # 生产环境（默认）
+#
+# 没有配置 profile 时按 prod 处理；prod 下 adm.jwt-secret 仍是默认值会启动失败。
 
 [db]
 url = "postgresql://admrs:admrs@localhost:5432/admrs"
@@ -13,7 +18,7 @@ url = "redis://:xxxxxxxx@redis:6379"
 # 重置口令时使用的默认口令
 default-password = "123456"
 # 令牌签名密钥：HS256 对称密钥，换掉它等于让所有已发令牌立即失效
-# 生产环境必须替换，留默认值启动时会打 warn
+# 非 dev 环境必须替换，留默认值启动会直接报错（不再只是 warn）
 jwt-secret = "adm-change-me-in-production"
 # 令牌有效期（毫秒），默认 2 小时；服务端不续期，到期要重新登录
 token-ttl-ms = 7200000
@@ -28,6 +33,13 @@ option-refresh-ms = 60000
 #   values (2, 'login_lock_ms', '登录锁定时长', '3600000', '锁定时长（毫秒），默认 1 小时',
 #           0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8);
 # 表里没这两行时用代码里的默认值（5 次 / 1 小时）。
+
+# 认证开关
+# dev-bypass 只在 profile=dev 时生效：业务接口不再要求 Bearer 令牌，
+# 当前用户固定为系统账号 user_id=0（需要执行 20261108120000_system_account.sql）。
+# 非 dev 环境写 true 会启动失败。
+[auth]
+dev-bypass = false
 
 [micro-svc.consul]
 base-url = "http://consul:8500"
