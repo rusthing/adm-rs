@@ -1,4 +1,4 @@
-import { notifySessionExpired, readSession } from "@/lib/auth-storage";
+import { authHeaders, handleUnauthorized } from "@/lib/auth-core";
 import type { PageQuery, Ro } from "@/lib/types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/+$/, "");
@@ -45,15 +45,16 @@ export function toQueryString(query?: PageQuery): string {
  */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T | undefined> {
   const { body, userHeader = true, headers: inputHeaders, ...rest } = options;
-  const session = readSession();
   const headers = new Headers(inputHeaders);
 
   if (body !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  if (session) {
-    headers.set("Authorization", `Bearer ${session.token}`);
-    if (userHeader) headers.set("X-User-Id", session.userId);
+  // 统一从 auth-core 取认证头：required 模式带 Bearer，disabled 模式固定 X-User-Id=0。
+  const auth = authHeaders();
+  for (const [name, value] of Object.entries(auth)) {
+    if (name === "X-User-Id" && !userHeader) continue;
+    headers.set(name, value);
   }
 
   let response: Response;
@@ -93,9 +94,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
           ? "当前账号没有执行该操作的权限"
           : `请求失败（HTTP ${response.status}）`;
     if (response.status === 401) {
-      // 令牌无效/过期/已登出：统一由 AuthProvider 清会话并跳登录页，
-      // 不再让用户停在「看着像已登录、点什么都报错」的界面上。
-      notifySessionExpired();
+      // 令牌无效/过期/已登出：即使构建成 disabled 也要清掉本地会话并回登录页。
+      handleUnauthorized();
     }
     throw new ApiError(payload?.msg || statusHint, {
       status: response.status,
@@ -109,7 +109,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
   if (payload.result !== 1) {
     // 少数认证接口在 HTTP 200 里用 ADM00005 表达令牌失效，语义与 401 一致。
-    if (payload.code === "ADM00005") notifySessionExpired();
+    if (payload.code === "ADM00005") handleUnauthorized();
     throw new ApiError(payload.msg || "业务处理失败，服务端未返回具体原因", {
       status: response.status,
       result: payload.result,

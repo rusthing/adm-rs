@@ -12,6 +12,7 @@ import {
   saveAuthz,
   saveSession,
 } from "@/lib/auth-storage";
+import { startSessionWatch } from "@/lib/auth-core";
 import { sm3 } from "@/lib/sm3";
 import type { AdmMeVo, AuthSession, Authz } from "@/lib/types";
 import { matchPermUrn } from "@/auth/perm";
@@ -115,6 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
   }, [session, navigate, location.pathname, location.search, queryClient]);
 
+  /** 空闲时也按分钟检查一次过期，避免页面挂着不动时一直显示「已登录」。 */
+  useEffect(() => startSessionWatch(), []);
+
   const login = useCallback(
     async (account: string, password: string) => {
       const result = await loginApi({ account: account.trim(), loginPswd: sm3(password) });
@@ -148,7 +152,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
     clearAuthz();
     queryClient.clear();
-    setSession(null);
+    // 免登录模式下 clearSession 不清除系统账号会话，这里以 readSession() 为准；
+    // 需要登录时它返回 null，界面回到登录页。
+    setSession(readSession());
   }, [queryClient]);
 
   const { refetch: refetchAuthz } = authzQuery;

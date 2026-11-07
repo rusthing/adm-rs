@@ -1,21 +1,21 @@
 import type { AuthSession, Authz } from "@/lib/types";
-
-const SESSION_KEY = "adm.auth.session";
-const AUTHZ_KEY = "adm.auth.authz";
+import {
+  SESSION_EXPIRED_EVENT,
+  clearSession,
+  isExpired,
+  notifySessionExpired,
+  readSession,
+  saveSession,
+} from "@/lib/auth-core";
 
 /**
- * 会话失效广播（HTTP 401 或本地令牌过期）。
- *
- * `lib/http.ts` 是纯请求层，不该直接认识 React / Router；用 DOM 事件把
- * 「令牌已作废」传给 AuthProvider，由它统一清状态并跳登录。
+ * 会话存储统一交给 `lib/auth-core.ts`（六端共用的认证内核）。
+ * 这里保留 `authz`（当前用户的菜单 / 权限缓存）与对外导出名，避免页面批量改动。
  */
-export const SESSION_EXPIRED_EVENT = "adm:session-expired";
+export { SESSION_EXPIRED_EVENT, clearSession, isExpired, notifySessionExpired, readSession, saveSession };
+export type { AuthSession };
 
-export function notifySessionExpired(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
-  }
-}
+const AUTHZ_KEY = "adm.auth.authz";
 
 function readJson<T>(key: string): T | null {
   try {
@@ -40,33 +40,6 @@ function remove(key: string): void {
   } catch {
     /* ignore */
   }
-}
-
-export function isExpired(session: AuthSession | null): boolean {
-  if (!session) return true;
-  const expire = Number(session.expireMs);
-  return !Number.isFinite(expire) || expire <= Date.now();
-}
-
-export function readSession(): AuthSession | null {
-  const session = readJson<AuthSession>(SESSION_KEY);
-  if (!session?.token) return null;
-  if (isExpired(session)) {
-    clearSession();
-    // 本地已经判定过期，但 React 里的 session 状态还是旧的；广播一次让界面同步登出。
-    notifySessionExpired();
-    return null;
-  }
-  return session;
-}
-
-export function saveSession(session: AuthSession): void {
-  writeJson(SESSION_KEY, session);
-}
-
-export function clearSession(): void {
-  remove(SESSION_KEY);
-  remove(AUTHZ_KEY);
 }
 
 export function readAuthz(): Authz | null {
