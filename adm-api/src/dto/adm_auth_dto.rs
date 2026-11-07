@@ -100,3 +100,33 @@ pub struct AdmChangePasswordDto {
     #[serde(default)]
     pub new_pswd: String,
 }
+
+/// # 校验当前用户口令请求（服务端）
+///
+/// 高危操作前的二次确认。身份来自请求令牌，**不在请求体里传账号**；
+/// `login_pswd` 与登录 / 修改口令同一套约定，是前端算好的 `SM3(明文)`，
+/// 不是明文，也不是服务端存的二次摘要。
+///
+/// 这条路径只做口令比对：不累加 `adm_user.fail_count`、不写 `adm_lock_log`、
+/// 不创建 `adm_login_log`、不签发或刷新令牌。
+#[cfg(feature = "server")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema, validator::Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmVerifyPasswordDto {
+    /// 当前用户口令的一次摘要：`SM3(明文)` 的十六进制结果，定长 64
+    #[serde(default)]
+    #[validate(length(min = 64, max = 64))]
+    pub login_pswd: String,
+}
+
+/// # 校验当前用户口令请求（客户端）
+///
+/// 字段与含义同服务端版本，只是没有 `validator` 依赖。
+#[cfg(not(feature = "server"))]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmVerifyPasswordDto {
+    /// 当前用户口令的一次摘要：`SM3(明文)` 的十六进制结果，定长 64
+    #[serde(default)]
+    pub login_pswd: String,
+}

@@ -27,3 +27,21 @@ pub const ADM_CODE_TOKEN_INVALID: &str = "ADM00005";
 
 /// 登录标识不唯一（同一个串同时命中多个账号的不同列）
 pub const ADM_CODE_ACCOUNT_AMBIGUOUS: &str = "ADM00006";
+
+/// 高危操作二次确认：口令不正确
+///
+/// 与登录失败 [`ADM_CODE_LOGIN_FAILED`] **分开**：调用方需要明确区分
+/// 「口令输错」和「当前用户不可用」，且这条路径不参与登录失败计数与锁定。
+pub const ADM_CODE_VERIFY_PASSWORD_FAILED: &str = "ADM00007";
+
+/// 高危操作二次确认：错误尝试过于频繁（短时间窗口内超过阈值）
+///
+/// 这是频控命中，不是口令正确性结果。调用方看到它应当暂停重试并提示用户
+/// 稍后再试，而不是继续试口令。
+pub const ADM_CODE_VERIFY_PASSWORD_RATE_LIMITED: &str = "ADM00008";
+
+/// 高危操作二次确认：当前用户不可用
+///
+/// 覆盖用户不存在、已停用、已锁定、已过期。与 [`ADM_CODE_VERIFY_PASSWORD_FAILED`]
+/// 区分，方便调用方提示「换口令」还是「找管理员」。
+pub const ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE: &str = "ADM00009";

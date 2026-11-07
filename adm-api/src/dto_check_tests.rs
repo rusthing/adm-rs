@@ -8,6 +8,7 @@
 
 #![cfg(all(test, feature = "server"))]
 
+use crate::dto::adm_auth_dto::*;
 use crate::dto::adm_option_dto::*;
 use validator::Validate;
 
@@ -87,5 +88,27 @@ fn required_field_missing_is_reported() {
     assert!(
         dto.validate().unwrap_err().field_errors().contains_key("name"),
         "必填字段缺失应当报错"
+    );
+}
+
+#[test]
+fn verify_password_accepts_64_hex_digest() {
+    let dto = AdmVerifyPasswordDto {
+        login_pswd: "a".repeat(64),
+    };
+    assert!(dto.validate().is_ok(), "64 位一次摘要应当通过校验");
+}
+
+#[test]
+fn verify_password_rejects_plaintext_length() {
+    let dto = AdmVerifyPasswordDto {
+        login_pswd: "plain-password".to_string(),
+    };
+    assert!(
+        dto.validate()
+            .unwrap_err()
+            .field_errors()
+            .contains_key("login_pswd"),
+        "非 64 位的明文应当在校验层被拦住"
     );
 }

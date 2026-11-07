@@ -12,7 +12,7 @@
 //! 要拿真实来源得先加「可信代理白名单」，属于网关侧的事。
 
 use crate::cst::ADM_CODE_TOKEN_INVALID;
-use crate::dto::{AdmChangePasswordDto, AdmLoginDto};
+use crate::dto::{AdmChangePasswordDto, AdmLoginDto, AdmVerifyPasswordDto};
 use crate::svc::AdmAuthSvc;
 use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo};
 use crate::web::auth::{bearer_token, verify_bearer};
@@ -141,6 +141,47 @@ pub async fn change_password(
 ) -> Result<Json<Ro<()>>, CtrlError> {
     match verify_bearer(&headers).await {
         Ok(user_id) => Ok(Json(AdmAuthSvc::change_password(user_id, dto).await?)),
+        Err(detail) => Ok(Json(
+            Ro::warn("未登录或令牌已失效".to_string())
+                .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))
+                .detail(Some(detail)),
+        )),
+    }
+}
+
+/// # 校验当前用户口令（高危操作二次确认）
+///
+/// 供其它服务在删除、发布、改权限等高风险动作前确认操作人身份。身份取
+/// `Authorization: Bearer` 里的当前用户，请求体只带口令的一次摘要；
+/// **不累加登录失败次数、不触发账号锁定、不创建会话、不刷新令牌**。
+///
+/// ## 请求头
+/// * `Authorization` - `Bearer <登录拿到的令牌>`
+///
+/// ## 请求体
+/// * `AdmVerifyPasswordDto` - `loginPswd`（`SM3(明文)`，64 位十六进制）
+///
+/// ## 返回值
+/// * `Ro<()>` - 口令正确
+/// * `ADM00005` - 令牌无效
+/// * `ADM00007` - 口令不正确
+/// * `ADM00008` - 错误尝试过于频繁
+/// * `ADM00009` - 当前用户不可用（不存在 / 停用 / 锁定 / 过期）
+#[utoipa::path(
+    post,
+    path = "/adm/auth/verify-password",
+    request_body = AdmVerifyPasswordDto,
+    params(("Authorization" = String, Header, description = "Bearer <token>")),
+    responses((status = OK, description = "口令校验通过"))
+)]
+#[debug_handler]
+#[allow(clippy::result_large_err)]
+pub async fn verify_password(
+    headers: HeaderMap,
+    Json(dto): Json<AdmVerifyPasswordDto>,
+) -> Result<Json<Ro<()>>, CtrlError> {
+    match verify_bearer(&headers).await {
+        Ok(user_id) => Ok(Json(AdmAuthSvc::verify_password(user_id, dto).await?)),
         Err(detail) => Ok(Json(
             Ro::warn("未登录或令牌已失效".to_string())
                 .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))

@@ -32,11 +32,19 @@ use tracing::{error, info, warn};
 pub const OPTION_LOGIN_FAIL_LIMIT: &str = "login_fail_limit";
 /// 登录锁定时长（毫秒）在 `adm_option` 里的 code
 pub const OPTION_LOGIN_LOCK_MS: &str = "login_lock_ms";
+/// 高危操作口令二次确认：失败次数阈值在 `adm_option` 里的 code
+pub const OPTION_VERIFY_PASSWORD_FAIL_LIMIT: &str = "verify_password_fail_limit";
+/// 高危操作口令二次确认：失败计数窗口（毫秒）在 `adm_option` 里的 code
+pub const OPTION_VERIFY_PASSWORD_WINDOW_MS: &str = "verify_password_window_ms";
 
 /// 登录失败锁定阈值默认值：5 次
 pub const DEFAULT_LOGIN_FAIL_LIMIT: i16 = 5;
 /// 登录锁定时长默认值：1 小时
 pub const DEFAULT_LOGIN_LOCK_MS: u64 = 60 * 60 * 1000;
+/// 口令二次确认失败阈值默认值：5 次
+pub const DEFAULT_VERIFY_PASSWORD_FAIL_LIMIT: i16 = 5;
+/// 口令二次确认失败计数窗口默认值：10 分钟
+pub const DEFAULT_VERIFY_PASSWORD_WINDOW_MS: u64 = 10 * 60 * 1000;
 
 /// 选项快照：`code -> value`
 static ADM_OPTION_CACHE: ArcSwapOption<HashMap<String, String>> = ArcSwapOption::const_empty();
@@ -181,6 +189,39 @@ pub fn get_login_lock_ms() -> u64 {
     value as u64
 }
 
+/// # 口令二次确认失败阈值（次数）
+///
+/// 取 `adm_option.verify_password_fail_limit`，没配置用
+/// [`DEFAULT_VERIFY_PASSWORD_FAIL_LIMIT`]。小于 1 的值按默认处理：
+/// 0 或负数会让频控失效。
+pub fn get_verify_password_fail_limit() -> i16 {
+    let value = get_option_i64(
+        OPTION_VERIFY_PASSWORD_FAIL_LIMIT,
+        DEFAULT_VERIFY_PASSWORD_FAIL_LIMIT as i64,
+    );
+    if value < 1 {
+        warn!("adm_option[{OPTION_VERIFY_PASSWORD_FAIL_LIMIT}]={value} is invalid, fallback to {DEFAULT_VERIFY_PASSWORD_FAIL_LIMIT}");
+        return DEFAULT_VERIFY_PASSWORD_FAIL_LIMIT;
+    }
+    value.min(i16::MAX as i64) as i16
+}
+
+/// # 口令二次确认失败计数窗口（毫秒）
+///
+/// 取 `adm_option.verify_password_window_ms`，没配置用
+/// [`DEFAULT_VERIFY_PASSWORD_WINDOW_MS`]。小于 1 的值按默认处理。
+pub fn get_verify_password_window_ms() -> u64 {
+    let value = get_option_i64(
+        OPTION_VERIFY_PASSWORD_WINDOW_MS,
+        DEFAULT_VERIFY_PASSWORD_WINDOW_MS as i64,
+    );
+    if value < 1 {
+        warn!("adm_option[{OPTION_VERIFY_PASSWORD_WINDOW_MS}]={value} is invalid, fallback to {DEFAULT_VERIFY_PASSWORD_WINDOW_MS}");
+        return DEFAULT_VERIFY_PASSWORD_WINDOW_MS;
+    }
+    value as u64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,21 +237,52 @@ mod tests {
         assert_eq!(get_option_i64("not-exists", 7), 7);
         assert_eq!(get_login_fail_limit(), DEFAULT_LOGIN_FAIL_LIMIT);
         assert_eq!(get_login_lock_ms(), DEFAULT_LOGIN_LOCK_MS);
+        assert_eq!(
+            get_verify_password_fail_limit(),
+            DEFAULT_VERIFY_PASSWORD_FAIL_LIMIT
+        );
+        assert_eq!(
+            get_verify_password_window_ms(),
+            DEFAULT_VERIFY_PASSWORD_WINDOW_MS
+        );
 
         // 表里配了值
         let mut map = HashMap::new();
         map.insert(OPTION_LOGIN_FAIL_LIMIT.to_string(), "3".to_string());
         map.insert(OPTION_LOGIN_LOCK_MS.to_string(), "60000".to_string());
+        map.insert(OPTION_VERIFY_PASSWORD_FAIL_LIMIT.to_string(), "4".to_string());
+        map.insert(
+            OPTION_VERIFY_PASSWORD_WINDOW_MS.to_string(),
+            "300000".to_string(),
+        );
         ADM_OPTION_CACHE.store(Some(Arc::new(map)));
         assert_eq!(get_login_fail_limit(), 3);
         assert_eq!(get_login_lock_ms(), 60_000);
+        assert_eq!(get_verify_password_fail_limit(), 4);
+        assert_eq!(get_verify_password_window_ms(), 300_000);
 
         // 配错：非整数、0、负数都要回到默认，不能让阈值失效
         let mut bad = HashMap::new();
         bad.insert(OPTION_LOGIN_FAIL_LIMIT.to_string(), "abc".to_string());
         bad.insert(OPTION_LOGIN_LOCK_MS.to_string(), "0".to_string());
+        bad.insert(
+            OPTION_VERIFY_PASSWORD_FAIL_LIMIT.to_string(),
+            "0".to_string(),
+        );
+        bad.insert(
+            OPTION_VERIFY_PASSWORD_WINDOW_MS.to_string(),
+            "-1".to_string(),
+        );
         ADM_OPTION_CACHE.store(Some(Arc::new(bad)));
         assert_eq!(get_login_fail_limit(), DEFAULT_LOGIN_FAIL_LIMIT);
         assert_eq!(get_login_lock_ms(), DEFAULT_LOGIN_LOCK_MS);
+        assert_eq!(
+            get_verify_password_fail_limit(),
+            DEFAULT_VERIFY_PASSWORD_FAIL_LIMIT
+        );
+        assert_eq!(
+            get_verify_password_window_ms(),
+            DEFAULT_VERIFY_PASSWORD_WINDOW_MS
+        );
     }
 }

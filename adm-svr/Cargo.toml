@@ -39,6 +39,8 @@ utoipa-swagger-ui = { workspace = true, features = ["axum", "vendored"] }
 async-trait = { workspace = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true }
+# 口令二次确认失败计数的原子 INCR + PEXPIRE（Lua 脚本）
+redis = { workspace = true }
 
 wheel-rs = { workspace = true }
 idworker = { workspace = true, features = ["utils"] }

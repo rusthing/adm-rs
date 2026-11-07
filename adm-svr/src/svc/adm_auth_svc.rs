@@ -28,19 +28,24 @@
 use crate::cst::{
     ADM_CODE_ACCOUNT_AMBIGUOUS, ADM_CODE_ACCOUNT_DISABLED, ADM_CODE_ACCOUNT_EXPIRED,
     ADM_CODE_ACCOUNT_LOCKED, ADM_CODE_LOGIN_FAILED, ADM_CODE_TOKEN_INVALID,
+    ADM_CODE_VERIFY_PASSWORD_FAILED, ADM_CODE_VERIFY_PASSWORD_RATE_LIMITED,
+    ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE,
 };
-use crate::dao::{AdmLockLogDao, AdmLoginLogDao, AdmUserDao};
+use crate::dao::{AdmLockLogDao, AdmLoginLogDao, AdmOpLogDao, AdmUserDao};
 use crate::dic::UserStatus;
-use crate::dto::{AdmChangePasswordDto, AdmLoginDto};
+use crate::dto::{AdmChangePasswordDto, AdmLoginDto, AdmVerifyPasswordDto};
 use crate::mo::{
-    adm_lock_log, adm_login_log, adm_menu, adm_perm, adm_role, adm_role_menu, adm_role_perm,
-    adm_role_user, adm_user,
+    adm_lock_log, adm_login_log, adm_menu, adm_op_log, adm_perm, adm_role, adm_role_menu,
+    adm_role_perm, adm_role_user, adm_user,
 };
 use crate::utils::{
     AdmPasswordUtils, AdmTokenUtils, get_login_fail_limit, get_login_lock_ms,
+    get_verify_password_fail_limit, get_verify_password_window_ms,
 };
 use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo, AdmUserVo};
+use redis::Script;
 use robotech::api::{Ro, U64};
+use robotech::cache::distributed::redis::RedisCache;
 use robotech::dao::{begin_transaction, commit_transaction};
 use robotech::db::get_db_conn;
 use robotech::svc::SvcError;
@@ -57,6 +62,31 @@ use wheel_rs::time_utils::now_ms;
 /// 登录失败锁定、到期自动解锁这类「系统自己的动作」写审计列时用它，
 /// 与框架的 `SYS_OPERATOR_USER_ID` 一致。
 const SYSTEM_OPERATOR_ID: i64 = 0;
+
+/// 口令二次确认失败计数的 Redis 键前缀
+///
+/// 只统计**这条接口**的错误尝试，与登录失败计数（`adm_user.fail_count`）
+/// 完全隔离；后缀是用户 ID。
+const VERIFY_PASSWORD_FAIL_KEY_PREFIX: &str = "adm:auth:verify-password:fail:";
+
+/// 口令二次确认审计使用的操作类型编码
+const VERIFY_PASSWORD_OP_TYPE: &str = "verify_password";
+/// 口令二次确认审计标题
+const VERIFY_PASSWORD_OP_TITLE: &str = "高危操作口令二次确认";
+/// 口令二次确认审计的接口标识
+const VERIFY_PASSWORD_OP_URN: &str = "POST:/adm/auth/verify-password";
+
+/// 失败计数原子 +1，并在第一次失败时设置窗口
+///
+/// 用 Lua 保证「读-改-写」在 Redis 内一次完成，避免并发下计数丢失，
+/// 让频控在分布式部署里仍然有效。
+const VERIFY_PASSWORD_FAIL_INCR_SCRIPT: &str = r"
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+    redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return count
+";
 
 /// # 认证服务
 pub struct AdmAuthSvc;
@@ -332,6 +362,179 @@ impl AdmAuthSvc {
         AdmUserDao::update(active, db.as_ref()).await?;
 
         Ok(Ro::success("口令修改成功".to_string()))
+    }
+
+    /// # 校验当前用户口令（高危操作二次确认）
+    ///
+    /// 供其它服务在删除、发布、改权限等高风险动作前调用。身份来自请求令牌，
+    /// 不接受请求体里的账号，也不走登录流程。
+    ///
+    /// ## 与登录的隔离
+    ///
+    /// **不累加登录失败次数、不触发账号锁定、不创建会话、不签发令牌**：
+    /// 只读 `adm_user`，把结果写进独立的 Redis 计数键与 `adm_op_log` 审计。
+    ///
+    /// ## 频控
+    ///
+    /// 同一用户连续输错达到阈值（`adm_option.verify_password_fail_limit`，
+    /// 默认 5 次）后，在窗口（`verify_password_window_ms`，默认 10 分钟）内
+    /// 直接返回 `ADM00008`；成功一次即清零。频控本身不写审计，避免刷日志。
+    ///
+    /// ## 参数
+    /// * `user_id` - 令牌里的用户 ID
+    /// * `dto` - 当前口令的一次摘要（`SM3(明文)`）
+    ///
+    /// ## 返回值
+    /// * `Ok(Ro<()>)` - 口令正确
+    /// * `Ok(Ro::warn + ADM00007)` - 口令不正确
+    /// * `Ok(Ro::warn + ADM00008)` - 错误尝试过于频繁
+    /// * `Ok(Ro::warn + ADM00009)` - 当前用户不可用（不存在 / 停用 / 锁定 / 过期）
+    /// * `Err(SvcError)` - 数据库 / Redis 故障
+    #[allow(clippy::result_large_err)]
+    pub async fn verify_password(
+        user_id: u64,
+        dto: AdmVerifyPasswordDto,
+    ) -> Result<Ro<()>, SvcError> {
+        dto.validate()?;
+
+        let fail_limit = get_verify_password_fail_limit();
+        let window_ms = get_verify_password_window_ms();
+
+        // 频控先于任何口令比较：已经超限时不再验口令，也不再写审计
+        if Self::verify_password_fail_count(user_id).await? >= fail_limit as i64 {
+            warn!("verify-password: user {user_id} rate limited");
+            return Ok(Self::verify_password_rate_limited());
+        }
+
+        let db = get_db_conn()?;
+        let Some(user) =
+            AdmUserDao::get_by_id::<_, adm_user::Model>(U64(user_id), db.as_ref()).await?
+        else {
+            warn!("verify-password: user {user_id} not found");
+            return Ok(Self::verify_password_user_unavailable("当前用户不可用"));
+        };
+
+        // 只读判断账号状态：不自动解锁、不修改 status / lock_until_ms / fail_count
+        if !user.enabled || user.status == UserStatus::Disabled as i16 {
+            Self::audit_verify_password(&user, false, db.as_ref()).await?;
+            return Ok(Self::verify_password_user_unavailable(
+                "当前用户不可用：账号已停用",
+            ));
+        }
+        if user.status == UserStatus::Locked as i16 {
+            Self::audit_verify_password(&user, false, db.as_ref()).await?;
+            return Ok(Self::verify_password_user_unavailable(
+                "当前用户不可用：账号已锁定",
+            ));
+        }
+        let now = now_ms();
+        if let Some(expire_ms) = user.expire_ms
+            && expire_ms as u64 <= now
+        {
+            Self::audit_verify_password(&user, false, db.as_ref()).await?;
+            return Ok(Self::verify_password_user_unavailable(
+                "当前用户不可用：账号已过期",
+            ));
+        }
+
+        // 口令比较沿用登录的同一套强度：SM3(一次摘要 + 密码组合码)
+        if !AdmPasswordUtils::verify(&dto.login_pswd, &user.login_pswd_salt, &user.login_pswd) {
+            let fail_count = Self::bump_verify_password_fail_count(user_id, window_ms).await?;
+            Self::audit_verify_password(&user, false, db.as_ref()).await?;
+            if fail_count >= fail_limit as i64 {
+                warn!("verify-password: user {user_id} reached fail limit {fail_count}");
+                return Ok(Self::verify_password_rate_limited());
+            }
+            return Ok(Ro::warn("口令不正确".to_string())
+                .code(Some(ADM_CODE_VERIFY_PASSWORD_FAILED.to_string())));
+        }
+
+        // 成功：只清本接口的失败计数，不碰 adm_user 的任何登录状态字段
+        Self::clear_verify_password_fail_count(user_id).await?;
+        Self::audit_verify_password(&user, true, db.as_ref()).await?;
+        Ok(Ro::success("口令校验通过".to_string()))
+    }
+
+    /// 口令二次确认频控命中响应
+    fn verify_password_rate_limited() -> Ro<()> {
+        Ro::warn("口令校验失败次数过多，请稍后再试".to_string())
+            .code(Some(ADM_CODE_VERIFY_PASSWORD_RATE_LIMITED.to_string()))
+    }
+
+    /// 口令二次确认「用户不可用」响应
+    fn verify_password_user_unavailable(msg: &str) -> Ro<()> {
+        Ro::warn(msg.to_string()).code(Some(ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE.to_string()))
+    }
+
+    /// 口令二次确认失败计数的 Redis 键
+    fn verify_password_fail_key(user_id: u64) -> String {
+        format!("{VERIFY_PASSWORD_FAIL_KEY_PREFIX}{user_id}")
+    }
+
+    /// 读取当前失败计数；键不存在按 0 处理
+    async fn verify_password_fail_count(user_id: u64) -> Result<i64, SvcError> {
+        let count = RedisCache::get::<i64>(&Self::verify_password_fail_key(user_id))
+            .await
+            .map_err(|e| SvcError::Runtime(anyhow::anyhow!("查询口令校验失败计数失败: {e}")))?;
+        Ok(count.unwrap_or(0))
+    }
+
+    /// 原子累加失败计数并返回累加后的值；首次失败时同时设置窗口
+    async fn bump_verify_password_fail_count(
+        user_id: u64,
+        window_ms: u64,
+    ) -> Result<i64, SvcError> {
+        let mut conn = robotech::redis::get_redis_conn()
+            .map_err(|e| SvcError::Runtime(anyhow::anyhow!("Redis 连接失败: {e}")))?;
+        let count: i64 = Script::new(VERIFY_PASSWORD_FAIL_INCR_SCRIPT)
+            .key(Self::verify_password_fail_key(user_id))
+            .arg(window_ms.max(1) as i64)
+            .invoke_async(&mut conn)
+            .await
+            .map_err(|e| SvcError::Runtime(anyhow::anyhow!("累加口令校验失败计数失败: {e}")))?;
+        Ok(count)
+    }
+
+    /// 口令正确时清掉本接口的失败计数
+    async fn clear_verify_password_fail_count(user_id: u64) -> Result<(), SvcError> {
+        RedisCache::del(&Self::verify_password_fail_key(user_id))
+            .await
+            .map_err(|e| SvcError::Runtime(anyhow::anyhow!("清理口令校验失败计数失败: {e}")))?;
+        Ok(())
+    }
+
+    /// 写审计：谁（user_id）、什么时候（create_ms，DAO 自动填）、成功还是失败
+    ///
+    /// 只写结果，不写口令、摘要、盐或任何可还原口令的字段。
+    async fn audit_verify_password<C>(
+        user: &adm_user::Model,
+        success: bool,
+        db: &C,
+    ) -> Result<(), SvcError>
+    where
+        C: ConnectionTrait,
+    {
+        let audit = adm_op_log::ActiveModel {
+            id: ActiveValue::NotSet,
+            user_id: Set(user.id),
+            op_type_code: Set(VERIFY_PASSWORD_OP_TYPE.to_string()),
+            op_title: Set(VERIFY_PASSWORD_OP_TITLE.to_string()),
+            op_urn: Set(VERIFY_PASSWORD_OP_URN.to_string()),
+            remark: Set(Some(
+                if success {
+                    "口令校验成功"
+                } else {
+                    "口令校验失败"
+                }
+                .to_string(),
+            )),
+            creater_id: Set(user.id),
+            create_ms: ActiveValue::NotSet,
+            updater_id: Set(user.id),
+            update_ms: ActiveValue::NotSet,
+        };
+        AdmOpLogDao::insert(audit, db).await?;
+        Ok(())
     }
 
     /// # 登录（事务内）
