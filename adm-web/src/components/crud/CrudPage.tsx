@@ -65,6 +65,11 @@ export interface CrudColumn<T> {
   type?: CrudCellType;
   /** `type: "boolean"` 时的文案，默认「是 / 否」。 */
   booleanLabels?: BooleanCellLabels;
+  /**
+   * 状态列：单元格内联开关，直接走 modify 落库并刷新列表。
+   * 仅用于实体启停状态（enabled / visible 等）；业务配置布尔字段不要用。
+   */
+  toggle?: { labels?: { on: string; off: string } };
   className?: string;
   align?: "left" | "right";
   /**
@@ -313,6 +318,8 @@ export function CrudPage<T extends { id: string }>({
     error?: string;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  /** 正在切换状态的行：避免同一行重复提交，也让开关有禁用反馈。 */
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   /** 详情/删除预检是异步请求，用递增令牌丢弃“后发先至”的旧响应。 */
   const detailRequestRef = useRef(0);
@@ -601,6 +608,21 @@ export function CrudPage<T extends { id: string }>({
   const reload = () => {
     invalidate();
     setReloadTick((tick) => tick + 1);
+  };
+
+  /** 行内状态开关：只提交该状态字段，避免把表单里的其它字段一起写回。 */
+  const toggleStatus = async (row: T, column: CrudColumn<T>, next: boolean) => {
+    if (!column.toggle) return;
+    setTogglingId(row.id);
+    try {
+      await api.modify({ id: row.id, [column.key]: next } as Partial<T>);
+      toast.success(`已${next ? "启用" : "停用"}「${itemLabel(row)}」`);
+      reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : `切换「${itemLabel(row)}」状态失败`);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   /**
@@ -979,7 +1001,18 @@ export function CrudPage<T extends { id: string }>({
                               column.className,
                             )}
                           >
-                            {column.render ? (
+                            {column.toggle ? (
+                              <Switch
+                                checked={Boolean(text)}
+                                disabled={togglingId === row.id}
+                                label={
+                                  Boolean(text)
+                                    ? column.toggle.labels?.on ?? "启用"
+                                    : column.toggle.labels?.off ?? "停用"
+                                }
+                                onChange={(next) => void toggleStatus(row, column, next)}
+                              />
+                            ) : column.render ? (
                               column.render(row) // 自定义 render 自己决定
                             ) : (
                               <span

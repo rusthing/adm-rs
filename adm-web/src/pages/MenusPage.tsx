@@ -74,16 +74,8 @@ export function MenusPage() {
         return <Badge tone={type.tone}>{type.label}</Badge>;
       },
     },
-    {
-      key: "visible",
-      label: "显示",
-      render: (row) => (
-        <div className="flex items-center gap-1">
-          <Badge tone={row.visible ? "success" : "neutral"}>{row.visible ? "显示" : "隐藏"}</Badge>
-          {!row.enabled && <Badge tone="warn">停用</Badge>}
-        </div>
-      ),
-    },
+    { key: "visible", label: "显示", toggle: { labels: { on: "显示", off: "隐藏" } } },
+    { key: "enabled", label: "启用", toggle: {} },
   ];
 
   const fields: CrudField[] = [
@@ -143,8 +135,6 @@ export function MenusPage() {
       hint: "从当前前端图标表里选择；留空则用默认图标。",
     },
     { name: "keepAlive", label: "缓存页面", type: "switch", defaultValue: false },
-    { name: "visible", label: "在导航中显示", type: "switch", defaultValue: true },
-    { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea" },
   ];
 
@@ -158,8 +148,6 @@ export function MenusPage() {
     linkType: String(row.linkType ?? 1),
     icon: row.icon ?? "",
     keepAlive: row.keepAlive,
-    visible: row.visible,
-    enabled: row.enabled,
     remark: row.remark ?? "",
   });
 
@@ -172,8 +160,6 @@ export function MenusPage() {
       linkType: Number(values.linkType ?? 1),
       icon: optionalText(values.icon),
       keepAlive: Boolean(values.keepAlive),
-      visible: Boolean(values.visible),
-      enabled: Boolean(values.enabled),
       remark: optionalText(values.remark),
     };
     if (mode === "create") {

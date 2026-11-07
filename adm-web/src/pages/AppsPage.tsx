@@ -15,27 +15,24 @@ export function AppsPage() {
   const columns: CrudColumn<AdmAppVo>[] = [
     { key: "name", label: "应用", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
     { key: "code", label: "编码", render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code> },
-    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "enabled", label: "启用", toggle: {} },
   ];
 
   const fields: CrudField[] = [
     { name: "code", label: "应用编码", required: true, placeholder: "全局唯一，如 adm-console" },
     { name: "name", label: "名称", required: true, placeholder: "全局唯一" },
-    { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea" },
   ];
 
   const toForm = (row: AdmAppVo): FormValues => ({
     code: row.code,
     name: row.name,
-    enabled: row.enabled,
     remark: row.remark ?? "",
   });
 
   const toPayload = (values: FormValues) => ({
     code: String(values.code ?? "").trim(),
     name: String(values.name ?? "").trim(),
-    enabled: Boolean(values.enabled),
     remark: optionalText(values.remark),
   });
 

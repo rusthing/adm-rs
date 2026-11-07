@@ -231,7 +231,7 @@ export function UsersPage() {
         return <Badge tone={status.tone}>{status.label}</Badge>;
       },
     },
-    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "enabled", label: "启用", toggle: {} },
     { key: "lastLoginMs", label: "最近登录", type: "datetime" },
     { key: "createMs", label: "创建时间", type: "datetime" },
   ];
@@ -269,19 +269,6 @@ export function UsersPage() {
       },
     },
     {
-      name: "status",
-      label: "账号状态",
-      type: "select",
-      required: true,
-      defaultValue: "1",
-      options: [
-        { value: "1", label: "1 · 正常" },
-        { value: "2", label: "2 · 已停用" },
-        { value: "3", label: "3 · 已锁定" },
-      ],
-    },
-    { name: "enabled", label: "启用", type: "switch", defaultValue: true },
-    {
       name: "loginPswd",
       key: "loginPswd-create",
       label: "登录口令",
@@ -318,8 +305,6 @@ export function UsersPage() {
     nickName: row.nickName ?? "",
     mobile: row.mobile ?? "",
     email: row.email ?? "",
-    status: String(row.status ?? 1),
-    enabled: row.enabled,
     loginPswd: "",
     auditPswd: "",
     payPswd: "",
@@ -332,8 +317,6 @@ export function UsersPage() {
       nickName: optionalText(values.nickName),
       mobile: optionalText(values.mobile),
       email: optionalText(values.email),
-      status: Number(values.status ?? 1),
-      enabled: Boolean(values.enabled),
       remark: optionalText(values.remark),
     };
 

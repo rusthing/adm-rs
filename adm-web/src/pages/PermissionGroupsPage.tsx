@@ -39,7 +39,7 @@ export function PermissionGroupsPage() {
         );
       },
     },
-    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "enabled", label: "启用", toggle: {} },
     { key: "remark", label: "备注", truncate: true },
   ];
 
@@ -53,21 +53,18 @@ export function PermissionGroupsPage() {
       hint: "不选则创建根分组，treeCode 由服务端按 parentCode 在全局树内生成。",
     },
     { name: "name", label: "名称", required: true, placeholder: "同一父节点下允许重名，靠 treeCode 区分" },
-    { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea" },
   ];
 
   const toForm = (row: AdmPermGroupVo): FormValues => ({
     parentCode: "",
     name: row.name,
-    enabled: row.enabled,
     remark: row.remark ?? "",
   });
 
   const toPayload = (values: FormValues, mode: "create" | "edit") => {
     const base: Record<string, unknown> = {
       name: String(values.name ?? "").trim(),
-      enabled: Boolean(values.enabled),
       remark: optionalText(values.remark),
     };
     if (mode === "create") base.parentCode = optionalText(values.parentCode);

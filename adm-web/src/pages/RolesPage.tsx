@@ -213,7 +213,7 @@ export function RolesPage() {
       label: "角色分组",
       render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
     },
-    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "enabled", label: "启用", toggle: {} },
     { key: "remark", label: "备注", truncate: true },
   ];
 
@@ -227,21 +227,18 @@ export function RolesPage() {
       hint: groupsQuery.data?.length ? "角色按分组唯一（groupId + name）。" : "还没有角色分组，请先到「角色分组」创建。",
     },
     { name: "name", label: "名称", required: true, placeholder: "同一分组内唯一，1-50 字" },
-    { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea", placeholder: "0-50 字" },
   ];
 
   const toForm = (row: AdmRoleVo): FormValues => ({
     groupId: row.groupId,
     name: row.name,
-    enabled: row.enabled,
     remark: row.remark ?? "",
   });
 
   const toPayload = (values: FormValues) => ({
     groupId: values.groupId,
     name: String(values.name ?? "").trim(),
-    enabled: Boolean(values.enabled),
     remark: optionalText(values.remark),
   });
 

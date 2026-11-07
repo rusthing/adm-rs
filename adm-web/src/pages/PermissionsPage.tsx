@@ -40,7 +40,7 @@ export function PermissionsPage() {
       render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
     },
     { key: "opTypeCode", label: "操作类型", type: "code" },
-    { key: "enabled", label: "启用", type: "boolean", booleanLabels: { on: "启用", off: "停用" } },
+    { key: "enabled", label: "启用", toggle: {} },
   ];
 
   const fields: CrudField[] = [
@@ -61,7 +61,6 @@ export function PermissionsPage() {
       options: (opTypesQuery.data ?? []).map((opType) => ({ value: opType.code, label: `${opType.name}（${opType.code}）` })),
       hint: "可留空；表示该权限与操作类型无关（如整页访问）。",
     },
-    { name: "enabled", label: "启用", type: "switch", defaultValue: true },
     { name: "remark", label: "备注", type: "textarea" },
   ];
 
@@ -70,7 +69,6 @@ export function PermissionsPage() {
     name: row.name,
     urn: row.urn,
     opTypeCode: row.opTypeCode ?? "",
-    enabled: row.enabled,
     remark: row.remark ?? "",
   });
 
@@ -79,7 +77,6 @@ export function PermissionsPage() {
     name: String(values.name ?? "").trim(),
     urn: String(values.urn ?? "").trim(),
     opTypeCode: optionalText(values.opTypeCode),
-    enabled: Boolean(values.enabled),
     remark: optionalText(values.remark),
   });
 
