@@ -195,12 +195,24 @@ export interface AdmLoginLogVo extends AuditFields {
   loginIp: string;
 }
 
-export interface AdmLockLogVo extends AuditFields {
+export interface AdmOpLogVo extends AuditFields {
   id: string;
   userId: string;
+  /** 操作类型码（adm_op_type.code），界面按字典显示中文名。 */
+  opTypeCode: string;
+  opTitle: string;
+  opUrn: string;
+  remark?: string;
+}
+
+export interface AdmLockLogVo extends AuditFields {
+  id: string;
+  /** 锁定 / 解锁流水可能由系统任务写入，用户为空时按空值展示。 */
+  userId?: string;
   lockMs: string;
-  lockUntilMs: string;
-  reason?: string;
+  lockReason: string;
+  unlockMs?: string;
+  unlockReason?: string;
 }
 
 /** 登录后落 localStorage 的会话；expireMs 是后端令牌到期时间。 */

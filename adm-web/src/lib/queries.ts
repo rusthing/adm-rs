@@ -12,7 +12,18 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { appApi, menuApi, permApi, permGroupApi, realmApi, roleApi, roleGroupApi } from "./api";
+import {
+  appApi,
+  menuApi,
+  opTypeApi,
+  permApi,
+  permGroupApi,
+  realmApi,
+  roleApi,
+  roleGroupApi,
+  userApi,
+} from "./api";
+import { shortId } from "./utils";
 
 /** 选项数据变动不频繁，5 分钟足够；真正的新增/改名靠前缀失效立即生效。 */
 const OPTION_STALE = 5 * 60_000;
@@ -25,6 +36,7 @@ export const optionKeys = {
   role: ["/adm/role", "options"] as const,
   roleGroup: ["/adm/role-group", "options"] as const,
   permGroup: ["/adm/perm-group", "options"] as const,
+  opType: ["opType", "options"] as const,
 };
 
 /** 应用列表：侧栏分组、菜单归属、菜单授权清单共用。 */
@@ -102,4 +114,27 @@ export function usePermGroupOptions(enabled = true) {
     retry: 0,
     enabled,
   });
+}
+
+/** 操作类型字典（按 sortOrder 升序）：操作日志的类型列与筛选下拉共用。 */
+export function useOpTypeOptions(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.opType,
+    queryFn: () => opTypeApi.list({ _orderBy: "sort_order:asc" }),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/**
+ * 日志页「用户」筛选的异步选项。
+ * 日志表只存 userId，展示时统一走 id 缩写，不额外拼接用户详情。
+ */
+export async function loadUserOptions(): Promise<{ value: string; label: string }[]> {
+  const users = await userApi.list({ _orderBy: "name:asc" });
+  return users.map((user) => ({
+    value: user.id,
+    label: `${user.name}（${shortId(user.id)}）`,
+  }));
 }

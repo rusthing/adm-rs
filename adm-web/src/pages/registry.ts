@@ -2,8 +2,10 @@ import type { ComponentType } from "react";
 import { AppsPage } from "@/pages/AppsPage";
 import { DashboardConfigPage } from "@/pages/DashboardConfigPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { LockLogsPage } from "@/pages/LockLogsPage";
 import { LoginLogsPage } from "@/pages/LoginLogsPage";
 import { MenusPage } from "@/pages/MenusPage";
+import { OpLogsPage } from "@/pages/OpLogsPage";
 import { PermissionGroupsPage } from "@/pages/PermissionGroupsPage";
 import { PermissionsPage } from "@/pages/PermissionsPage";
 import { RealmsPage } from "@/pages/RealmsPage";
@@ -30,6 +32,8 @@ export const PAGE_COMPONENTS: Record<string, ComponentType> = {
   realms: RealmsPage,
   apps: AppsPage,
   "login-logs": LoginLogsPage,
+  "op-logs": OpLogsPage,
+  "lock-logs": LockLogsPage,
 };
 
 /** 页面级权限前缀；后端菜单已经按角色过滤过，这里再做一层界面兜底。 */
@@ -44,6 +48,8 @@ export const PAGE_PERMS: Record<string, string> = {
   realms: "GET:/adm/realm",
   apps: "GET:/adm/app",
   "login-logs": "GET:/adm/login-log",
+  "op-logs": "GET:/adm/op-log",
+  "lock-logs": "GET:/adm/lock-log",
 };
 
 /** 组件是否已注册；空 component（目录节点）不算。 */

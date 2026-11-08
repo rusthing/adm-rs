@@ -1,7 +1,6 @@
 import type { CrudColumn } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { userApi } from "@/lib/api";
-import { shortId } from "@/lib/utils";
+import { loadUserOptions } from "@/lib/queries";
 import type { AdmLoginLogVo } from "@/lib/types";
 
 function duration(row: AdmLoginLogVo): string {
@@ -13,15 +12,6 @@ function duration(row: AdmLoginLogVo): string {
   if (seconds < 60) return `${seconds} 秒`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes} 分 ${seconds % 60} 秒`;
-}
-
-/** 关联用户筛选的异步选项；具体控件渲染由 CrudPage 的 entity 类型统一处理。 */
-async function loadUserOptions() {
-  const users = await userApi.list({ _orderBy: "name:asc" });
-  return users.map((user) => ({
-    value: user.id,
-    label: `${user.name}（${shortId(user.id)}）`,
-  }));
 }
 
 const columns: CrudColumn<AdmLoginLogVo>[] = [
