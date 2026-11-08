@@ -133,11 +133,14 @@ export function Switch({
 
 export function Checkbox({
   checked,
+  indeterminate = false,
   onChange,
   label,
   disabled,
 }: {
   checked: boolean;
+  /** 半选：子节点部分选中时由父节点展示，浏览器原生属性只能通过 ref 设置。 */
+  indeterminate?: boolean;
   onChange: (checked: boolean) => void;
   label?: ReactNode;
   disabled?: boolean;
@@ -148,6 +151,9 @@ export function Checkbox({
         type="checkbox"
         checked={checked}
         disabled={disabled}
+        ref={(node) => {
+          if (node) node.indeterminate = indeterminate && !checked;
+        }}
         onChange={(event) => onChange(event.target.checked)}
         className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[var(--color-accent)]"
       />

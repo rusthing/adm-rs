@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, GripVertical, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { crudApi } from "@/lib/api";
 import type { CrudApi } from "@/lib/api";
 import type { FormValues, PageQuery, TreeDeletePreview } from "@/lib/types";
@@ -18,7 +18,8 @@ import {
   Switch,
   Textarea,
 } from "@/components/ui/primitives";
-import { Modal, useConfirm, useToast } from "@/components/ui/overlay";
+import { Modal, useToast } from "@/components/ui/overlay";
+import { AuditPasswordField, verifyAuditPassword } from "@/components/ui/audit-password";
 import { ScopePanel } from "./scope-panel";
 import { effectiveScopeValue, scopeCreateValue, scopePanelVisible } from "./scope";
 import type { CrudScopeDef } from "./scope";
@@ -286,7 +287,6 @@ export function CrudPage<T extends { id: string }>({
   const api = useMemo<CrudApi<T>>(() => crudApi<T>(prefix), [prefix]);
   const queryClient = useQueryClient();
   const toast = useToast();
-  const confirm = useConfirm();
   const formId = useId();
   /** 关键字防抖定时器：Enter / Esc / 清空时立即取消，避免旧 timer 覆盖即时结果。 */
   const keywordTimerRef = useRef<number | null>(null);
@@ -318,6 +318,11 @@ export function CrudPage<T extends { id: string }>({
     error?: string;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  /** 删除弹窗里的审核口令：删除属于高危操作，必须校验后再调接口。 */
+  const [auditPassword, setAuditPassword] = useState("");
+  const [auditError, setAuditError] = useState<string | null>(null);
+  /** 树形表格里被收起的节点（`作用域#treeCode`），只影响当前展示，不改数据。 */
+  const [collapsedTree, setCollapsedTree] = useState<Set<string>>(() => new Set());
   /** 正在切换状态的行：避免同一行重复提交，也让开关有禁用反馈。 */
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -429,6 +434,47 @@ export function CrudPage<T extends { id: string }>({
     () => (sortable ? applySortPreview(rows, sortable, sortPreview) : rows),
     [rows, sortable, sortPreview],
   );
+
+  // ---- 树形表格折叠：与左侧分组栏、授权树保持同一套交互 ----
+  const isTreeTable = sortable?.kind === "tree";
+  /** 有下级的节点集合（用全量列表判断，避免页码变动导致箭头闪烁）。 */
+  const treeParents = useMemo(() => {
+    const parents = new Set<string>();
+    if (!sortable || sortable.kind !== "tree") return parents;
+    for (const row of sortListQuery.data ?? rows) {
+      const code = sortable.treeCode?.(row) ?? "";
+      const scope = String(sortable.scope?.(row) ?? "");
+      for (let length = code.length - 3; length >= 3; length -= 3) {
+        parents.add(`${scope}#${code.slice(0, length)}`);
+      }
+    }
+    return parents;
+  }, [sortable, sortListQuery.data, rows]);
+
+  /** 祖先里有被收起的节点就隐藏；只影响当前展示，不改动数据与排序。 */
+  const visibleRows = useMemo(() => {
+    if (!sortable || sortable.kind !== "tree") return displayRows;
+    return displayRows.filter((row) => {
+      const code = sortable.treeCode?.(row) ?? "";
+      const scope = String(sortable.scope?.(row) ?? "");
+      for (let length = code.length - 3; length >= 3; length -= 3) {
+        if (collapsedTree.has(`${scope}#${code.slice(0, length)}`)) return false;
+      }
+      return true;
+    });
+  }, [displayRows, sortable, collapsedTree]);
+
+  const treeKeyOf = (row: T) =>
+    `${String(sortable?.scope?.(row) ?? "")}#${sortable?.treeCode?.(row) ?? ""}`;
+
+  const toggleTree = (row: T) =>
+    setCollapsedTree((prev) => {
+      const key = treeKeyOf(row);
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   // 有筛选条件时禁止排序：避免只对筛选后的子集提交完整顺序。
   const sortEnabled = Boolean(sortable) && !hasActiveFilters && !sortSaving;
@@ -552,8 +598,27 @@ export function CrudPage<T extends { id: string }>({
     const seq = sortSequence.get(row.id) ?? fallback;
     const disabledTitle = hasActiveFilters ? "清除搜索与筛选条件后可调整排序" : "排序数据加载中";
     return (
-      <td className="sticky left-0 z-10 w-[112px] whitespace-nowrap border-r border-line bg-surface px-3 py-2.5 align-middle group-hover:bg-sunken/50">
+      <td
+        className={cn(
+          "sticky left-0 z-10 whitespace-nowrap border-r border-line bg-surface px-3 py-2.5 align-middle group-hover:bg-sunken/50",
+          isTreeTable ? "w-[132px]" : "w-[112px]",
+        )}
+      >
         <div className="flex items-center justify-end gap-1">
+          {isTreeTable &&
+            (treeParents.has(treeKeyOf(row)) ? (
+              <button
+                type="button"
+                aria-label={collapsedTree.has(treeKeyOf(row)) ? "展开子节点" : "收起子节点"}
+                aria-expanded={!collapsedTree.has(treeKeyOf(row))}
+                onClick={() => toggleTree(row)}
+                className="mr-auto rounded p-0.5 text-muted hover:bg-sunken hover:text-ink"
+              >
+                {collapsedTree.has(treeKeyOf(row)) ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+              </button>
+            ) : (
+              <span className="mr-auto w-[16px]" />
+            ))}
           <span className="inline-flex h-5 min-w-7 items-center justify-center rounded bg-sunken px-1 text-[11px] tabular-nums text-muted">
             {Number.isFinite(seq) ? seq : "--"}
           </span>
@@ -696,25 +761,12 @@ export function CrudPage<T extends { id: string }>({
   };
 
   const remove = async (row: T) => {
-    // 非树形实体走全局确认弹窗；树形实体先查服务端预检，
-    // 由确认弹窗展示真实子孙数量与名单，避免前端估算。
+    // 删除统一走同一个弹窗：树形实体先查服务端预检，展示真实子孙数量与名单；
+    // 非树形实体直接确认。两条路径都要输入审核口令，由 confirmRemove 统一校验。
+    setAuditPassword("");
+    setAuditError(null);
     if (sortable?.kind !== "tree") {
-      const ok = await confirm({
-        title: "删除确认",
-        description: `确定删除「${itemLabel(row)}」？此操作不可撤销。`,
-        confirmText: "删除",
-        tone: "danger",
-      });
-      if (!ok) return;
-      try {
-        await doRemove(row);
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : `删除「${itemLabel(row)}」失败，服务端未返回具体原因`,
-        );
-      }
+      setDeleteTarget({ row, loading: false });
       return;
     }
 
@@ -739,23 +791,37 @@ export function CrudPage<T extends { id: string }>({
   /** 关闭删除弹窗时让在途预检失效，避免响应回来后又把弹窗重新打开。 */
   const closeDelete = () => {
     previewRequestRef.current += 1;
-    if (!deleting) setDeleteTarget(null);
+    if (!deleting) {
+      setDeleteTarget(null);
+      setAuditPassword("");
+      setAuditError(null);
+    }
   };
 
-  /** 树形删除确认：预检成功且未被引用阻塞时才真正调用删除接口。 */
+  /** 删除确认：先校验审核口令，通过后才真正调用删除接口。 */
   const confirmRemove = async () => {
     if (!deleteTarget || deleteTarget.loading || deleteTarget.error) return;
     if (deleteTarget.preview?.blocked) return;
     setDeleting(true);
+    setAuditError(null);
+    let verified = false;
     try {
+      await verifyAuditPassword(auditPassword);
+      verified = true;
       await doRemove(deleteTarget.row);
       setDeleteTarget(null);
+      setAuditPassword("");
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : `删除「${itemLabel(deleteTarget.row)}」失败，服务端未返回具体原因`,
-      );
+      if (!verified) {
+        // 口令错误留在弹窗里，让用户直接改口令重试，不关闭预检结果。
+        setAuditError(error instanceof Error ? error.message : "审核口令校验失败");
+      } else {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : `删除「${itemLabel(deleteTarget.row)}」失败，服务端未返回具体原因`,
+        );
+      }
     } finally {
       setDeleting(false);
     }
@@ -955,7 +1021,12 @@ export function CrudPage<T extends { id: string }>({
                 <thead>
                   <tr className="border-b border-line bg-sunken">
                     {sortable && (
-                      <th className="sticky left-0 z-10 w-[112px] whitespace-nowrap border-r border-line bg-sunken px-3 py-2 text-right text-[11.5px] font-medium text-muted">
+                      <th
+                        className={cn(
+                          "sticky left-0 z-10 whitespace-nowrap border-r border-line bg-sunken px-3 py-2 text-right text-[11.5px] font-medium text-muted",
+                          isTreeTable ? "w-[132px]" : "w-[112px]",
+                        )}
+                      >
                         排序
                       </th>
                     )}
@@ -979,7 +1050,7 @@ export function CrudPage<T extends { id: string }>({
                   </tr>
                 </thead>
                 <tbody>
-                  {displayRows.map((row) => (
+                  {visibleRows.map((row) => (
                     <tr
                       key={row.id}
                       data-sort-row-id={row.id}
@@ -1196,6 +1267,7 @@ export function CrudPage<T extends { id: string }>({
               onClick={confirmRemove}
               disabled={
                 deleting ||
+                !auditPassword.trim() ||
                 Boolean(deleteTarget?.loading) ||
                 Boolean(deleteTarget?.error) ||
                 Boolean(deleteTarget?.preview?.blocked)
@@ -1236,6 +1308,22 @@ export function CrudPage<T extends { id: string }>({
                 该节点没有子节点，删除后同父节点下的后续兄弟会自动前移。
               </div>
             )}
+          </div>
+        )}
+        {deleteTarget && !deleteTarget.loading && !deleteTarget.error && (
+          <div className={deleteTarget.preview ? "mt-3.5" : ""}>
+            {!deleteTarget.preview && (
+              <div className="mb-3 rounded-lg border border-line bg-sunken px-3 py-2 text-[12.5px] text-muted">
+                删除后该记录不可恢复。
+              </div>
+            )}
+            <AuditPasswordField
+              value={auditPassword}
+              onChange={setAuditPassword}
+              error={auditError ?? undefined}
+              disabled={deleting || Boolean(deleteTarget.preview?.blocked)}
+              autoFocus
+            />
           </div>
         )}
       </Modal>

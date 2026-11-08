@@ -24,6 +24,7 @@ import {
   Textarea,
 } from "@/components/ui/primitives";
 import { Modal, useConfirm, useToast } from "@/components/ui/overlay";
+import { AuditPasswordField, verifyAuditPassword } from "@/components/ui/audit-password";
 import { WidgetRenderer } from "@/components/dashboard/WidgetRenderer";
 import { cn } from "@/lib/utils";
 import { useUnsavedGuard } from "@/lib/unsaved-guard";
@@ -146,6 +147,11 @@ export function DashboardConfigPage() {
   const [newType, setNewType] = useState("");
   const [preview, setPreview] = useState<DashboardWidgetView[] | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  /** 删除角色配置的审核口令弹窗：与列表页删除一致，先校验再落库。 */
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [auditPassword, setAuditPassword] = useState("");
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   /** 拖拽只记 widget.key；拖动过程中数组会重排，索引会失效。 */
   const [dragState, setDragState] = useState<{
     pointerId: number;
@@ -382,22 +388,29 @@ export function DashboardConfigPage() {
     }
   };
 
-  const removeConfig = async () => {
+  const openRemove = () => {
     if (!target) {
       toast.error("全局兜底模板不能删除");
       return;
     }
-    const ok = await confirm({
-      title: "删除角色首页配置",
-      description: "删除后该角色将回落到全局兜底模板，当前草稿中的未保存修改也会一并丢弃。",
-      confirmText: "删除",
-      tone: "danger",
-    });
-    if (!ok) return;
+    setAuditPassword("");
+    setAuditError(null);
+    setDeleteOpen(true);
+  };
+
+  const confirmRemove = async () => {
+    if (!target) return;
+    setDeleting(true);
+    setAuditError(null);
+    let verified = false;
     try {
+      await verifyAuditPassword(auditPassword);
+      verified = true;
       await dashboardApi.deleteConfig(target);
       setDirty(false);
       setPreview(null);
+      setDeleteOpen(false);
+      setAuditPassword("");
       toast.success("已删除角色首页配置");
       await Promise.all([
         configQuery.refetch(),
@@ -405,7 +418,13 @@ export function DashboardConfigPage() {
         queryClient.invalidateQueries({ queryKey: ["dashboard", "effective"] }),
       ]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "删除失败");
+      if (!verified) {
+        setAuditError(error instanceof Error ? error.message : "审核口令校验失败");
+      } else {
+        toast.error(error instanceof Error ? error.message : "删除失败");
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -473,7 +492,7 @@ export function DashboardConfigPage() {
               <Eye size={14} /> {previewLoading ? "预览中…" : "预览"}
             </Button>
             {target && (
-              <Button variant="danger" size="sm" onClick={() => void removeConfig()}>
+              <Button variant="danger" size="sm" onClick={openRemove}>
                 <Trash2 size={14} /> 删除
               </Button>
             )}
@@ -771,6 +790,39 @@ export function DashboardConfigPage() {
           })}
         </div>
       </Panel>
+
+      <Modal
+        open={deleteOpen}
+        onClose={() => {
+          if (!deleting) setDeleteOpen(false);
+        }}
+        title="删除角色首页配置"
+        description="删除后该角色将回落到全局兜底模板，当前草稿中的未保存修改也会一并丢弃。"
+        width="max-w-[460px]"
+        dismissable={false}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmRemove}
+              disabled={deleting || !auditPassword.trim()}
+            >
+              {deleting ? "删除中…" : "删除"}
+            </Button>
+          </>
+        }
+      >
+        <AuditPasswordField
+          value={auditPassword}
+          onChange={setAuditPassword}
+          error={auditError ?? undefined}
+          disabled={deleting}
+          autoFocus
+        />
+      </Modal>
 
       <Modal
         open={preview !== null}

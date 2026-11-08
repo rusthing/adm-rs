@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { AdmMenuVo, AdmPermGroupVo, AdmPermVo, AdmRoleGroupVo } from "@/lib/types";
 import { shortId } from "@/lib/utils";
 import { Badge, Checkbox } from "@/components/ui/primitives";
-import { FolderTree } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderTree } from "lucide-react";
 import { useAppOptions, usePermGroupOptions, useRoleGroupOptions } from "@/lib/queries";
 import { buildTree, flattenTreeIds } from "./tree-utils";
 import type { TreeItem, TreeNode } from "./tree-utils";
@@ -16,19 +16,59 @@ export function TreeCheckboxGroup<T extends TreeNode>({
   items,
   selected,
   onToggle,
+  onSetMany,
   depthIndent = 18,
   checkable = true,
 }: {
   items: TreeItem<T>[];
   selected: Set<string>;
   onToggle: (id: string) => void;
+  /**
+   * 父子级联：勾选/取消一个节点时一次性设置它和全部子孙。
+   * 不传时退化为逐个 `onToggle`，但父节点的勾选状态仍由子树推导。
+   */
+  onSetMany?: (ids: string[], checked: boolean) => void;
   depthIndent?: number;
   checkable?: boolean;
 }) {
+  // 默认全部展开；用户收起的节点记在本地 Set 里，切换应用/角色时组件重挂载即重置。
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+
+  const toggleExpand = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  /** 点到父节点：全选则整棵子树取消，否则整棵子树选中（子节点部分选中时补齐）。 */
+  const toggleNode = (item: TreeItem<T>) => {
+    const ids = flattenTreeIds([item]);
+    const allChecked = ids.every((id) => selected.has(id));
+    const target = !allChecked;
+    if (onSetMany) {
+      onSetMany(ids, target);
+      return;
+    }
+    for (const id of ids) {
+      if (selected.has(id) !== target) onToggle(id);
+    }
+  };
+
   return (
     <div className="flex flex-col">
       {items.map((item) => (
-        <TreeRow key={item.id} item={item} selected={selected} onToggle={onToggle} depthIndent={depthIndent} checkable={checkable} />
+        <TreeRow
+          key={item.id}
+          item={item}
+          selected={selected}
+          onToggleNode={toggleNode}
+          collapsed={collapsed}
+          onToggleExpand={toggleExpand}
+          depthIndent={depthIndent}
+          checkable={checkable}
+        />
       ))}
     </div>
   );
@@ -37,50 +77,78 @@ export function TreeCheckboxGroup<T extends TreeNode>({
 function TreeRow<T extends TreeNode>({
   item,
   selected,
-  onToggle,
+  onToggleNode,
+  collapsed,
+  onToggleExpand,
   depthIndent,
   checkable,
 }: {
   item: TreeItem<T>;
   selected: Set<string>;
-  onToggle: (id: string) => void;
+  onToggleNode: (item: TreeItem<T>) => void;
+  collapsed: Set<string>;
+  onToggleExpand: (id: string) => void;
   depthIndent: number;
   checkable: boolean;
 }) {
   const depth = item.depth ?? Math.max(0, Math.floor(item.treeCode.length / 3) - 1);
   const children = item.children ?? [];
+  const open = !collapsed.has(item.id);
+  // 父节点的勾选状态由整棵子树推导：全选 = 选中，部分选中 = 半选，向上自然反馈。
+  const ids = flattenTreeIds([item]);
+  const checkedCount = ids.reduce((count, id) => count + (selected.has(id) ? 1 : 0), 0);
+  const checked = ids.length > 0 && checkedCount === ids.length;
+  const indeterminate = checkedCount > 0 && checkedCount < ids.length;
+
   return (
     <div>
       <div
         className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sunken"
         style={{ paddingLeft: `${12 + depth * depthIndent}px` }}
       >
+        {children.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => onToggleExpand(item.id)}
+            aria-label={open ? "收起子节点" : "展开子节点"}
+            aria-expanded={open}
+            className="shrink-0 rounded text-muted hover:text-ink"
+          >
+            {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </button>
+        ) : (
+          <span className="w-[13px] shrink-0" />
+        )}
         <FolderTree size={14} className={depth === 0 ? "text-accent" : "text-muted/70"} />
         <span className="flex-1 truncate text-[12.5px] text-ink-soft">{item.name}</span>
         <code className="font-mono text-[10px] text-muted">{item.treeCode}</code>
         {!item.enabled && <Badge tone="warn">停用</Badge>}
         {checkable && (
           <Checkbox
-            checked={selected.has(item.id)}
-            onChange={() => onToggle(item.id)}
+            checked={checked}
+            indeterminate={indeterminate}
+            onChange={() => onToggleNode(item)}
             label={undefined}
           />
         )}
       </div>
-      {children.length > 0 && (
-        <div>
-          {children.map((child) => (
-            <TreeRow
-              key={child.id}
-              item={child}
-              selected={selected}
-              onToggle={onToggle}
-              depthIndent={depthIndent}
-              checkable={checkable}
-            />
-          ))}
-        </div>
-      )}
+      {open &&
+        children.length > 0 && (
+          <div>
+            {children.map((child) => (
+              <TreeRow
+                key={child.id}
+                item={child}
+                selected={selected}
+                onToggleNode={onToggleNode}
+                collapsed={collapsed}
+                onToggleExpand={onToggleExpand}
+                depthIndent={depthIndent}
+                checkable={checkable}
+              />
+            ))}
+          </div>
+        )}
     </div>
   );
 }
@@ -142,54 +210,40 @@ export function useGroupedOptions<T extends { groupId: string }>({
 }
 
 /**
- * 授权清单的分组标题：显示「已选/总数」，并提供「全选本组 / 清空本组」。
+ * 授权清单的分组标题：一个三态复选框 + 「已选/总数」。
  *
- * 分组树里父节点通常只是分类、本身没有数据，逐个点太慢；批量操作按可见分组
- * （含子孙）一次勾选，才是真正的分组管理。
+ * 分组树里父节点通常只是分类、本身没有数据，逐个点太慢；
+ * 复选框承担「全选本组 / 清空本组」：全选勾上，部分选中显示半选。
  */
 function GroupHeader({
   label,
   treeCode,
   total,
   checked,
-  onSelectAll,
-  onClearAll,
+  onToggleAll,
 }: {
   label: string;
   treeCode?: string;
   total: number;
   checked: number;
-  onSelectAll?: () => void;
-  onClearAll?: () => void;
+  onToggleAll?: (checked: boolean) => void;
 }) {
+  const all = total > 0 && checked >= total;
   return (
     <div className="mb-1 flex items-center gap-2 border-b border-line/70 pb-1">
+      {onToggleAll && (
+        <Checkbox
+          checked={all}
+          indeterminate={checked > 0 && checked < total}
+          onChange={onToggleAll}
+          label={undefined}
+        />
+      )}
       <span className="truncate text-[11.5px] font-medium text-muted">{label}</span>
       {treeCode && <code className="shrink-0 font-mono text-[10px] text-muted/70">{treeCode}</code>}
-      <span className="shrink-0 text-[10.5px] text-muted/70">
+      <span className="ml-auto shrink-0 text-[10.5px] text-muted/70">
         {checked}/{total}
       </span>
-      <span className="flex-1" />
-      {onSelectAll && (
-        <button
-          type="button"
-          onClick={onSelectAll}
-          disabled={total === 0 || checked >= total}
-          className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          全选本组
-        </button>
-      )}
-      {onClearAll && (
-        <button
-          type="button"
-          onClick={onClearAll}
-          disabled={checked === 0}
-          className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          清空本组
-        </button>
-      )}
     </div>
   );
 }
@@ -227,8 +281,7 @@ export function PermCheckList({
               treeCode={treeCode === "\uffff" ? undefined : treeCode}
               total={rows.length}
               checked={checked}
-              onSelectAll={onSetMany ? () => onSetMany(ids, true) : undefined}
-              onClearAll={onSetMany ? () => onSetMany(ids, false) : undefined}
+              onToggleAll={onSetMany ? (next) => onSetMany(ids, next) : undefined}
             />
             <div className="flex flex-col gap-0.5">
               {rows.map((perm) => (
@@ -316,10 +369,14 @@ export function MenuCheckList({
               label={group.label}
               total={ids.length}
               checked={checked}
-              onSelectAll={onSetMany ? () => onSetMany(ids, true) : undefined}
-              onClearAll={onSetMany ? () => onSetMany(ids, false) : undefined}
+              onToggleAll={onSetMany ? (next) => onSetMany(ids, next) : undefined}
             />
-            <TreeCheckboxGroup items={group.tree} selected={selected} onToggle={onToggle} />
+            <TreeCheckboxGroup
+              items={group.tree}
+              selected={selected}
+              onToggle={onToggle}
+              onSetMany={onSetMany}
+            />
           </div>
         );
       })}

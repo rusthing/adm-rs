@@ -1,6 +1,7 @@
+import { useMemo, useState } from "react";
 import { Badge, Spinner } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
-import { Layers3 } from "lucide-react";
+import { ChevronDown, ChevronRight, Layers3 } from "lucide-react";
 import { scopeIndent } from "./scope";
 import type { CrudScopeDef } from "./scope";
 
@@ -23,6 +24,37 @@ export function ScopePanel({
   className?: string;
 }) {
   const allActive = !selected;
+
+  // 分组栏默认全部展开；收起的节点记在本地，切换页面即重置。
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const parentCodes = useMemo(() => {
+    const codes = new Set<string>();
+    for (const option of scope.options) {
+      const code = option.treeCode;
+      if (!code) continue;
+      // 中间层可能缺失：只要存在更长的编码，就说明当前编码有下层，显示折叠箭头。
+      for (let length = code.length - 3; length >= 3; length -= 3) {
+        codes.add(code.slice(0, length));
+      }
+    }
+    return codes;
+  }, [scope.options]);
+
+  const isHidden = (code?: string) => {
+    if (!code) return false;
+    for (let length = code.length - 3; length >= 3; length -= 3) {
+      if (collapsed.has(code.slice(0, length))) return true;
+    }
+    return false;
+  };
+
+  const toggle = (code: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
   return (
     <aside
       className={cn("overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel", className)}
@@ -58,28 +90,49 @@ export function ScopePanel({
         ) : (
           <div className="mt-1 flex flex-col gap-0.5">
             {scope.options.map((option) => {
+              if (isHidden(option.treeCode)) return null;
               const active = selected === option.value;
+              const code = option.treeCode;
+              const isParent = code ? parentCodes.has(code) : false;
+              const open = !(code && collapsed.has(code));
               return (
-                <button
+                <div
                   key={option.value}
-                  type="button"
-                  onClick={() => onSelect(option.value)}
-                  aria-pressed={active}
-                  title={option.description ? `${option.label} · ${option.description}` : option.label}
-                  className={cn(
-                    "flex w-full items-center gap-1.5 rounded-lg py-1.5 pr-2.5 text-left text-[12.5px] transition-colors",
-                    active
-                      ? "bg-accent-soft font-medium text-accent-strong"
-                      : "text-ink-soft hover:bg-sunken hover:text-ink",
-                  )}
-                  style={{ paddingLeft: `${10 + scopeIndent(option) * 14}px` }}
+                  className="flex items-center gap-0.5"
+                  style={{ paddingLeft: `${8 + scopeIndent(option) * 14}px` }}
                 >
-                  <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                  {option.disabled && <Badge tone="warn">停用</Badge>}
-                  {option.description && (
-                    <code className="shrink-0 font-mono text-[10px] text-muted">{option.description}</code>
+                  {isParent ? (
+                    <button
+                      type="button"
+                      onClick={() => toggle(code!)}
+                      aria-label={open ? "收起子分组" : "展开子分组"}
+                      aria-expanded={open}
+                      className="shrink-0 rounded p-0.5 text-muted hover:text-ink"
+                    >
+                      {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </button>
+                  ) : (
+                    <span className="w-[16px] shrink-0" />
                   )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(option.value)}
+                    aria-pressed={active}
+                    title={option.description ? `${option.label} · ${option.description}` : option.label}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-1.5 rounded-lg py-1.5 pr-2 text-left text-[12.5px] transition-colors",
+                      active
+                        ? "bg-accent-soft font-medium text-accent-strong"
+                        : "text-ink-soft hover:bg-sunken hover:text-ink",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                    {option.disabled && <Badge tone="warn">停用</Badge>}
+                    {option.description && (
+                      <code className="shrink-0 font-mono text-[10px] text-muted">{option.description}</code>
+                    )}
+                  </button>
+                </div>
               );
             })}
           </div>

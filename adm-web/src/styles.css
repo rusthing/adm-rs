@@ -76,6 +76,23 @@
     font-feature-settings: "tnum";
   }
 
+  /* 可点击元素统一手型；禁用态统一禁用光标。
+     浏览器对 <button> 默认是 default 而非 pointer，靠各组件逐个加 class 容易遗漏。 */
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  label:has(> input[type="checkbox"]:not(:disabled)),
+  input[type="checkbox"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;

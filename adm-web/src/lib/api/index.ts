@@ -134,6 +134,12 @@ export const authApi = {
   /** 个人中心改密：不复用 PUT /adm/user */
   changePassword: (body: ChangePasswordInput) =>
     request("/adm/auth/change-password", { method: "POST", body }),
+  /**
+   * 高危操作前校验当前用户的审核口令。
+   * 入参是明文口令的一次 SM3 摘要（64 位十六进制），失败按 `code` 区分原因。
+   */
+  verifyAuditPassword: (auditPswd: string) =>
+    request("/adm/auth/verify-audit-password", { method: "POST", body: { auditPswd } }),
 };
 
 /**
