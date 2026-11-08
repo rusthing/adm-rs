@@ -144,7 +144,7 @@ insert into adm_role (id, group_id, name, sort_order, remark, enabled,
 values
   (2, 1, '系统管理员', 20, '给客户管理员使用；隐藏底层权限管理 / 菜单管理等可能误操作的入口',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
-  (3, 1, '组织管理员', 30, '只管指定领域 / 组织 / 应用内的人员与组织；可见范围由三张 adm_role_*_scope 表决定',
+  (3, 1, '组织管理员', 30, '只管指定领域、组织、应用内的人员与组织；可见范围由三张 scope 表决定',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8),
   (4, 2, '审计员',     10, '只读登录 / 操作日志，不能改任何配置',
    true, 0, (extract(epoch from now()) * 1000)::int8, 0, (extract(epoch from now()) * 1000)::int8)
