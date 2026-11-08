@@ -207,14 +207,25 @@ export function RolesPage() {
   }, [groupsQuery.data]);
 
   const columns: CrudColumn<AdmRoleVo>[] = [
-    { key: "name", label: "角色", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
+    {
+      key: "name",
+      label: "角色",
+      className: "whitespace-nowrap",
+      render: (row) => <span className="font-medium text-ink">{row.name}</span>,
+    },
     {
       key: "groupId",
       label: "角色分组",
+      className: "whitespace-nowrap",
       render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
     },
-    { key: "enabled", label: "启用", toggle: {} },
-    { key: "remark", label: "备注", truncate: true },
+    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
+    {
+      key: "remark",
+      label: "备注",
+      truncate: true,
+      truncateClassName: "max-w-[320px] max-[1400px]:max-w-[180px]",
+    },
   ];
 
   const fields: CrudField[] = [

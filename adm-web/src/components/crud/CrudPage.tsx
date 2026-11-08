@@ -79,6 +79,8 @@ export interface CrudColumn<T> {
    * 避免撑宽表格导致横向滚动失控。
    */
   truncate?: boolean;
+  /** `truncate` 时的最大宽度类，默认 `max-w-[320px]`；窄屏需要收窄时传响应式类。 */
+  truncateClassName?: string;
 }
 
 /**
@@ -1113,7 +1115,10 @@ export function CrudPage<T extends { id: string }>({
                               column.render(row) // 自定义 render 自己决定
                             ) : (
                               <span
-                                className={cn(column.truncate && "block max-w-[320px] truncate")}
+                                className={cn(
+                                  column.truncate && "block truncate",
+                                  column.truncate && (column.truncateClassName ?? "max-w-[320px]"),
+                                )}
                                 title={column.truncate && text !== null && text !== undefined ? String(text) : undefined}
                               >
                                 <CellValue

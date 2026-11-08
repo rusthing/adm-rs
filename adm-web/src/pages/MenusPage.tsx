@@ -48,10 +48,11 @@ export function MenusPage() {
     {
       key: "name",
       label: "菜单",
+      className: "whitespace-nowrap",
       render: (row) => {
         const depth = Math.max(0, row.treeCode.length / 3 - 1);
         return (
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="text-muted/50">{"·".repeat(depth)}</span>
             <span className="font-medium text-ink">{row.name}</span>
             <code className="font-mono text-[10.5px] text-muted">{row.treeCode}</code>
@@ -59,23 +60,46 @@ export function MenusPage() {
         );
       },
     },
+    ...((appsQuery.data?.length ?? 0) > 1
+      ? [
+          {
+            key: "appId",
+            label: "应用",
+            className: "whitespace-nowrap",
+            render: (row: AdmMenuVo) => appName.get(row.appId) ?? shortId(row.appId),
+          } satisfies CrudColumn<AdmMenuVo>,
+        ]
+      : []),
     {
-      key: "appId",
-      label: "应用",
-      render: (row) => appName.get(row.appId) ?? shortId(row.appId),
+      key: "code",
+      label: "编码",
+      type: "code",
+      truncate: true,
+      truncateClassName: "max-w-[220px] max-[1400px]:max-w-[100px]",
     },
-    { key: "code", label: "编码", type: "code" },
-    { key: "path", label: "路径", type: "code", truncate: true },
+    {
+      key: "path",
+      label: "路径",
+      type: "code",
+      truncate: true,
+      truncateClassName: "max-w-[220px] max-[1400px]:max-w-[110px]",
+    },
     {
       key: "linkType",
       label: "类型",
+      className: "whitespace-nowrap",
       render: (row) => {
         const type = LINK_TYPE[row.linkType] ?? { label: `类型 ${row.linkType}`, tone: "info" as const };
         return <Badge tone={type.tone}>{type.label}</Badge>;
       },
     },
-    { key: "visible", label: "显示", toggle: { labels: { on: "显示", off: "隐藏" } } },
-    { key: "enabled", label: "启用", toggle: {} },
+    {
+      key: "visible",
+      label: "显示",
+      className: "whitespace-nowrap",
+      toggle: { labels: { on: "显示", off: "隐藏" } },
+    },
+    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
   ];
 
   const fields: CrudField[] = [

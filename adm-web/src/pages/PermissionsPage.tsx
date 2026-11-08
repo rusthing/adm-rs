@@ -27,20 +27,45 @@ export function PermissionsPage() {
     return map;
   }, [groupsQuery.data]);
 
+  const opTypeName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const opType of opTypesQuery.data ?? []) map.set(opType.code, opType.name);
+    return map;
+  }, [opTypesQuery.data]);
+
   /** 选中父分组时连同全局分组树中的子孙分组一起展示。 */
   const groupQueryFor = (groupId: string) =>
     treeGroupQuery("group_id", groupId, groupsQuery.data ?? []);
 
   const columns: CrudColumn<AdmPermVo>[] = [
-    { key: "name", label: "权限", render: (row) => <span className="font-medium text-ink">{row.name}</span> },
-    { key: "urn", label: "URN", render: (row) => <code className="font-mono text-[11.5px] text-accent-strong">{row.urn}</code> },
+    {
+      key: "name",
+      label: "权限",
+      className: "whitespace-nowrap",
+      render: (row) => <span className="font-medium text-ink">{row.name}</span>,
+    },
+    {
+      key: "urn",
+      label: "URN",
+      className: "whitespace-nowrap",
+      render: (row) => <code className="font-mono text-[11.5px] text-accent-strong">{row.urn}</code>,
+    },
     {
       key: "groupId",
       label: "权限分组",
+      className: "whitespace-nowrap",
       render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
     },
-    { key: "opTypeCode", label: "类型", type: "code" },
-    { key: "enabled", label: "启用", toggle: {} },
+    {
+      key: "opTypeCode",
+      label: "类型",
+      className: "whitespace-nowrap",
+      render: (row) => {
+        const name = opTypeName.get(row.opTypeCode);
+        return <span title={`${name ?? row.opTypeCode}（${row.opTypeCode}）`}>{name ?? row.opTypeCode}</span>;
+      },
+    },
+    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
   ];
 
   const fields: CrudField[] = [

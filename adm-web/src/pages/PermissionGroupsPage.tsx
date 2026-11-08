@@ -28,10 +28,11 @@ export function PermissionGroupsPage() {
     {
       key: "name",
       label: "分组",
+      className: "whitespace-nowrap",
       render: (row) => {
         const depth = Math.max(0, row.treeCode.length / 3 - 1);
         return (
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="text-muted/50">{"·".repeat(depth)}</span>
             <span className="font-medium text-ink">{row.name}</span>
             <code className="font-mono text-[10.5px] text-muted">{row.treeCode}</code>
@@ -39,7 +40,7 @@ export function PermissionGroupsPage() {
         );
       },
     },
-    { key: "enabled", label: "启用", toggle: {} },
+    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
     { key: "remark", label: "备注", truncate: true },
   ];
 
