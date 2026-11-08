@@ -63,6 +63,14 @@ export interface AdmLogoutVo {
   loginLogId: string;
 }
 
+/** 审核口令校验实际使用的口令类型：`audit` = 审核口令，`login` = 回退登录口令。 */
+export type AdmVerifyPswdKind = "audit" | "login";
+
+/** `POST /adm/auth/verify-audit-password` 的响应体，仅用于提示文案。 */
+export interface AdmVerifyAuditPasswordVo {
+  pswdKind: AdmVerifyPswdKind;
+}
+
 export interface AuditFields {
   createrId: string;
   createMs: string;

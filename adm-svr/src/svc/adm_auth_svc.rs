@@ -28,8 +28,8 @@
 use crate::cst::{
     ADM_CODE_ACCOUNT_AMBIGUOUS, ADM_CODE_ACCOUNT_DISABLED, ADM_CODE_ACCOUNT_EXPIRED,
     ADM_CODE_ACCOUNT_LOCKED, ADM_CODE_LOGIN_FAILED, ADM_CODE_TOKEN_INVALID,
-    ADM_CODE_VERIFY_AUDIT_PASSWORD_NOT_SET, ADM_CODE_VERIFY_PASSWORD_FAILED,
-    ADM_CODE_VERIFY_PASSWORD_RATE_LIMITED, ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE,
+    ADM_CODE_VERIFY_PASSWORD_FAILED, ADM_CODE_VERIFY_PASSWORD_RATE_LIMITED,
+    ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE,
 };
 use crate::dao::{AdmLockLogDao, AdmLoginLogDao, AdmOpLogDao, AdmUserDao};
 use crate::dic::UserStatus;
@@ -44,7 +44,9 @@ use crate::utils::{
     AdmPasswordUtils, AdmTokenUtils, get_login_fail_limit, get_login_lock_ms,
     get_verify_password_fail_limit, get_verify_password_window_ms,
 };
-use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo, AdmUserVo};
+use crate::vo::{
+    AdmLoginVo, AdmLogoutVo, AdmMeVo, AdmUserVo, AdmVerifyAuditPasswordVo, AdmVerifyPswdKind,
+};
 use redis::Script;
 use robotech::api::{Ro, U64};
 use robotech::cache::distributed::redis::RedisCache;
@@ -515,20 +517,23 @@ impl AdmAuthSvc {
     /// # 校验当前登录用户的审核口令
     ///
     /// 与 [`Self::verify_password`] 同一条处理链：同样的账号状态判断、同样的
-    /// 失败频控与审计，只是比较 `adm_user.audit_pswd`，并使用独立的 Redis
-    /// 计数键，避免审核口令输错把登录口令二次确认的额度用掉。
+    /// 失败频控与审计，并使用独立的 Redis 计数键，避免审核口令输错把登录口令
+    /// 二次确认的额度用掉。
     ///
-    /// 用户尚未设置审核口令时返回 `ADM00010`，提示先到用户管理设置，
-    /// 不让用户反复尝试一个根本不存在的口令。
+    /// 审核口令 `adm_user.audit_pswd` 为空时**回退校验登录口令**
+    /// `adm_user.login_pswd`：两种情况共用同一套错误计数、限流窗口与操作审计，
+    /// 不会因为改用登录口令就跳过审计。具体比哪一份由服务端决定，调用方只传
+    /// 一个口令摘要；响应里通过 [`AdmVerifyAuditPasswordVo::pswd_kind`] 说明
+    /// 本次实际校验的类型。
     ///
     /// ## 参数
     /// * `user_id` - 令牌里的用户 ID
-    /// * `dto` - 审核口令的一次摘要（`SM3(明文)`）
+    /// * `dto` - 口令的一次摘要（`SM3(明文)`），可能是审核口令也可能是登录口令
     #[allow(clippy::result_large_err)]
     pub async fn verify_audit_password(
         user_id: u64,
         dto: AdmVerifyAuditPasswordDto,
-    ) -> Result<Ro<()>, SvcError> {
+    ) -> Result<Ro<AdmVerifyAuditPasswordVo>, SvcError> {
         dto.validate()?;
 
         let fail_limit = get_verify_password_fail_limit();
@@ -595,21 +600,15 @@ impl AdmAuthSvc {
             ));
         }
 
-        if user.audit_pswd.trim().is_empty() {
-            Self::audit_verify(
-                &user,
-                false,
-                VERIFY_AUDIT_PASSWORD_OP_TYPE,
-                VERIFY_AUDIT_PASSWORD_OP_TITLE,
-                VERIFY_AUDIT_PASSWORD_OP_URN,
-                db.as_ref(),
-            )
-            .await?;
-            return Ok(Ro::warn("当前用户未设置审核口令".to_string())
-                .code(Some(ADM_CODE_VERIFY_AUDIT_PASSWORD_NOT_SET.to_string())));
-        }
+        // 审核口令为空则回退登录口令：这一判定只在这里做，前端不参与。
+        let (pswd_kind, stored_pswd, stored_salt) = Self::resolve_audit_credential(
+            &user.audit_pswd,
+            &user.audit_pswd_salt,
+            &user.login_pswd,
+            &user.login_pswd_salt,
+        );
 
-        if !AdmPasswordUtils::verify(&dto.audit_pswd, &user.audit_pswd_salt, &user.audit_pswd) {
+        if !AdmPasswordUtils::verify(&dto.audit_pswd, stored_salt, stored_pswd) {
             let fail_count = Self::bump_verify_fail_count(
                 VERIFY_AUDIT_PASSWORD_FAIL_KEY_PREFIX,
                 user_id,
@@ -629,7 +628,11 @@ impl AdmAuthSvc {
                 warn!("verify-audit-password: user {user_id} reached fail limit {fail_count}");
                 return Ok(Self::verify_password_rate_limited());
             }
-            return Ok(Ro::warn("审核口令不正确".to_string())
+            let fail_msg = match pswd_kind {
+                AdmVerifyPswdKind::Audit => "审核口令不正确",
+                AdmVerifyPswdKind::Login => "登录口令不正确",
+            };
+            return Ok(Ro::warn(fail_msg.to_string())
                 .code(Some(ADM_CODE_VERIFY_PASSWORD_FAILED.to_string())));
         }
 
@@ -643,17 +646,39 @@ impl AdmAuthSvc {
             db.as_ref(),
         )
         .await?;
-        Ok(Ro::success("审核口令校验通过".to_string()))
+        let msg = match pswd_kind {
+            AdmVerifyPswdKind::Audit => "审核口令校验通过",
+            AdmVerifyPswdKind::Login => "未设置审核口令，已按登录口令校验通过",
+        };
+        Ok(Ro::success(msg.to_string())
+            .extra(Some(AdmVerifyAuditPasswordVo { pswd_kind })))
+    }
+
+    /// 决定本次审核校验用哪一份口令：审核口令为空则回退登录口令
+    ///
+    /// 返回（口令类型、库中摘要、盐值）。判定只看 `adm_user.audit_pswd` 是否为空，
+    /// 与前端传什么、前端显示什么无关；前端只拿到结果里 `pswdKind` 用于文案。
+    fn resolve_audit_credential<'a>(
+        audit_pswd: &'a str,
+        audit_salt: &'a str,
+        login_pswd: &'a str,
+        login_salt: &'a str,
+    ) -> (AdmVerifyPswdKind, &'a str, &'a str) {
+        if audit_pswd.trim().is_empty() {
+            (AdmVerifyPswdKind::Login, login_pswd, login_salt)
+        } else {
+            (AdmVerifyPswdKind::Audit, audit_pswd, audit_salt)
+        }
     }
 
     /// 口令二次确认频控命中响应
-    fn verify_password_rate_limited() -> Ro<()> {
+    fn verify_password_rate_limited<T>() -> Ro<T> {
         Ro::warn("口令校验失败次数过多，请稍后再试".to_string())
             .code(Some(ADM_CODE_VERIFY_PASSWORD_RATE_LIMITED.to_string()))
     }
 
     /// 口令二次确认「用户不可用」响应
-    fn verify_password_user_unavailable(msg: &str) -> Ro<()> {
+    fn verify_password_user_unavailable<T>(msg: &str) -> Ro<T> {
         Ro::warn(msg.to_string()).code(Some(ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE.to_string()))
     }
 
@@ -978,5 +1003,76 @@ fn format_ms(ms: u64) -> String {
             .to_string(),
         // 超出 chrono 可表示范围（脏数据）：原样给时间戳，至少能排查
         None => format!("{ms}ms"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 模拟服务端的口令选择与比较：
+    /// 审核口令为空回退登录口令，否则只认审核口令
+    fn verify_audit(
+        audit_pswd: &str,
+        audit_salt: &str,
+        login_pswd: &str,
+        login_salt: &str,
+        input: &str,
+    ) -> (AdmVerifyPswdKind, bool) {
+        let (kind, stored, salt) =
+            AdmAuthSvc::resolve_audit_credential(audit_pswd, audit_salt, login_pswd, login_salt);
+        (kind, AdmPasswordUtils::verify(input, salt, stored))
+    }
+
+    /// 审核口令为空：登录口令通过、错误口令被拒
+    #[test]
+    fn audit_empty_falls_back_to_login_pswd() {
+        let login_hash = "a".repeat(64);
+        let login_salt = "lg2345";
+        let login_stored = AdmPasswordUtils::seal(&login_hash, login_salt);
+
+        // 登录口令（一次摘要）通过
+        let (kind, ok) = verify_audit("", "", &login_stored, login_salt, &login_hash);
+        assert_eq!(kind, AdmVerifyPswdKind::Login);
+        assert!(ok);
+
+        // 不是这份登录口令的摘要则被拒
+        let (kind, ok) = verify_audit("", "", &login_stored, login_salt, &"b".repeat(64));
+        assert_eq!(kind, AdmVerifyPswdKind::Login);
+        assert!(!ok);
+    }
+
+    /// 审核口令有值：登录口令通过不了，只有审核口令能通过
+    #[test]
+    fn audit_set_rejects_login_pswd() {
+        let login_hash = "a".repeat(64);
+        let login_salt = "lg2345";
+        let login_stored = AdmPasswordUtils::seal(&login_hash, login_salt);
+
+        let audit_hash = "c".repeat(64);
+        let audit_salt = "au2345";
+        let audit_stored = AdmPasswordUtils::seal(&audit_hash, audit_salt);
+
+        // 用登录口令摘要：判定走 Audit，且校验不通过
+        let (kind, ok) = verify_audit(
+            &audit_stored,
+            audit_salt,
+            &login_stored,
+            login_salt,
+            &login_hash,
+        );
+        assert_eq!(kind, AdmVerifyPswdKind::Audit);
+        assert!(!ok);
+
+        // 审核口令摘要本身可以通过
+        let (kind, ok) = verify_audit(
+            &audit_stored,
+            audit_salt,
+            &login_stored,
+            login_salt,
+            &audit_hash,
+        );
+        assert_eq!(kind, AdmVerifyPswdKind::Audit);
+        assert!(ok);
     }
 }

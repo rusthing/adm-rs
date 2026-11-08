@@ -40,8 +40,8 @@ pub struct AdmLoginVo {
     pub login_pswd_default: bool,
     /// 当前账号是否已设置审核口令
     ///
-    /// 审核口令独立于登录口令；未设置时前端应提示先补充，否则删除校验等
-    /// 需要「审核」语义的操作无法执行。
+    /// 仅用于界面上说明「未设置时按登录口令校验」；审核口令为空时后端会自动
+    /// 回退校验登录口令，前端不得据此做任何拦截或切换校验对象。
     pub audit_pswd_set: bool,
     /// 本次登录的会话 ID（`adm_login_log.id`）
     ///
@@ -61,6 +61,31 @@ pub struct AdmLogoutVo {
     /// 会话 ID（`adm_login_log.id`）
     #[serde(with = "u64_serde")]
     pub login_log_id: u64,
+}
+
+/// # 审核口令校验实际使用的口令类型
+///
+/// 审核口令（`adm_user.audit_pswd`）为空时，服务端回退校验登录口令
+/// （`adm_user.login_pswd`）；具体比哪一份由服务端决定，客户端只读结果。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum AdmVerifyPswdKind {
+    /// 已设置审核口令：校验的是 `audit_pswd`
+    Audit,
+    /// 未设置审核口令：校验的是 `login_pswd`
+    Login,
+}
+
+/// # 审核口令校验结果
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmVerifyAuditPasswordVo {
+    /// 本次实际校验的口令类型
+    ///
+    /// `audit` = 审核口令；`login` = 审核口令为空，回退校验登录口令。
+    /// 仅供前端提示文案使用，不参与任何判定。
+    pub pswd_kind: AdmVerifyPswdKind,
 }
 
 /// # 当前用户聚合信息

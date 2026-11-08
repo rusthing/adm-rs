@@ -18,6 +18,7 @@ import type {
   AdmRoleUserVo,
   AdmRoleVo,
   AdmUserVo,
+  AdmVerifyAuditPasswordVo,
   AdmWidgetServiceVo,
   AdmWidgetTypeVo,
   PageQuery,
@@ -135,9 +136,13 @@ export const authApi = {
   /**
    * 高危操作前校验当前用户的审核口令。
    * 入参是明文口令的一次 SM3 摘要（64 位十六进制），失败按 `code` 区分原因。
+   * 审核口令为空时由服务端回退校验登录口令，这里只传一个字段、不做任何分支。
    */
   verifyAuditPassword: (auditPswd: string) =>
-    request("/adm/auth/verify-audit-password", { method: "POST", body: { auditPswd } }),
+    request<AdmVerifyAuditPasswordVo>("/adm/auth/verify-audit-password", {
+      method: "POST",
+      body: { auditPswd },
+    }),
 };
 
 /**

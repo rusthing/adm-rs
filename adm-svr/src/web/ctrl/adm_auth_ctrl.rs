@@ -16,7 +16,7 @@ use crate::dto::{
     AdmChangePasswordDto, AdmLoginDto, AdmVerifyAuditPasswordDto, AdmVerifyPasswordDto,
 };
 use crate::svc::AdmAuthSvc;
-use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo};
+use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo, AdmVerifyAuditPasswordVo};
 use crate::web::auth::{bearer_token, verify_bearer};
 use axum::debug_handler;
 use axum::extract::ConnectInfo;
@@ -198,8 +198,12 @@ pub async fn verify_password(
 
 /// # 校验当前用户审核口令（高危操作二次确认）
 ///
-/// 与 `/adm/auth/verify-password` 同一套鉴权、频控与审计，但比对的是用户表中
+/// 与 `/adm/auth/verify-password` 同一套鉴权、频控与审计，但优先比对用户表中
 /// 独立的审核口令 `audit_pswd`。删除画布节点等需要「审核」语义的动作应调用这里。
+///
+/// 审核口令为空时**由服务端回退校验登录口令** `login_pswd`：请求体仍然只有
+/// 一个口令字段，调用方不需要也不应该在客户端决定送哪一份；本次实际比对了
+/// 哪一种口令通过响应里的 `pswdKind` 告知，仅供提示文案使用。
 ///
 /// ## 请求头
 /// * `Authorization` - `Bearer <登录拿到的令牌>`
@@ -208,25 +212,26 @@ pub async fn verify_password(
 /// * `AdmVerifyAuditPasswordDto` - `auditPswd`（`SM3(明文)`，64 位十六进制）
 ///
 /// ## 返回值
-/// * `Ro<()>` - 审核口令正确
+/// * `Ro<AdmVerifyAuditPasswordVo>` - 口令正确，`pswdKind` 说明实际校验类型
 /// * `ADM00005` - 令牌无效
-/// * `ADM00007` - 审核口令不正确
+/// * `ADM00007` - 口令不正确
 /// * `ADM00008` - 错误尝试过于频繁
 /// * `ADM00009` - 当前用户不可用（不存在 / 停用 / 锁定 / 过期）
-/// * `ADM00010` - 当前用户尚未设置审核口令
+///
+/// `ADM00010`（未设置审核口令）**不再返回**：该情况已改为回退校验登录口令。
 #[utoipa::path(
     post,
     path = "/adm/auth/verify-audit-password",
     request_body = AdmVerifyAuditPasswordDto,
     params(("Authorization" = String, Header, description = "Bearer <token>")),
-    responses((status = OK, description = "审核口令校验通过"))
+    responses((status = OK, body = Ro<AdmVerifyAuditPasswordVo>))
 )]
 #[debug_handler]
 #[allow(clippy::result_large_err)]
 pub async fn verify_audit_password(
     headers: HeaderMap,
     Json(dto): Json<AdmVerifyAuditPasswordDto>,
-) -> Result<Json<Ro<()>>, CtrlError> {
+) -> Result<Json<Ro<AdmVerifyAuditPasswordVo>>, CtrlError> {
     match verify_bearer(&headers).await {
         Ok(user_id) => Ok(Json(AdmAuthSvc::verify_audit_password(user_id, dto).await?)),
         Err(detail) => Ok(Json(

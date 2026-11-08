@@ -834,8 +834,12 @@ export function CrudPage<T extends { id: string }>({
     setAuditError(null);
     let verified = false;
     try {
-      await verifyAuditPassword(auditPassword);
+      const result = await verifyAuditPassword(auditPassword);
       verified = true;
+      // 服务端决定实际比对了哪种口令，这里只用于提示，不参与判定
+      if (result?.pswdKind === "login") {
+        toast.info("当前账号未设置审核口令，已按登录口令校验通过");
+      }
       await doRemove(deleteTarget.row);
       setDeleteTarget(null);
       setAuditPassword("");
