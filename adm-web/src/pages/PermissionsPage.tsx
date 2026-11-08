@@ -39,7 +39,7 @@ export function PermissionsPage() {
       label: "权限分组",
       render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
     },
-    { key: "opTypeCode", label: "操作类型", type: "code" },
+    { key: "opTypeCode", label: "类型", type: "code" },
     { key: "enabled", label: "启用", toggle: {} },
   ];
 
@@ -56,10 +56,11 @@ export function PermissionsPage() {
     { name: "urn", label: "URN", required: true, placeholder: "METHOD:路径，如 GET:/adm/user/page", hint: "全局唯一，鉴权时按前缀匹配；创建后不要改。" },
     {
       name: "opTypeCode",
-      label: "操作类型",
+      label: "类型",
       type: "select",
+      required: true,
       options: (opTypesQuery.data ?? []).map((opType) => ({ value: opType.code, label: `${opType.name}（${opType.code}）` })),
-      hint: "可留空；表示该权限与操作类型无关（如整页访问）。",
+      hint: "必填；取值受 op_type 字典限制，查询 / 新增 / 修改 / 删除之外的排序、同步、重置口令各有独立类型。",
     },
     { name: "remark", label: "备注", type: "textarea" },
   ];
@@ -68,7 +69,7 @@ export function PermissionsPage() {
     groupId: row.groupId,
     name: row.name,
     urn: row.urn,
-    opTypeCode: row.opTypeCode ?? "",
+    opTypeCode: row.opTypeCode,
     remark: row.remark ?? "",
   });
 
@@ -76,7 +77,7 @@ export function PermissionsPage() {
     groupId: values.groupId,
     name: String(values.name ?? "").trim(),
     urn: String(values.urn ?? "").trim(),
-    opTypeCode: optionalText(values.opTypeCode),
+    opTypeCode: String(values.opTypeCode ?? "").trim(),
     remark: optionalText(values.remark),
   });
 

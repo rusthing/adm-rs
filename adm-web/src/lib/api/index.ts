@@ -4,7 +4,6 @@ import type {
   AdmDashboardSaveInput,
   AdmDashboardVo,
   AdmDashboardWidgetVo,
-  AdmLoginLogVo,
   AdmLoginVo,
   AdmLogoutVo,
   AdmMeVo,
@@ -96,7 +95,6 @@ export const permGroupApi = crudApi<AdmPermGroupVo>("/adm/perm-group");
 export const realmApi = crudApi<AdmRealmVo>("/adm/realm");
 export const appApi = crudApi<AdmAppVo>("/adm/app");
 export const opTypeApi = crudApi<AdmOpTypeVo>("/adm/op-type");
-export const loginLogApi = crudApi<AdmLoginLogVo>("/adm/login-log");
 export const roleUserApi = crudApi<AdmRoleUserVo>("/adm/role-user");
 export const roleMenuApi = crudApi<AdmRoleMenuVo>("/adm/role-menu");
 export const rolePermApi = crudApi<AdmRolePermVo>("/adm/role-perm");

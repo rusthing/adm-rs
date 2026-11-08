@@ -11,7 +11,7 @@ pub struct Model {
     pub id: i64,
     #[sea_orm(unique_key = "ak_group_id_and_name_adm_perm")]
     pub group_id: i64,
-    pub op_type_code: Option<String>,
+    pub op_type_code: String,
     #[sea_orm(unique_key = "ak_group_id_and_name_adm_perm")]
     pub name: String,
     #[sea_orm(unique)]
@@ -32,7 +32,7 @@ pub struct Model {
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    pub adm_op_type: BelongsTo<Option<super::adm_op_type::Entity>>,
+    pub adm_op_type: BelongsTo<super::adm_op_type::Entity>,
     #[sea_orm(
         belongs_to,
         from = "group_id",

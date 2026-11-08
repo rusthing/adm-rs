@@ -8094,11 +8094,13 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>操作类型编码
-关联 op_type.code（存编码不是 ID）；为空表示该权限与操作类型无关（如整页访问）
+必填；关联 op_type.code（存编码不是 ID），一个权限点必须能对应一种操作类型，
+不允许为空，取值受 op_type 字典限制
 @len 1..=50
 @check is_code</a:Comment>
 <a:DataType>VA50</a:DataType>
 <a:Length>50</a:Length>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
 <a:AutoMigrated>1</a:AutoMigrated>
 </o:EntityAttribute>

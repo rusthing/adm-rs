@@ -13,10 +13,11 @@ pub struct AdmPermDto {
     /// 关联 perm_group；(group_id, name) 唯一，不同分组可以重名
     pub group_id: u64,
     /// 操作类型编码
-    /// 关联 op_type.code（存编码不是 ID）；为空表示该权限与操作类型无关（如整页访问）
+    /// 必填；关联 op_type.code（存编码不是 ID），一个权限点必须能对应一种操作类型，
+    /// 不允许为空，取值受 op_type 字典限制
     /// @len 1..=50
     /// @check is_code
-    pub op_type_code: Option<String>,
+    pub op_type_code: String,
     /// 名称
     /// 同一分组内唯一（AK）
     /// @len 1..=50

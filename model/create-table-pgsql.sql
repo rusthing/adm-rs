@@ -926,7 +926,7 @@ user_id
 create table adm_perm (
    id                   INT8                 not null,
    group_id             INT8                 not null,
-   op_type_code         VARCHAR(50)          null,
+   op_type_code         VARCHAR(50)          not null,
    name                 VARCHAR(50)          not null,
    urn                  VARCHAR(100)         not null,
    sort_order           INT4                 not null,
@@ -938,7 +938,10 @@ create table adm_perm (
    update_ms            INT8                 not null,
    constraint PK_ADM_PERM primary key (id),
    constraint AK_GROUP_ID_AND_NAME_ADM_PERM unique (group_id, name),
-   constraint AK_URN_ADM_PERM unique (urn)
+   constraint AK_URN_ADM_PERM unique (urn),
+   constraint CK_ADM_PERM_OP_TYPE check (op_type_code in (
+      'query', 'add', 'modify', 'del', 'reorder', 'sync', 'reset_password'
+   ))
 );
 
 comment on table adm_perm is
@@ -955,7 +958,8 @@ comment on column adm_perm.group_id is
 
 comment on column adm_perm.op_type_code is
 '操作类型编码
-关联 op_type.code（存编码不是 ID）；为空表示该权限与操作类型无关（如整页访问）
+必填；关联 op_type.code（存编码不是 ID），一个权限点必须能对应一种操作类型，
+不允许为空，取值受 op_type 字典限制
 @len 1..=50
 @check is_code';
 

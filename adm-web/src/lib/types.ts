@@ -135,7 +135,7 @@ export interface AdmMenuVo extends AuditFields {
 export interface AdmPermVo extends AuditFields {
   id: string;
   groupId: string;
-  opTypeCode?: string;
+  opTypeCode: string;
   name: string;
   urn: string;
   sortOrder: number;

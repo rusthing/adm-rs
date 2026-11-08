@@ -68,6 +68,52 @@ macro_rules! adm_crud_router {
     };
 }
 
+/// # 带鉴权的只读路由
+///
+/// 日志类资源只允许查询：不注册 `save` / `upsert` / `sync` / `add` / `modify` /
+/// `delete`，避免日志被界面或脚本改写。GET 路由与 [`adm_crud_router`] 保持一致。
+///
+/// ## 用法
+/// ```ignore
+/// adm_readonly_router!("/adm/login-log", adm_login_log_ctrl);
+/// ```
+#[macro_export]
+macro_rules! adm_readonly_router {
+    ($prefix:literal, $ctrl_module:ident) => {
+        #[allow(unused_imports)]
+        use crate::web::ctrl::$ctrl_module::*;
+        use axum::{routing::get, Router};
+        use linkme::distributed_slice;
+        use robotech::web::ROUTER_SLICE;
+
+        #[distributed_slice(ROUTER_SLICE)]
+        static BUILD_ROUTER_FN: fn() -> Router = build_router;
+
+        fn build_router() -> Router {
+            Router::new()
+                .route(concat!($prefix, "/list"), get(list_by_query_dto))
+                .route(concat!($prefix, "/list-ex"), get(list_ex_by_query_dto))
+                .route(concat!($prefix, "/page"), get(page_by_query_dto))
+                .route(concat!($prefix, "/page-ex"), get(page_ex_by_query_dto))
+                .route(concat!($prefix, "/ex"), get(get_ex_by_query_dto))
+                .route(concat!($prefix, "/ex/{id}"), get(get_ex_by_id))
+                .route(concat!($prefix, "/search"), get(search_by_condition))
+                .route(concat!($prefix, "/search/ex"), get(search_ex_by_condition))
+                .route(concat!($prefix, "/search/ex/{id}"), get(search_ex_by_id))
+                .route(concat!($prefix, "/search/list"), get(search_list))
+                .route(concat!($prefix, "/search/list-ex"), get(search_list_ex))
+                .route(concat!($prefix, "/search/page"), get(search_page))
+                .route(concat!($prefix, "/search/page-ex"), get(search_page_ex))
+                .route(concat!($prefix, "/search/{id}"), get(search_by_id))
+                .route($prefix, get(get_by_query_dto))
+                .route(concat!($prefix, "/{id}"), get(get_by_id))
+                .layer(axum::middleware::from_fn(
+                    crate::web::auth::require_auth,
+                ))
+        }
+    };
+}
+
 pub use adm_api::cst;
 pub use adm_api::dic;
 pub use adm_api::dto;

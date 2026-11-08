@@ -1,16 +1,9 @@
 use robotech::macros::api_doc;
 
-/// # 锁定日志接口文档
+/// # 锁定日志接口文档（只读）
 ///
-/// Swagger 地址：`/adm/lock-log/openapi.json`
+/// 只暴露查询接口，不提供新增 / 修改 / 删除，Swagger 地址：`/adm/lock-log/openapi.json`
 #[api_doc(
-    add,
-    modify,
-    save,
-    upsert,
-    sync,
-    del_by_id,
-    del_by_query_dto,
     get_by_id,
     get_ex_by_id,
     get_by_query_dto,
