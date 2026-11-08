@@ -12,7 +12,9 @@
 //! 要拿真实来源得先加「可信代理白名单」，属于网关侧的事。
 
 use crate::cst::ADM_CODE_TOKEN_INVALID;
-use crate::dto::{AdmChangePasswordDto, AdmLoginDto, AdmVerifyPasswordDto};
+use crate::dto::{
+    AdmChangePasswordDto, AdmLoginDto, AdmVerifyAuditPasswordDto, AdmVerifyPasswordDto,
+};
 use crate::svc::AdmAuthSvc;
 use crate::vo::{AdmLoginVo, AdmLogoutVo, AdmMeVo};
 use crate::web::auth::{bearer_token, verify_bearer};
@@ -186,6 +188,47 @@ pub async fn verify_password(
 ) -> Result<Json<Ro<()>>, CtrlError> {
     match verify_bearer(&headers).await {
         Ok(user_id) => Ok(Json(AdmAuthSvc::verify_password(user_id, dto).await?)),
+        Err(detail) => Ok(Json(
+            Ro::warn("未登录或令牌已失效".to_string())
+                .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))
+                .detail(Some(detail)),
+        )),
+    }
+}
+
+/// # 校验当前用户审核口令（高危操作二次确认）
+///
+/// 与 `/adm/auth/verify-password` 同一套鉴权、频控与审计，但比对的是用户表中
+/// 独立的审核口令 `audit_pswd`。删除画布节点等需要「审核」语义的动作应调用这里。
+///
+/// ## 请求头
+/// * `Authorization` - `Bearer <登录拿到的令牌>`
+///
+/// ## 请求体
+/// * `AdmVerifyAuditPasswordDto` - `auditPswd`（`SM3(明文)`，64 位十六进制）
+///
+/// ## 返回值
+/// * `Ro<()>` - 审核口令正确
+/// * `ADM00005` - 令牌无效
+/// * `ADM00007` - 审核口令不正确
+/// * `ADM00008` - 错误尝试过于频繁
+/// * `ADM00009` - 当前用户不可用（不存在 / 停用 / 锁定 / 过期）
+/// * `ADM00010` - 当前用户尚未设置审核口令
+#[utoipa::path(
+    post,
+    path = "/adm/auth/verify-audit-password",
+    request_body = AdmVerifyAuditPasswordDto,
+    params(("Authorization" = String, Header, description = "Bearer <token>")),
+    responses((status = OK, description = "审核口令校验通过"))
+)]
+#[debug_handler]
+#[allow(clippy::result_large_err)]
+pub async fn verify_audit_password(
+    headers: HeaderMap,
+    Json(dto): Json<AdmVerifyAuditPasswordDto>,
+) -> Result<Json<Ro<()>>, CtrlError> {
+    match verify_bearer(&headers).await {
+        Ok(user_id) => Ok(Json(AdmAuthSvc::verify_audit_password(user_id, dto).await?)),
         Err(detail) => Ok(Json(
             Ro::warn("未登录或令牌已失效".to_string())
                 .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))

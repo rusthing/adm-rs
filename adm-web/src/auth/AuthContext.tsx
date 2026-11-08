@@ -130,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: result.name,
         nickName: result.nickName,
         loginPswdDefault: result.loginPswdDefault,
+        auditPswdSet: result.auditPswdSet,
         loginLogId: result.loginLogId,
       };
       // 切换用户时先清掉上一位用户的权限缓存与所有查询缓存（首页、列表、鉴权视图），

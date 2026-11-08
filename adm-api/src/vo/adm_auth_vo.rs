@@ -38,6 +38,11 @@ pub struct AdmLoginVo {
     /// `true` 时前端应强制跳转改密页面：初始口令是管理员重置出来的，
     /// 不换掉等于谁都能进。
     pub login_pswd_default: bool,
+    /// 当前账号是否已设置审核口令
+    ///
+    /// 审核口令独立于登录口令；未设置时前端应提示先补充，否则删除校验等
+    /// 需要「审核」语义的操作无法执行。
+    pub audit_pswd_set: bool,
     /// 本次登录的会话 ID（`adm_login_log.id`）
     ///
     /// 登出时服务端按它回写 `logout_ms`，客户端不需要传，留在响应里是为了排查

@@ -9,8 +9,9 @@
 //!
 //! * `/adm/auth/login` - 登录前还没有令牌
 //!
-//! `/adm/auth/logout` 本来就在处理器里校验令牌；`/adm/auth/me` 与
-//! `/adm/auth/change-password` 由于路径在认证路由里，也在处理器内用
+//! `/adm/auth/logout` 本来就在处理器里校验令牌；`/adm/auth/me`、
+//! `/adm/auth/change-password`、`/adm/auth/verify-password` 与
+//! `/adm/auth/verify-audit-password` 由于路径在认证路由里，也在处理器内用
 //! [`verify_bearer`] 校验。
 //!
 //! ## 失败响应

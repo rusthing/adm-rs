@@ -53,6 +53,8 @@ export interface AdmLoginVo {
   name: string;
   nickName?: string;
   loginPswdDefault: boolean;
+  /** 当前账号是否已设置审核口令 */
+  auditPswdSet: boolean;
   loginLogId: string;
 }
 
@@ -210,6 +212,8 @@ export interface AuthSession {
   name: string;
   nickName?: string;
   loginPswdDefault: boolean;
+  /** 当前账号是否已设置审核口令 */
+  auditPswdSet: boolean;
   loginLogId: string;
 }
 

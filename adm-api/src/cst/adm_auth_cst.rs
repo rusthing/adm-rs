@@ -45,3 +45,9 @@ pub const ADM_CODE_VERIFY_PASSWORD_RATE_LIMITED: &str = "ADM00008";
 /// 覆盖用户不存在、已停用、已锁定、已过期。与 [`ADM_CODE_VERIFY_PASSWORD_FAILED`]
 /// 区分，方便调用方提示「换口令」还是「找管理员」。
 pub const ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE: &str = "ADM00009";
+
+/// 高危操作审核口令二次确认：当前用户尚未设置审核口令
+///
+/// 与「口令不正确」区分：调用方应提示用户先到用户管理设置审核口令，
+/// 而不是让用户反复尝试一个根本不存在的口令。
+pub const ADM_CODE_VERIFY_AUDIT_PASSWORD_NOT_SET: &str = "ADM00010";

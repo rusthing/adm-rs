@@ -130,3 +130,29 @@ pub struct AdmVerifyPasswordDto {
     #[serde(default)]
     pub login_pswd: String,
 }
+
+/// # 校验当前用户审核口令请求（服务端）
+///
+/// 与登录口令校验同一条处理规则，但比对的是用户表里的审核口令 `audit_pswd`。
+/// 适用于删除、发布、改权限等需要「审核」语义的高危操作。
+#[cfg(feature = "server")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema, validator::Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmVerifyAuditPasswordDto {
+    /// 审核口令的一次摘要：`SM3(明文)` 的十六进制结果，定长 64
+    #[serde(default)]
+    #[validate(length(min = 64, max = 64))]
+    pub audit_pswd: String,
+}
+
+/// # 校验当前用户审核口令请求（客户端）
+///
+/// 字段与含义同服务端版本，只是没有 `validator` 依赖。
+#[cfg(not(feature = "server"))]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmVerifyAuditPasswordDto {
+    /// 审核口令的一次摘要：`SM3(明文)` 的十六进制结果，定长 64
+    #[serde(default)]
+    pub audit_pswd: String,
+}

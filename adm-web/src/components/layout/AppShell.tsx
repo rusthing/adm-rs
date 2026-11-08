@@ -358,7 +358,7 @@ function NavTree({
 }
 
 export function AppShell() {
-  const { session, authz, authzError, authzLoading, logout, refreshAuthz } = useAuth();
+  const { session, authz, authzError, authzLoading, logout, refreshAuthz, hasPerm } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -603,6 +603,12 @@ export function AppShell() {
               <Badge tone="warn">初始口令</Badge>
             </div>
           )}
+          {/* 旧会话没有该字段时不误报，只有明确为 false 才提示 */}
+          {session?.auditPswdSet === false && (
+            <div className="hidden sm:block">
+              <Badge tone="warn">未设审核口令</Badge>
+            </div>
+          )}
           <AccountMenu
             name={session?.nickName || session?.name || "未登录"}
             roleText={roleNames.length > 0 ? roleNames.join(" · ") : "未分配角色"}
@@ -617,6 +623,23 @@ export function AppShell() {
               个人中心
             </Link>
             修改。
+          </div>
+        )}
+
+        {session?.auditPswdSet === false && (
+          <div className="border-b border-warn/30 bg-warn-soft px-4 py-2 text-[12px] text-warn">
+            当前账号尚未设置审核口令，执行删除校验等审核操作前需要先设置。
+            {hasPerm("GET:/adm/user") ? (
+              <>
+                请到
+                <Link to="/users" className="mx-1 underline underline-offset-2">
+                  用户管理
+                </Link>
+                编辑当前账号补充审核口令。
+              </>
+            ) : (
+              "请联系管理员在「用户管理」中为本账号补充审核口令。"
+            )}
           </div>
         )}
 

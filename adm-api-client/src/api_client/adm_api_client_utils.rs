@@ -1,3 +1,4 @@
+use crate::api_client::adm_auth_api_client::AdmAuthApiClient;
 use crate::api_client::adm_dashboard_api_client::AdmDashboardApiClient;
 use crate::api_client::adm_menu_api_client::AdmMenuApiClient;
 use crate::api_client::adm_role_api_client::AdmRoleApiClient;
@@ -11,6 +12,8 @@ use robotech::macros::api_client;
 /// `setup_adm_api_client` / `get_adm_api_client` 负责。
 #[api_client]
 pub struct AdmApiClient {
+    /// 认证（手写口令二次确认）
+    pub auth: AdmAuthApiClient,
     /// 用户
     pub user: AdmUserApiClient,
     /// 角色

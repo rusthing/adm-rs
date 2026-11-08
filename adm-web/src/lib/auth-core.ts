@@ -47,6 +47,8 @@ export interface AuthSession {
   name: string;
   nickName?: string;
   loginPswdDefault: boolean;
+  /** 当前账号是否已设置审核口令 */
+  auditPswdSet: boolean;
   loginLogId: string;
 }
 
@@ -59,6 +61,8 @@ const DEV_SESSION: AuthSession = {
   name: "system",
   nickName: "系统账号",
   loginPswdDefault: false,
+  // 开发免登录没有真实账号，固定视为已设置，避免顶部一直挂着未设置提示。
+  auditPswdSet: true,
   loginLogId: "0",
 };
 
@@ -239,6 +243,7 @@ interface LoginExtra {
   name: string;
   nickName: string;
   loginPswdDefault: boolean;
+  auditPswdSet: boolean;
   loginLogId: string;
 }
 
@@ -300,6 +305,7 @@ export async function loginWithPassword(account: string, password: string): Prom
     name: payload.extra.name,
     nickName: payload.extra.nickName,
     loginPswdDefault: payload.extra.loginPswdDefault,
+    auditPswdSet: payload.extra.auditPswdSet,
     loginLogId: payload.extra.loginLogId,
   };
   saveSession(session);
