@@ -23,6 +23,8 @@ export interface CrudField {
   hint?: string;
   /** 静态选项，或按当前表单值动态计算（父菜单按 appId 过滤等）。 */
   options?: CrudFieldOption[] | ((values: FormValues, mode: FormMode) => CrudFieldOption[]);
+  /** 固定枚举：2–5 个选项按规范渲染为按钮组；接口驱动的选项不要设置。 */
+  fixedOptions?: boolean;
   /** 自定义校验：返回错误文案，null 表示通过。 */
   validate?: (value: FormValues[string], values: FormValues, mode: FormMode) => string | null;
   /** 列出的字段变化时清空本字段，避免留下跨应用的失效引用。 */

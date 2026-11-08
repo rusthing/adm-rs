@@ -112,6 +112,7 @@ export function MenusPage() {
       label: "链接类型",
       type: "select",
       required: true,
+      fixedOptions: true,
       defaultValue: "1",
       options: [
         { value: "1", label: "1 · 内链" },

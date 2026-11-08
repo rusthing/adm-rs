@@ -19,6 +19,7 @@ import {
   Textarea,
 } from "@/components/ui/primitives";
 import { Modal, useToast } from "@/components/ui/overlay";
+import { OptionButtons } from "@/components/ui/OptionButtons";
 import { AuditPasswordField, verifyAuditPassword } from "@/components/ui/audit-password";
 import { ScopePanel } from "./scope-panel";
 import { effectiveScopeValue, scopeCreateValue, scopePanelVisible } from "./scope";
@@ -177,18 +178,19 @@ function FilterControl({
 
   if (def.type === "boolean") {
     return (
-      <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
+      <div className="flex items-center gap-1.5 text-[11.5px] text-muted">
         <span className="whitespace-nowrap">{def.label}</span>
-        <Select
+        <OptionButtons
+          ariaLabel={def.label}
           value={typeof value === "string" ? value : ""}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-8 w-auto min-w-[76px] text-[12.5px]"
-        >
-          <option value="">全部</option>
-          <option value="true">是</option>
-          <option value="false">否</option>
-        </Select>
-      </label>
+          onChange={onChange}
+          options={[
+            { value: "", label: "全部" },
+            { value: "true", label: "是" },
+            { value: "false", label: "否" },
+          ]}
+        />
+      </div>
     );
   }
 
@@ -201,6 +203,30 @@ function FilterControl({
   if (def.type === "keyword") return null;
 
   // def.type === "select"
+  // 规范：0–1 个选项不渲染选择控件，2–5 个用按钮组，≥6 个仍用下拉。
+  if (def.options.length <= 1) {
+    return (
+      <div className="flex items-center gap-1.5 text-[11.5px] text-muted">
+        <span className="whitespace-nowrap">{def.label}</span>
+        <span className="text-[12.5px] text-ink-soft">{def.options[0]?.label ?? "无"}</span>
+      </div>
+    );
+  }
+
+  if (def.options.length <= 5) {
+    return (
+      <div className="flex items-center gap-1.5 text-[11.5px] text-muted">
+        <span className="whitespace-nowrap">{def.label}</span>
+        <OptionButtons
+          ariaLabel={def.label}
+          value={typeof value === "string" ? value : ""}
+          onChange={onChange}
+          options={[{ value: "", label: "全部" }, ...def.options]}
+        />
+      </div>
+    );
+  }
+
   return (
     <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
       <span className="whitespace-nowrap">{def.label}</span>
@@ -1180,11 +1206,20 @@ export function CrudPage<T extends { id: string }>({
             // 已保存但已停用 / 不在当前候选里的值必须留在下拉中，否则 Select 会静默丢值。
             const staleOption =
               current && !options.some((option) => option.value === current) ? current : null;
+            // 规范：固定枚举 0–1 个不渲染控件，2–5 个用按钮组，≥6 仍用下拉。
+            const useOptionButtons =
+              field.type === "select" &&
+              field.fixedOptions &&
+              !staleOption &&
+              options.length >= 2 &&
+              options.length <= 5;
+            const staticOption =
+              field.type === "select" && field.fixedOptions && !staleOption && options.length <= 1;
             return (
               <div key={fieldKey(field, index)} className={field.span === 2 || field.type === "textarea" ? "col-span-2" : ""}>
                 <Field
                   label={field.label}
-                  htmlFor={field.type === "switch" ? undefined : inputId}
+                  htmlFor={field.type === "switch" || useOptionButtons || staticOption ? undefined : inputId}
                   required={field.required}
                   hint={field.hint}
                 >
@@ -1197,6 +1232,18 @@ export function CrudPage<T extends { id: string }>({
                         label={Boolean(value) ? "启用" : "停用"}
                       />
                     </div>
+                  ) : staticOption ? (
+                    <div className="flex h-9 items-center text-[13px] text-ink-soft">
+                      {options[0]?.label ?? "无"}
+                    </div>
+                  ) : useOptionButtons ? (
+                    <OptionButtons
+                      ariaLabel={field.label}
+                      value={current}
+                      onChange={(next) => setFieldValue(field.name, next)}
+                      disabled={field.disabled}
+                      options={options}
+                    />
                   ) : field.type === "select" ? (
                     <Select
                       id={inputId}
