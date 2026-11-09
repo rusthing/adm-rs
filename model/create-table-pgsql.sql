@@ -1,6 +1,6 @@
 /*==============================================================*/
 /* DBMS name:      PostgreSQL 9.x                               */
-/* Created on:     2026/11/1 22:01:37                           */
+/* Created on:     2026/11/9 16:48:23                           */
 /*==============================================================*/
 
 
@@ -938,10 +938,7 @@ create table adm_perm (
    update_ms            INT8                 not null,
    constraint PK_ADM_PERM primary key (id),
    constraint AK_GROUP_ID_AND_NAME_ADM_PERM unique (group_id, name),
-   constraint AK_URN_ADM_PERM unique (urn),
-   constraint CK_ADM_PERM_OP_TYPE check (op_type_code in (
-      'query', 'add', 'modify', 'del', 'reorder', 'sync', 'reset_password'
-   ))
+   constraint AK_URN_ADM_PERM unique (urn)
 );
 
 comment on table adm_perm is
@@ -1589,6 +1586,77 @@ group_id
 );
 
 /*==============================================================*/
+/* Table: adm_role_app_scope                                    */
+/*==============================================================*/
+create table adm_role_app_scope (
+   id                   INT8                 not null,
+   role_id              INT8                 not null,
+   app_id               INT8                 not null,
+   creater_id           INT8                 not null,
+   create_ms            INT8                 not null,
+   updater_id           INT8                 not null,
+   update_ms            INT8                 not null,
+   constraint PK_ADM_ROLE_APP_SCOPE primary key (id),
+   constraint AK_ROLE_ID_AND_APP_ID_ADM_ROLE_APP_SCOPE unique (role_id, app_id)
+);
+
+comment on table adm_role_app_scope is
+'角色应用可见范围
+角色可见范围白名单：该角色可以看哪些应用。只管可见范围，不管功能权限；功能权限由 role_menu / role_perm 决定。
+角色没有对应行 = 该维度全量可见（配了才限制）；多角色取并集';
+
+comment on column adm_role_app_scope.id is
+'主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值';
+
+comment on column adm_role_app_scope.role_id is
+'角色 ID
+关联 role；(app_id, role_id) 唯一（AK）';
+
+comment on column adm_role_app_scope.app_id is
+'应用 ID
+关联 app；(app_id, role_id) 唯一（AK）';
+
+comment on column adm_role_app_scope.creater_id is
+'创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_role_app_scope.create_ms is
+'创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms';
+
+comment on column adm_role_app_scope.updater_id is
+'最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_role_app_scope.update_ms is
+'最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms';
+
+/*==============================================================*/
+/* Index: adm_role_app_scope_PK                                 */
+/*==============================================================*/
+create unique index adm_role_app_scope_PK on adm_role_app_scope (
+id
+);
+
+/*==============================================================*/
+/* Index: role_app_scope_role_FK                                */
+/*==============================================================*/
+create  index role_app_scope_role_FK on adm_role_app_scope (
+role_id
+);
+
+/*==============================================================*/
+/* Index: role_app_scope_app_FK                                 */
+/*==============================================================*/
+create  index role_app_scope_app_FK on adm_role_app_scope (
+app_id
+);
+
+/*==============================================================*/
 /* Table: adm_role_group                                        */
 /*==============================================================*/
 create table adm_role_group (
@@ -1732,6 +1800,77 @@ role_id
 );
 
 /*==============================================================*/
+/* Table: adm_role_org_scope                                    */
+/*==============================================================*/
+create table adm_role_org_scope (
+   id                   INT8                 not null,
+   role_id              INT8                 not null,
+   org_id               INT8                 not null,
+   creater_id           INT8                 not null,
+   create_ms            INT8                 not null,
+   updater_id           INT8                 not null,
+   update_ms            INT8                 not null,
+   constraint PK_ADM_ROLE_ORG_SCOPE primary key (id),
+   constraint AK_ROLE_ID_AND_ORG_ID_ADM_ROLE_ORG_SCOPE unique (role_id, org_id)
+);
+
+comment on table adm_role_org_scope is
+'角色组织可见范围
+角色可见范围白名单：该角色可以看哪些组织。只管可见范围，不管功能权限；功能权限由 role_menu / role_perm 决定。
+角色没有对应行 = 该维度全量可见（配了才限制）；多角色取并集';
+
+comment on column adm_role_org_scope.id is
+'主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值';
+
+comment on column adm_role_org_scope.role_id is
+'角色 ID
+关联 role；(org_id, role_id) 唯一（AK）';
+
+comment on column adm_role_org_scope.org_id is
+'组织 ID
+关联 org；(org_id, role_id) 唯一（AK）';
+
+comment on column adm_role_org_scope.creater_id is
+'创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_role_org_scope.create_ms is
+'创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms';
+
+comment on column adm_role_org_scope.updater_id is
+'最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_role_org_scope.update_ms is
+'最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms';
+
+/*==============================================================*/
+/* Index: adm_role_org_scope_PK                                 */
+/*==============================================================*/
+create unique index adm_role_org_scope_PK on adm_role_org_scope (
+id
+);
+
+/*==============================================================*/
+/* Index: role_org_scope_role_FK                                */
+/*==============================================================*/
+create  index role_org_scope_role_FK on adm_role_org_scope (
+role_id
+);
+
+/*==============================================================*/
+/* Index: role_org_scope_org_FK                                 */
+/*==============================================================*/
+create  index role_org_scope_org_FK on adm_role_org_scope (
+org_id
+);
+
+/*==============================================================*/
 /* Table: adm_role_perm                                         */
 /*==============================================================*/
 create table adm_role_perm (
@@ -1799,6 +1938,77 @@ role_id
 /*==============================================================*/
 create  index Relationship_21_FK on adm_role_perm (
 perm_id
+);
+
+/*==============================================================*/
+/* Table: adm_role_realm_scope                                  */
+/*==============================================================*/
+create table adm_role_realm_scope (
+   id                   INT8                 not null,
+   role_id              INT8                 not null,
+   realm_id             INT8                 not null,
+   creater_id           INT8                 not null,
+   create_ms            INT8                 not null,
+   updater_id           INT8                 not null,
+   update_ms            INT8                 not null,
+   constraint PK_ADM_ROLE_REALM_SCOPE primary key (id),
+   constraint AK_ROLE_ID_AND_REALM_ID_ADM_ROLE_REALM_SCOPE unique (role_id, realm_id)
+);
+
+comment on table adm_role_realm_scope is
+'角色领域可见范围
+角色可见范围白名单：该角色可以看哪些领域。只管可见范围，不管功能权限；功能权限由 role_menu / role_perm 决定。
+角色没有对应行 = 该维度全量可见（配了才限制）；多角色取并集';
+
+comment on column adm_role_realm_scope.id is
+'主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值';
+
+comment on column adm_role_realm_scope.role_id is
+'角色 ID
+关联 role；(realm_id, role_id) 唯一（AK）';
+
+comment on column adm_role_realm_scope.realm_id is
+'领域 ID
+关联 realm；(realm_id, role_id) 唯一（AK）';
+
+comment on column adm_role_realm_scope.creater_id is
+'创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_role_realm_scope.create_ms is
+'创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms';
+
+comment on column adm_role_realm_scope.updater_id is
+'最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_role_realm_scope.update_ms is
+'最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms';
+
+/*==============================================================*/
+/* Index: adm_role_realm_scope_PK                               */
+/*==============================================================*/
+create unique index adm_role_realm_scope_PK on adm_role_realm_scope (
+id
+);
+
+/*==============================================================*/
+/* Index: role_realm_scope_role_FK                              */
+/*==============================================================*/
+create  index role_realm_scope_role_FK on adm_role_realm_scope (
+role_id
+);
+
+/*==============================================================*/
+/* Index: role_realm_scope_realm_FK                             */
+/*==============================================================*/
+create  index role_realm_scope_realm_FK on adm_role_realm_scope (
+realm_id
 );
 
 /*==============================================================*/
@@ -2103,72 +2313,6 @@ create  index Relationship_13_FK on adm_user (
 person_id
 );
 
-
-/*==============================================================*/
-/* 角色可见范围：领域 / 组织 / 应用，三条独立轴各一张表 */
-/* 只管可见范围白名单，不管功能权限；配了才限制，多角色取并集 */
-/*==============================================================*/
-
-create table adm_role_realm_scope (
-    id         bigint primary key,
-    role_id    bigint not null references adm_role(id)
-                 on update cascade on delete cascade,
-    realm_id   bigint not null references adm_realm(id)
-                 on update cascade on delete cascade,
-    creater_id bigint not null default 0,
-    create_ms  bigint not null default 0,
-    updater_id bigint not null default 0,
-    update_ms  bigint not null default 0
-);
-
-create unique index ak_role_id_and_realm_id_adm_role_realm_scope
-    on adm_role_realm_scope (role_id, realm_id);
-
-create index idx_realm_id_adm_role_realm_scope
-    on adm_role_realm_scope (realm_id);
-
-create table adm_role_org_scope (
-    id         bigint primary key,
-    role_id    bigint not null references adm_role(id)
-                 on update cascade on delete cascade,
-    org_id     bigint not null references adm_org(id)
-                 on update cascade on delete cascade,
-    creater_id bigint not null default 0,
-    create_ms  bigint not null default 0,
-    updater_id bigint not null default 0,
-    update_ms  bigint not null default 0
-);
-
-create unique index ak_role_id_and_org_id_adm_role_org_scope
-    on adm_role_org_scope (role_id, org_id);
-
-create index idx_org_id_adm_role_org_scope
-    on adm_role_org_scope (org_id);
-
-create table adm_role_app_scope (
-    id         bigint primary key,
-    role_id    bigint not null references adm_role(id)
-                 on update cascade on delete cascade,
-    app_id     bigint not null references adm_app(id)
-                 on update cascade on delete cascade,
-    creater_id bigint not null default 0,
-    create_ms  bigint not null default 0,
-    updater_id bigint not null default 0,
-    update_ms  bigint not null default 0
-);
-
-create unique index ak_role_id_and_app_id_adm_role_app_scope
-    on adm_role_app_scope (role_id, app_id);
-
-create index idx_app_id_adm_role_app_scope
-    on adm_role_app_scope (app_id);
-
-/* 按 user_id 反查归属：现有唯一键前缀是 org_id / realm_id，用不上 */
-create index idx_user_id_adm_org_user
-    on adm_org_user (user_id);
-
-create index idx_user_id_adm_realm_user
-    on adm_realm_user (user_id);
 alter table adm_lock_log
    add constraint fk_user_id__from__adm_user foreign key (user_id)
       references adm_user (id)
@@ -2259,12 +2403,32 @@ alter table adm_role
       references adm_role_group (id)
       on delete restrict on update restrict;
 
+alter table adm_role_app_scope
+   add constraint fk_app_id__from__adm_app foreign key (app_id)
+      references adm_app (id)
+      on delete restrict on update restrict;
+
+alter table adm_role_app_scope
+   add constraint fk_role_id__from__adm_role foreign key (role_id)
+      references adm_role (id)
+      on delete restrict on update restrict;
+
 alter table adm_role_menu
    add constraint fk_menu_id__from__adm_menu foreign key (menu_id)
       references adm_menu (id)
       on delete restrict on update restrict;
 
 alter table adm_role_menu
+   add constraint fk_role_id__from__adm_role foreign key (role_id)
+      references adm_role (id)
+      on delete restrict on update restrict;
+
+alter table adm_role_org_scope
+   add constraint fk_org_id__from__adm_org foreign key (org_id)
+      references adm_org (id)
+      on delete restrict on update restrict;
+
+alter table adm_role_org_scope
    add constraint fk_role_id__from__adm_role foreign key (role_id)
       references adm_role (id)
       on delete restrict on update restrict;
@@ -2277,6 +2441,16 @@ alter table adm_role_perm
 alter table adm_role_perm
    add constraint fk_perm_id__from__adm_perm foreign key (perm_id)
       references adm_perm (id)
+      on delete restrict on update restrict;
+
+alter table adm_role_realm_scope
+   add constraint fk_realm_id__from__adm_realm foreign key (realm_id)
+      references adm_realm (id)
+      on delete restrict on update restrict;
+
+alter table adm_role_realm_scope
+   add constraint fk_role_id__from__adm_role foreign key (role_id)
+      references adm_role (id)
       on delete restrict on update restrict;
 
 alter table adm_role_user
