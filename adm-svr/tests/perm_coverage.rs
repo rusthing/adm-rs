@@ -53,8 +53,12 @@ fn seed_sql() -> String {
     read_migration("20261109000002_init-data.sql")
 }
 
+/// 建表基线（`create-table.sql` 是 PowerDesigner 导出脚本的副本）与
+/// PD 表达不了的补充对象（`create-index.sql`，含 CHECK 约束）合起来才是完整 DDL。
 fn table_sql() -> String {
-    read_migration("20261109000000_init-create-table.sql")
+    let ddl = read_migration("20261109000000_create-table.sql");
+    let idx = read_migration("20261109000001_create-index.sql");
+    format!("{ddl}\n{idx}")
 }
 
 /// 解析一条 URN（`METHOD:路径`）
@@ -689,7 +693,8 @@ fn widget_perm_urns_exist_in_seed() {
 fn perm_type_is_not_null_and_constrained() {
     let src = table_sql();
     assert!(
-        src.contains("CONSTRAINT ck_adm_perm_op_type CHECK"),
+        src.to_ascii_lowercase()
+            .contains("constraint ck_adm_perm_op_type check"),
         "op_type_code 必须有取值 CHECK 约束"
     );
     for code in [

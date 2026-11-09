@@ -90,10 +90,10 @@ create table adm_dashboard (
    name                 VARCHAR(64)          not null,
    remark               VARCHAR(255)         null,
    enabled              BOOL                 not null default true,
-   creater_id           INT8                 not null,
-   create_ms            INT8                 not null,
-   updater_id           INT8                 not null,
-   update_ms            INT8                 not null,
+   creater_id           INT8                 not null default 0,
+   create_ms            INT8                 not null default 0,
+   updater_id           INT8                 not null default 0,
+   update_ms            INT8                 not null default 0,
    constraint PK_ADM_DASHBOARD primary key (id)
 );
 
@@ -168,14 +168,14 @@ create table adm_dashboard_widget (
    endpoint             VARCHAR(64)          not null,
    params               TEXT                 null,
    perm_urn             VARCHAR(128)         null,
-   scope_aware          BOOL                 not null,
-   sort_order           INT4                 not null,
+   scope_aware          BOOL                 not null default false,
+   sort_order           INT4                 not null default 0,
    enabled              BOOL                 not null default true,
-   creater_id           INT8                 not null,
-   create_ms            INT8                 not null,
-   updater_id           INT8                 not null,
-   update_ms            INT8                 not null,
-   constraint PK_ADM_DASHBOARD_WIDGET primary key (id, widget_type)
+   creater_id           INT8                 not null default 0,
+   create_ms            INT8                 not null default 0,
+   updater_id           INT8                 not null default 0,
+   update_ms            INT8                 not null default 0,
+   constraint PK_ADM_DASHBOARD_WIDGET primary key (id)
 );
 
 comment on table adm_dashboard_widget is
@@ -255,8 +255,7 @@ comment on column adm_dashboard_widget.update_ms is
 /* Index: adm_dashboard_widget_PK                               */
 /*==============================================================*/
 create unique index adm_dashboard_widget_PK on adm_dashboard_widget (
-id,
-widget_type
+id
 );
 
 /*==============================================================*/
@@ -450,9 +449,9 @@ create table adm_menu (
    updater_id           INT8                 not null,
    update_ms            INT8                 not null,
    constraint PK_ADM_MENU primary key (id),
-   constraint AK_APP_ID_AND_TREE_CODE_ADM_MENU unique (app_id, tree_code),
+   constraint AK_APP_ID_AND_CODE_ADM_MENU unique (app_id, code),
    constraint AK_APP_ID_AND_NAME_ADM_MENU unique (app_id, name),
-   constraint AK_APP_ID_AND_CODE_ADM_MENU unique (app_id, code)
+   constraint AK_APP_ID_AND_TREE_CODE_ADM_MENU unique (app_id, tree_code)
 );
 
 comment on table adm_menu is
@@ -1784,10 +1783,10 @@ create table adm_role_app_scope (
    id                   INT8                 not null,
    role_id              INT8                 not null,
    app_id               INT8                 not null,
-   creater_id           INT8                 not null,
-   create_ms            INT8                 not null,
-   updater_id           INT8                 not null,
-   update_ms            INT8                 not null,
+   creater_id           INT8                 not null default 0,
+   create_ms            INT8                 not null default 0,
+   updater_id           INT8                 not null default 0,
+   update_ms            INT8                 not null default 0,
    constraint PK_ADM_ROLE_APP_SCOPE primary key (id),
    constraint AK_ROLE_ID_AND_APP_ID_ADM_ROLE_APP_SCOPE unique (role_id, app_id)
 );
@@ -1998,10 +1997,10 @@ create table adm_role_org_scope (
    id                   INT8                 not null,
    role_id              INT8                 not null,
    org_id               INT8                 not null,
-   creater_id           INT8                 not null,
-   create_ms            INT8                 not null,
-   updater_id           INT8                 not null,
-   update_ms            INT8                 not null,
+   creater_id           INT8                 not null default 0,
+   create_ms            INT8                 not null default 0,
+   updater_id           INT8                 not null default 0,
+   update_ms            INT8                 not null default 0,
    constraint PK_ADM_ROLE_ORG_SCOPE primary key (id),
    constraint AK_ROLE_ID_AND_ORG_ID_ADM_ROLE_ORG_SCOPE unique (role_id, org_id)
 );
@@ -2139,10 +2138,10 @@ create table adm_role_realm_scope (
    id                   INT8                 not null,
    role_id              INT8                 not null,
    realm_id             INT8                 not null,
-   creater_id           INT8                 not null,
-   create_ms            INT8                 not null,
-   updater_id           INT8                 not null,
-   update_ms            INT8                 not null,
+   creater_id           INT8                 not null default 0,
+   create_ms            INT8                 not null default 0,
+   updater_id           INT8                 not null default 0,
+   update_ms            INT8                 not null default 0,
    constraint PK_ADM_ROLE_REALM_SCOPE primary key (id),
    constraint AK_ROLE_ID_AND_REALM_ID_ADM_ROLE_REALM_SCOPE unique (role_id, realm_id)
 );
@@ -2307,10 +2306,10 @@ create table adm_user (
    updater_id           INT8                 not null,
    update_ms            INT8                 not null,
    constraint PK_ADM_USER primary key (id),
-   constraint AK_NAME_ADM_USER unique (name),
-   constraint AK_MOBILE_ADM_USER unique (mobile),
    constraint AK_EMAIL_ADM_USER unique (email),
-   constraint AK_ID_CARD_ADM_USER unique (id_card)
+   constraint AK_ID_CARD_ADM_USER unique (id_card),
+   constraint AK_MOBILE_ADM_USER unique (mobile),
+   constraint AK_NAME_ADM_USER unique (name)
 );
 
 comment on table adm_user is
@@ -2513,15 +2512,15 @@ create table adm_widget_endpoint (
    service              VARCHAR(32)          not null,
    endpoint             VARCHAR(64)          not null,
    name                 VARCHAR(64)          not null,
-   method               VARCHAR(8)           not null,
+   method               VARCHAR(8)           not null default 'POST',
    params_hint          VARCHAR(255)         null,
    enabled              BOOL                 not null default true,
    note                 VARCHAR(255)         null,
-   sort_order           INT4                 not null,
-   creater_id           INT8                 not null,
-   create_ms            INT8                 not null,
-   updater_id           INT8                 not null,
-   update_ms            INT8                 not null,
+   sort_order           INT4                 not null default 0,
+   creater_id           INT8                 not null default 0,
+   create_ms            INT8                 not null default 0,
+   updater_id           INT8                 not null default 0,
+   update_ms            INT8                 not null default 0,
    constraint PK_ADM_WIDGET_ENDPOINT primary key (id),
    constraint AK_SERVICE_AND_ENDPOINT_ADM_WIDGET_ENDPOINT unique (service, endpoint)
 );
@@ -2610,13 +2609,13 @@ create table adm_widget_type (
    description          VARCHAR(255)         null,
    default_params       TEXT                 null,
    default_perm_urn     VARCHAR(128)         null,
-   default_scope_aware  BOOL                 not null,
-   sort_order           INT4                 not null,
+   default_scope_aware  BOOL                 not null default false,
+   sort_order           INT4                 not null default 0,
    enabled              BOOL                 not null default true,
-   creater_id           INT8                 not null,
-   create_ms            INT8                 not null,
-   updater_id           INT8                 not null,
-   update_ms            INT8                 not null,
+   creater_id           INT8                 not null default 0,
+   create_ms            INT8                 not null default 0,
+   updater_id           INT8                 not null default 0,
+   update_ms            INT8                 not null default 0,
    constraint PK_ADM_WIDGET_TYPE primary key (id),
    constraint AK_CODE_ADM_WIDGET_TYPE unique (code)
 );
@@ -2721,12 +2720,12 @@ alter table adm_dashboard_widget
 alter table adm_lock_log
    add constraint fk_user_id__from__adm_user foreign key (user_id)
       references adm_user (id)
-      on delete restrict on update restrict;
+      on delete set null on update restrict;
 
 alter table adm_login_log
    add constraint fk_user_id__from__adm_user foreign key (user_id)
       references adm_user (id)
-      on delete restrict on update restrict;
+      on delete set null on update restrict;
 
 alter table adm_menu
    add constraint fk_app_id__from__adm_app foreign key (app_id)
@@ -2809,13 +2808,13 @@ alter table adm_role
       on delete restrict on update restrict;
 
 alter table adm_role_app_scope
-   add constraint fk_app_id__from__adm_app foreign key (app_id)
-      references adm_app (id)
+   add constraint fk_role_id__from__adm_role foreign key (role_id)
+      references adm_role (id)
       on delete restrict on update restrict;
 
 alter table adm_role_app_scope
-   add constraint fk_role_id__from__adm_role foreign key (role_id)
-      references adm_role (id)
+   add constraint fk_app_id__from__adm_app foreign key (app_id)
+      references adm_app (id)
       on delete restrict on update restrict;
 
 alter table adm_role_menu
@@ -2829,13 +2828,13 @@ alter table adm_role_menu
       on delete restrict on update restrict;
 
 alter table adm_role_org_scope
-   add constraint fk_org_id__from__adm_org foreign key (org_id)
-      references adm_org (id)
+   add constraint fk_role_id__from__adm_role foreign key (role_id)
+      references adm_role (id)
       on delete restrict on update restrict;
 
 alter table adm_role_org_scope
-   add constraint fk_role_id__from__adm_role foreign key (role_id)
-      references adm_role (id)
+   add constraint fk_org_id__from__adm_org foreign key (org_id)
+      references adm_org (id)
       on delete restrict on update restrict;
 
 alter table adm_role_perm
@@ -2849,13 +2848,13 @@ alter table adm_role_perm
       on delete restrict on update restrict;
 
 alter table adm_role_realm_scope
-   add constraint fk_realm_id__from__adm_realm foreign key (realm_id)
-      references adm_realm (id)
+   add constraint fk_role_id__from__adm_role foreign key (role_id)
+      references adm_role (id)
       on delete restrict on update restrict;
 
 alter table adm_role_realm_scope
-   add constraint fk_role_id__from__adm_role foreign key (role_id)
-      references adm_role (id)
+   add constraint fk_realm_id__from__adm_realm foreign key (realm_id)
+      references adm_realm (id)
       on delete restrict on update restrict;
 
 alter table adm_role_user
