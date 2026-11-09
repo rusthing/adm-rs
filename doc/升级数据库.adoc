@@ -40,7 +40,7 @@ sqlx migrate add <版本名称> --source migrations/pgsql
 +
 [NOTE]
 ====
-版本名称：例如 `create-table`、`alter-table`、`init-data`、`update-data`。
+版本名称：例如 `create-table`、`create-index`、`alter-table`、`alert-index`、`init-data`、`update-data`。
 ====
 . 上面的命令会在 `migrations/[mysql或pgsql]` 目录下生成一个文件，文件名格式为
   `<版本号>_<版本名称>.sql`，例如 `20261027081500_create-table.sql`
