@@ -40,8 +40,8 @@ export function PermissionGroupsPage() {
         );
       },
     },
-    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
     { key: "remark", label: "备注", truncate: true },
+    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
   ];
 
   const fields: CrudField[] = [

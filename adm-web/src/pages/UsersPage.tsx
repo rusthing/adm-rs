@@ -231,9 +231,9 @@ export function UsersPage() {
         return <Badge tone={status.tone}>{status.label}</Badge>;
       },
     },
-    { key: "enabled", label: "启用", toggle: {} },
     { key: "lastLoginMs", label: "最近登录", type: "datetime" },
     { key: "createMs", label: "创建时间", type: "datetime" },
+    { key: "enabled", label: "启用", toggle: {} },
   ];
 
   const fields: CrudField[] = [

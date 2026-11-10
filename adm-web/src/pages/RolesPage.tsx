@@ -219,13 +219,13 @@ export function RolesPage() {
       className: "whitespace-nowrap",
       render: (row) => groupName.get(row.groupId) ?? shortId(row.groupId),
     },
-    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
     {
       key: "remark",
       label: "备注",
       truncate: true,
       truncateClassName: "max-w-[320px] max-[1400px]:max-w-[180px]",
     },
+    { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
   ];
 
   const fields: CrudField[] = [

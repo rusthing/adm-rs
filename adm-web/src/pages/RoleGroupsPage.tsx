@@ -39,8 +39,8 @@ export function RoleGroupsPage() {
         );
       },
     },
-    { key: "enabled", label: "启用", toggle: {} },
     { key: "remark", label: "备注", truncate: true },
+    { key: "enabled", label: "启用", toggle: {} },
   ];
 
   const fields: CrudField[] = [
