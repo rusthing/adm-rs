@@ -1,22 +1,28 @@
 import type { LucideIcon } from "lucide-react";
 import {
   AppWindow,
+  Building2,
   FileText,
   FolderTree,
   Gauge,
   Globe2,
+  IdCard,
   KeyRound,
   Layers,
   LayoutGrid,
+  LayoutTemplate,
+  ListTree,
   Lock,
   LogIn,
   Menu as MenuIcon,
+  Network,
   ScrollText,
   Settings,
   Shield,
   ShieldCheck,
   UserCog,
   UserCircle,
+  UserRound,
   Users,
 } from "lucide-react";
 import type { AdmMenuVo } from "@/lib/types";
@@ -75,6 +81,7 @@ export interface NavSection {
 
 const ICONS: Record<string, LucideIcon> = {
   "layout-dashboard": LayoutGrid,
+  "layout-template": LayoutTemplate,
   gauge: Gauge,
   shield: Shield,
   users: Users,
@@ -92,6 +99,13 @@ const ICONS: Record<string, LucideIcon> = {
   "scroll-text": ScrollText,
   "shield-check": ShieldCheck,
   "user-circle": UserCircle,
+  // 组织与人员这一组：种子菜单用的就是这几个名字，缺一个就会退回默认图标，
+  // 结果五个页面图标长得一样、跟「概览」也分不开。
+  "building-2": Building2,
+  network: Network,
+  hierarchy: ListTree,
+  profile: UserRound,
+  "id-card": IdCard,
 };
 
 /** 图标名白名单：菜单表单的图标下拉只能从这些值里选，避免自由文本写出无效图标。 */

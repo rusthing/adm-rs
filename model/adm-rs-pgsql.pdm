@@ -15325,7 +15325,8 @@ DAT 1793541529</a:History>
 <a:ModificationDate>1793541529</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>权限分组
-全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一</a:Comment>
+层级不固定，树形由 tree_code 表达，tree_code 全局唯一；
+平台种子按「平台管理 → 菜单一级 → 主体 → 操作类型」四层组织</a:Comment>
 <a:History>ORG {2BF68F90-A783-4438-9623-F0639FAB2694}
 DAT 1793541529</a:History>
 <a:GlobalObjectID/>
@@ -15597,7 +15598,7 @@ DAT 1793541529</a:History>
 <a:Code>adm_perm</a:Code>
 <a:CreationDate>1793541527</a:CreationDate>
 <a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793541529</a:ModificationDate>
+<a:ModificationDate>1794442031</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>权限
 最小授权单元，用 URN 表达「HTTP 方法 + 资源路径」；与角色的关联见 role_perm，与菜单的关联见 menu_perm</a:Comment>
@@ -15637,6 +15638,26 @@ DAT 1793541529</a:History>
 DAT 1793541529</a:History>
 <a:DataType>INT8</a:DataType>
 <a:Length>8</a:Length>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
+<o:Column Id="o811">
+<a:ObjectID>0EE52668-0278-492D-82A8-828952FC1F8C</a:ObjectID>
+<a:Name>主体编码</a:Name>
+<a:Code>subject_code</a:Code>
+<a:CreationDate>1794442031</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1794442031</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>主体编码
+权限作用的业务对象（用户 / 人员 / 组织 / 角色 / 菜单 / 权限 / 领域 / 应用 / 日志 ...），
+与 perm_group 第三层主体分组一一对应；权限名称只写动作，不再带「用户-」这类前缀
+@len 1..=50
+@check is_code</a:Comment>
+<a:History>ORG {EFAB95C1-D421-475B-959B-2F9AA3327BE1}
+DAT 1794442031</a:History>
+<a:DataType>VARCHAR(50)</a:DataType>
+<a:Length>50</a:Length>
 <a:Column.Mandatory>1</a:Column.Mandatory>
 <a:GlobalObjectID/>
 </o:Column>

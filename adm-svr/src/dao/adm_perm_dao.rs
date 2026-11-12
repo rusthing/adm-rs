@@ -12,6 +12,7 @@ use robotech::macros::dao;
         ("urn", "URN"),
     ],
     like_columns: [
+        Column::SubjectCode,
         Column::OpTypeCode,
         Column::Name,
         Column::Urn,

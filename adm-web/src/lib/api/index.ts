@@ -9,8 +9,12 @@ import type {
   AdmMeVo,
   AdmMenuVo,
   AdmOpTypeVo,
+  AdmOrgTypeVo,
+  AdmOrgVo,
   AdmPermGroupVo,
   AdmPermVo,
+  AdmPersonCodeTypeVo,
+  AdmPersonVo,
   AdmRealmVo,
   AdmRoleGroupVo,
   AdmRoleMenuVo,
@@ -95,6 +99,10 @@ export const permApi = crudApi<AdmPermVo>("/adm/perm");
 export const permGroupApi = crudApi<AdmPermGroupVo>("/adm/perm-group");
 export const realmApi = crudApi<AdmRealmVo>("/adm/realm");
 export const appApi = crudApi<AdmAppVo>("/adm/app");
+export const orgApi = crudApi<AdmOrgVo>("/adm/org");
+export const orgTypeApi = crudApi<AdmOrgTypeVo>("/adm/org-type");
+export const personApi = crudApi<AdmPersonVo>("/adm/person");
+export const personCodeTypeApi = crudApi<AdmPersonCodeTypeVo>("/adm/person-code-type");
 export const opTypeApi = crudApi<AdmOpTypeVo>("/adm/op-type");
 export const roleUserApi = crudApi<AdmRoleUserVo>("/adm/role-user");
 export const roleMenuApi = crudApi<AdmRoleMenuVo>("/adm/role-menu");

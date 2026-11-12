@@ -134,7 +134,7 @@ function RoleGrantsDrawer({
       open={open}
       onClose={onClose}
       title={`角色授权 · ${role?.name ?? ""}`}
-      description="保存时只提交新增与移除的差异；授权变更对所属账号立即生效。"
+      description="权限点按「主体 → 类型」分组，主体段可一键全选；保存时只提交新增与移除的差异，授权变更对所属账号立即生效。"
       width="w-full max-w-[720px]"
       footer={
         <>
@@ -171,6 +171,12 @@ function RoleGrantsDrawer({
               <MenuIcon size={13} /> 菜单 ({selectedMenus.size})
             </button>
           </div>
+
+          {tab === "perm" && (
+            <p className="-mt-2 text-[11px] text-muted">
+              默认只展开已授权的主体；勾选主体右侧的复选框即可整段授予（例如「用户」的全部动作）。
+            </p>
+          )}
 
           {tab === "perm" ? (
             <PermCheckList
@@ -266,7 +272,7 @@ export function RolesPage() {
     <>
       <CrudPage<AdmRoleVo>
         title="角色管理"
-        subtitle="角色是权限与菜单的集合，按分组树组织。左侧按分组切换（含子分组），授权后由角色 × 用户关系生效。"
+        subtitle="角色是权限与菜单的集合，按分组树组织。左侧按分组切换（含子分组）；授权抽屉按「主体 → 类型」列出权限点，配合可见范围决定「能做什么 / 能看哪些」。"
         prefix="/adm/role"
         columns={columns}
         fields={fields}

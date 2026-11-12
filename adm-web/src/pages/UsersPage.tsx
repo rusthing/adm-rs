@@ -7,8 +7,8 @@ import { Badge, Button, Checkbox, Spinner } from "@/components/ui/primitives";
 import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
 import type { AdmRoleVo, AdmUserVo, FormValues } from "@/lib/types";
-import { useRoleGroupOptions, useRoleOptions } from "@/lib/queries";
-import { shortId } from "@/lib/utils";
+import { usePersonOptions, useRoleGroupOptions, useRoleOptions } from "@/lib/queries";
+import { formatMs, shortId } from "@/lib/utils";
 import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
 
 function optionalText(value: FormValues[string]): string | undefined {
@@ -209,6 +209,16 @@ export function UsersPage() {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [roleUser, setRoleUser] = useState<AdmUserVo | null>(null);
+  const personsQuery = usePersonOptions();
+
+  /** personId → 人员档案；列表返回的姓名是服务端遮蔽值（张*），所以靠工号区分人。 */
+  const personById = useMemo(() => {
+    const map = new Map<string, { name: string; code?: string }>();
+    for (const person of personsQuery.data ?? []) {
+      map.set(person.id, { name: person.name, code: person.code });
+    }
+    return map;
+  }, [personsQuery.data]);
 
   const columns: CrudColumn<AdmUserVo>[] = [
     {
@@ -221,14 +231,77 @@ export function UsersPage() {
         </div>
       ),
     },
-    { key: "mobile", label: "手机号" },
-    { key: "email", label: "邮箱" },
+    {
+      key: "personId",
+      label: "人员档案",
+      className: "whitespace-nowrap",
+      render: (row) => {
+        if (!row.personId) {
+          return (
+            <span
+              className="text-muted"
+              title="纯账号：外部认证、系统账号或机器人，不挂在人员档案上"
+            >
+              纯账号
+            </span>
+          );
+        }
+        const person = personById.get(row.personId);
+        if (!person) return <span className="text-muted">{shortId(row.personId)}</span>;
+        return (
+          <span className="inline-flex flex-col">
+            <span className="text-ink-soft">{person.code || person.name}</span>
+            {person.code && <span className="text-[10.5px] text-muted">{person.name}</span>}
+          </span>
+        );
+      },
+    },
+    {
+      key: "mobile",
+      label: "联系方式",
+      className: "whitespace-nowrap",
+      render: (row) => (
+        <span className="inline-flex flex-col">
+          <span className="text-ink-soft">{row.mobile || "--"}</span>
+          <span className="text-[10.5px] text-muted">{row.email || "--"}</span>
+        </span>
+      ),
+    },
+    {
+      key: "realName",
+      label: "实名",
+      className: "whitespace-nowrap",
+      render: (row) => {
+        if (!row.realName && !row.idCard) return <span className="text-muted">未实名</span>;
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex flex-col">
+              <span className="text-ink-soft">{row.realName || "--"}</span>
+              <code className="font-mono text-[10.5px] text-muted">{row.idCard || "--"}</code>
+            </span>
+            <Badge tone={row.realNameVerified ? "success" : "warn"}>
+              {row.realNameVerified ? "已核验" : "待核验"}
+            </Badge>
+          </span>
+        );
+      },
+    },
     {
       key: "status",
       label: "状态",
+      className: "whitespace-nowrap",
       render: (row) => {
         const status = STATUS_TEXT[row.status] ?? { label: `状态 ${row.status}`, tone: "neutral" as const };
-        return <Badge tone={status.tone}>{status.label}</Badge>;
+        return (
+          <span className="inline-flex flex-col gap-0.5">
+            <Badge tone={status.tone}>{status.label}</Badge>
+            {row.status === 3 && row.lockUntilMs ? (
+              <span className="text-[10.5px] text-muted">锁至 {formatMs(row.lockUntilMs).slice(5, 16)}</span>
+            ) : row.failCount > 0 ? (
+              <span className="text-[10.5px] text-warn">失败 {row.failCount} 次</span>
+            ) : null}
+          </span>
+        );
       },
     },
     { key: "lastLoginMs", label: "最近登录", type: "datetime" },
@@ -248,6 +321,18 @@ export function UsersPage() {
           : "登录名需 4-32 位，字母开头，只含字母、数字与下划线",
     },
     { name: "nickName", label: "昵称", placeholder: "展示用，可重复" },
+    {
+      name: "personId",
+      label: "关联人员",
+      type: "select",
+      options: (personsQuery.data ?? []).map((person) => ({
+        value: person.id,
+        label: person.code ? `${person.code} · ${person.name}` : person.name,
+      })),
+      hint: personsQuery.data?.length
+        ? "选人员档案表示「这个人用这个账号登录」；不选是纯账号（外部认证、系统账号、机器人）。列表里的姓名已遮蔽，按工号区分人。"
+        : "还没有人员档案。先在「人员管理」录入人员，再回来关联；不关联即纯账号。",
+    },
     {
       name: "mobile",
       label: "手机号",
@@ -301,6 +386,7 @@ export function UsersPage() {
   ];
 
   const toForm = (row: AdmUserVo): FormValues => ({
+    personId: row.personId ?? "",
     name: row.name,
     nickName: row.nickName ?? "",
     mobile: row.mobile ?? "",
@@ -319,6 +405,11 @@ export function UsersPage() {
       email: optionalText(values.email),
       remark: optionalText(values.remark),
     };
+
+    // personId 只在真的选了人员时提交：更新接口把「没传」与「传 null」都当成
+    // 未修改（ActiveValue::NotSet），传空串反而会撞 u64 反序列化，所以直接省略。
+    const personId = optionalText(values.personId);
+    if (personId) payload.personId = personId;
 
     // 三套口令各自独立：谁填了就单独算一次 SM3 提交，绝不互相复用。
     // 组合码由服务端在写库钩子里随机生成并覆盖，客户端传的 *Salt 一律被忽略，
@@ -374,13 +465,13 @@ export function UsersPage() {
     <>
       <CrudPage<AdmUserVo>
         title="用户管理"
-        subtitle="账号、状态与登录口令。列表接口返回脱敏的手机号/邮箱/身份证/实名；编辑时会先取单条详情回显原值。"
+        subtitle="账号是能登录的凭据；人员档案是自然人（在「人员管理」维护），一个自然人可挂多个账号，不关联人员的即纯账号。列表里的手机 / 邮箱 / 身份证 / 姓名都是服务端遮蔽值，编辑时会先取单条详情回显原值。"
         prefix="/adm/user"
         columns={columns}
         fields={fields}
         itemLabel={(row) => row.name}
         defaultOrderBy="update_ms:desc"
-        searchPlaceholder="搜索登录名 / 昵称 / 手机号 / 邮箱 / 备注"
+        searchPlaceholder="搜索登录名 / 昵称 / 手机号 / 邮箱 / 身份证 / 实名 / 备注"
         filters={[
           {
             type: "select",
@@ -395,7 +486,7 @@ export function UsersPage() {
           { type: "boolean", name: "enabled", label: "启用" },
           { type: "date-range", name: "create_ms", label: "创建时间" },
         ]}
-        emptyDescription="后端种子只有一个 admin 账号；可以在这里新增更多账号。"
+        emptyDescription="种子带 admin（系统管理员）、super（平台管理员）、owl（审计员）、system（纯账号）四个账号；都在这里维护。"
         toForm={toForm}
         toPayload={toPayload}
         rowActions={(row) => (

@@ -8730,7 +8730,8 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:ModificationDate>1793550000</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>权限分组
-全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一</a:Comment>
+层级不固定，树形由 tree_code 表达，tree_code 全局唯一；
+平台种子按「平台管理 → 菜单一级 → 主体 → 操作类型」四层组织</a:Comment>
 <a:GlobalObjectID/>
 <c:Identifiers>
 <o:Identifier Id="o318">
@@ -8910,7 +8911,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Code>perm</a:Code>
 <a:CreationDate>1793514236</a:CreationDate>
 <a:Creator>张柏子</a:Creator>
-<a:ModificationDate>1793550000</a:ModificationDate>
+<a:ModificationDate>1794442031</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>权限
 最小授权单元，用 URN 表达「HTTP 方法 + 资源路径」；与角色的关联见 role_perm，与菜单的关联见 menu_perm</a:Comment>
@@ -8989,6 +8990,23 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
 <a:AutoMigrated>1</a:AutoMigrated>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o580">
+<a:ObjectID>EFAB95C1-D421-475B-959B-2F9AA3327BE1</a:ObjectID>
+<a:Name>主体编码</a:Name>
+<a:Code>subject_code</a:Code>
+<a:CreationDate>1794442031</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1794442031</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>主体编码
+权限作用的业务对象（用户 / 人员 / 组织 / 角色 / 菜单 / 权限 / 领域 / 应用 / 日志 ...），
+与 perm_group 第三层主体分组一一对应；权限名称只写动作，不再带「用户-」这类前缀
+@len 1..=50
+@check is_code</a:Comment>
+<a:DataType>VA50</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
 </o:EntityAttribute>
 <o:EntityAttribute Id="o336">
 <a:ObjectID>FCCFCC36-ACF5-48E6-BDCB-EA624B6165CD</a:ObjectID>

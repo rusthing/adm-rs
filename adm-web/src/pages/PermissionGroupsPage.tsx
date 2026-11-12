@@ -1,9 +1,18 @@
+import { useMemo } from "react";
 import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { Button } from "@/components/ui/primitives";
+import { Badge, Button } from "@/components/ui/primitives";
 import type { AdmPermGroupVo, FormValues } from "@/lib/types";
-import { usePermGroupOptions } from "@/lib/queries";
+import { usePermGroupOptions, usePermOptions } from "@/lib/queries";
+
+/** 四层语义固定：平台 → 菜单一级 → 主体 → 操作类型；更深的自建层级不写死名称。 */
+const LEVEL_META = [
+  { label: "平台", tone: "violet" },
+  { label: "菜单一级", tone: "info" },
+  { label: "主体", tone: "success" },
+  { label: "类型", tone: "neutral" },
+] as const;
 
 function optionalText(value: FormValues[string]): string | undefined {
   const text = typeof value === "string" ? value.trim() : "";
@@ -16,6 +25,29 @@ function optionalText(value: FormValues[string]): string | undefined {
  */
 export function PermissionGroupsPage() {
   const groupsQuery = usePermGroupOptions();
+  const permsQuery = usePermOptions();
+
+  const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
+
+  /** 每个分组（含子孙）挂了多少权限点：授权前判断「这个主体有没有权限」全靠它。 */
+  const permCount = useMemo(() => {
+    const byId = new Map(groups.map((group) => [group.id, group]));
+    const direct = new Map<string, number>();
+    for (const perm of permsQuery.data ?? []) {
+      const group = byId.get(perm.groupId);
+      if (!group) continue;
+      direct.set(group.treeCode, (direct.get(group.treeCode) ?? 0) + 1);
+    }
+    const rolled = new Map<string, number>();
+    for (const group of groups) {
+      let total = 0;
+      for (const [code, count] of direct) {
+        if (code.startsWith(group.treeCode)) total += count;
+      }
+      rolled.set(group.treeCode, total);
+    }
+    return rolled;
+  }, [groups, permsQuery.data]);
 
   /** 全局一棵树，父分组列出全部节点；treeCode 由服务端按 parentCode 生成。 */
   const parentOptions = () =>
@@ -37,6 +69,30 @@ export function PermissionGroupsPage() {
             <span className="font-medium text-ink">{row.name}</span>
             <code className="font-mono text-[10.5px] text-muted">{row.treeCode}</code>
           </span>
+        );
+      },
+    },
+    {
+      key: "level",
+      label: "层级",
+      className: "whitespace-nowrap",
+      render: (row) => {
+        const depth = Math.max(0, row.treeCode.length / 3 - 1);
+        const meta = LEVEL_META[depth];
+        return meta ? <Badge tone={meta.tone}>{meta.label}</Badge> : <Badge>第 {depth + 1} 层</Badge>;
+      },
+    },
+    {
+      key: "permCount",
+      label: "权限点",
+      className: "whitespace-nowrap",
+      align: "right",
+      render: (row) => {
+        const count = permCount.get(row.treeCode) ?? 0;
+        return count > 0 ? (
+          <span className="tabular-nums text-ink-soft">{count}</span>
+        ) : (
+          <span className="tabular-nums text-muted/60">0</span>
         );
       },
     },
@@ -75,7 +131,7 @@ export function PermissionGroupsPage() {
   return (
     <CrudPage<AdmPermGroupVo>
       title="权限分组"
-      subtitle="权限分组是全局的多层树，与领域无关。行内「添加子级」会预填父分组；角色授权时权限按分组展示，便于批量勾选。"
+      subtitle="权限分组是全局一棵树，固定四层语义：平台 → 菜单一级 → 主体 → 操作类型，权限点挂在最末层。行内「添加子级」会预填父分组；授权时按「主体 → 类型」展示，主体段可一键全选。"
       prefix="/adm/perm-group"
       columns={columns}
       fields={fields}

@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
 import { authApi, userApi } from "@/lib/api";
-import { formatMs } from "@/lib/utils";
+import { cn, formatMs } from "@/lib/utils";
 import { sm3 } from "@/lib/sm3";
 import { Badge, Button, Field, Input, PageHeader, Panel, Spinner, Textarea } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/overlay";
-import { KeyRound, LoaderCircle, RefreshCw, ShieldCheck, UserCircle } from "lucide-react";
+import { ChevronDown, KeyRound, LoaderCircle, RefreshCw, ShieldCheck, UserCircle } from "lucide-react";
 
 interface ProfileForm {
   nickName: string;
@@ -20,6 +20,20 @@ const EMPTY_FORM: ProfileForm = { nickName: "", mobile: "", email: "", remark: "
 function optionalText(value: string): string | undefined {
   const text = value.trim();
   return text ? text : undefined;
+}
+
+/**
+ * 把权限 URN（`GET:/adm/perm-group/delete-preview/{id}`）收敛成「操作对象」：
+ * 取 `/adm/` 之后的第一段。`auth` 归到一处，拆不出来的落到 `adm`。
+ *
+ * 授权多的账号有几百条 URN，平铺成一整块等于什么都看不清；按对象折叠后
+ * 「我到底能碰哪些东西」一眼可见，要看细节再展开。
+ */
+function resourceOfUrn(urn: string): string {
+  const path = urn.slice(urn.indexOf(":") + 1);
+  const segments = path.split("/").filter(Boolean);
+  const admIndex = segments.indexOf("adm");
+  return (admIndex >= 0 ? segments[admIndex + 1] : segments[0]) ?? "adm";
 }
 
 export function ProfilePage() {
@@ -52,6 +66,29 @@ export function ProfilePage() {
   }, [userQuery.data]);
 
   const roleNames = authz?.roles ?? [];
+
+  /** 权限 URN 按操作对象分组；默认全收起，只留数量。 */
+  const permGroups = useMemo(() => {
+    const byResource = new Map<string, string[]>();
+    for (const urn of authz?.permUrns ?? []) {
+      const resource = resourceOfUrn(urn);
+      const list = byResource.get(resource) ?? [];
+      list.push(urn);
+      byResource.set(resource, list);
+    }
+    return [...byResource.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  }, [authz?.permUrns]);
+
+  const [openResources, setOpenResources] = useState<Set<string>>(new Set());
+
+  const toggleResource = (resource: string) => {
+    setOpenResources((current) => {
+      const next = new Set(current);
+      if (next.has(resource)) next.delete(resource);
+      else next.add(resource);
+      return next;
+    });
+  };
 
   const saveProfile = async () => {
     if (!session) return;
@@ -182,17 +219,63 @@ export function ProfilePage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-muted">权限 URN（{authz?.permUrns.length ?? 0}）</div>
-                  {authz?.permUrns.length ? (
-                    <div className="mt-1.5 flex max-h-32 flex-wrap gap-1 overflow-y-auto">
-                      {authz.permUrns.map((urn) => (
-                        <code key={urn} className="rounded bg-sunken px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft">
-                          {urn}
-                        </code>
-                      ))}
-                    </div>
-                  ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted">
+                      权限（{authz?.permUrns.length ?? 0} 项 / {permGroups.length} 类对象）
+                    </span>
+                    {permGroups.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenResources((current) =>
+                            current.size === permGroups.length
+                              ? new Set()
+                              : new Set(permGroups.map(([resource]) => resource)),
+                          )
+                        }
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent-soft"
+                      >
+                        {openResources.size === permGroups.length ? "全部收起" : "全部展开"}
+                      </button>
+                    )}
+                  </div>
+                  {permGroups.length === 0 ? (
                     <p className="mt-1.5 text-[11.5px] text-muted">没有权限行。</p>
+                  ) : (
+                    <div className="mt-1.5 flex max-h-56 flex-col gap-1 overflow-y-auto">
+                      {permGroups.map(([resource, urns]) => {
+                        const open = openResources.has(resource);
+                        return (
+                          <div key={resource} className="rounded-lg border border-line">
+                            <button
+                              type="button"
+                              onClick={() => toggleResource(resource)}
+                              className="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-sunken"
+                            >
+                              <span className="text-[11.5px] font-medium text-ink-soft">{resource}</span>
+                              <span className="tnum text-[10.5px] text-muted">{urns.length}</span>
+                              <span className="flex-1" />
+                              <ChevronDown
+                                size={12}
+                                className={cn("shrink-0 text-muted transition-transform", open && "rotate-180")}
+                              />
+                            </button>
+                            {open && (
+                              <div className="flex flex-wrap gap-1 border-t border-line px-2 py-1.5">
+                                {urns.map((urn) => (
+                                  <code
+                                    key={urn}
+                                    className="rounded bg-sunken px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft"
+                                  >
+                                    {urn}
+                                  </code>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
                 {authzError && <p className="text-[11.5px] text-danger">权限加载失败：{authzError}</p>}

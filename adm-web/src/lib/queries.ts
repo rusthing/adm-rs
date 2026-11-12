@@ -16,8 +16,12 @@ import {
   appApi,
   menuApi,
   opTypeApi,
+  orgApi,
+  orgTypeApi,
   permApi,
   permGroupApi,
+  personApi,
+  personCodeTypeApi,
   realmApi,
   roleApi,
   roleGroupApi,
@@ -37,6 +41,11 @@ export const optionKeys = {
   roleGroup: ["/adm/role-group", "options"] as const,
   permGroup: ["/adm/perm-group", "options"] as const,
   opType: ["opType", "options"] as const,
+  org: ["/adm/org", "options"] as const,
+  orgType: ["/adm/org-type", "options"] as const,
+  user: ["/adm/user", "options"] as const,
+  person: ["/adm/person", "options"] as const,
+  personCodeType: ["/adm/person-code-type", "options"] as const,
 };
 
 /** 应用列表：侧栏分组、菜单归属、菜单授权清单共用。 */
@@ -127,11 +136,76 @@ export function useOpTypeOptions(enabled = true) {
   });
 }
 
+/** 组织树（按 treeCode 升序）：组织的父节点选择、成员归属、用户页的组织筛选共用。 */
+export function useOrgOptions(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.org,
+    queryFn: () => orgApi.list({ _orderBy: "tree_code:asc" }),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/** 组织类型字典：组织表单的分类下拉、组织类型页数量统计。 */
+export function useOrgTypeOptions(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.orgType,
+    queryFn: () => orgTypeApi.list({ _orderBy: "sort_order:asc" }),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/**
+ * 人员列表（按拼音首字母升序）：用户页的「人员档案」列与关联人员下拉共用。
+ *
+ * 注意：列表接口返回的是 `AdmPersonListVo`，姓名/手机/邮箱/身份证都是服务端
+ * 等长遮蔽后的值（`张*`、`138****8000`），所以下拉标签要靠**工号**区分人，
+ * 光看姓名分不清两个「张*」。要用原值只能走单条详情（编辑表单回显那条路）。
+ */
+export function usePersonOptions(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.person,
+    queryFn: () => personApi.list({ _orderBy: "name_pinyin_abbr:asc" }),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/**
+ * 用户列表（按登录名升序）：审计日志把 `user_id` 翻成登录名用。
+ *
+ * 日志表只存 userId，光看短 ID 无法回答「是谁删的」；这个 hook 只取 name 建映射，
+ * 不做逐行请求。用户改名后靠 `["/adm/user"]` 前缀失效自动刷新。
+ */
+export function useUserOptions(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.user,
+    queryFn: () => userApi.list({ _orderBy: "name:asc" }),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/** 人员编码类型字典：人员表单的工号 / 学号类型下拉。 */
+export function usePersonCodeTypeOptions(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.personCodeType,
+    queryFn: () => personCodeTypeApi.list({ _orderBy: "sort_order:asc" }),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
 /**
  * 日志页「用户」筛选的异步选项。
  * 日志表只存 userId，展示时统一走 id 缩写，不额外拼接用户详情。
- */
-export async function loadUserOptions(): Promise<{ value: string; label: string }[]> {
+ */export async function loadUserOptions(): Promise<{ value: string; label: string }[]> {
   const users = await userApi.list({ _orderBy: "name:asc" });
   return users.map((user) => ({
     value: user.id,

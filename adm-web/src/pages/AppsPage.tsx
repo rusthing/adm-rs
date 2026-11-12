@@ -39,7 +39,7 @@ export function AppsPage() {
   return (
     <CrudPage<AdmAppVo>
       title="应用管理"
-      subtitle="菜单树归属于应用：应用是全局配置，后台、前台、移动端各一棵菜单树，与领域无关。"
+      subtitle="菜单树归属于应用：应用是全局配置，平台、前台、移动端各一棵菜单树，与领域无关。菜单一级的顺序决定侧栏顺序。"
       prefix="/adm/app"
       columns={columns}
       fields={fields}
@@ -48,7 +48,7 @@ export function AppsPage() {
       sortable={{ kind: "number", orderValue: (row) => row.sortOrder }}
       searchPlaceholder="搜索应用名 / 编码"
       filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
-      emptyDescription="后端种子没有应用行。先建应用，再到「菜单管理」建菜单树。"
+      emptyDescription="种子只带一个「平台管理」应用（adm）。新建应用后，再到「菜单管理」给它建菜单树。"
       toForm={toForm}
       toPayload={toPayload}
     />

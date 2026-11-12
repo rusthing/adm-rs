@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { CrudColumn } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
+import { UserRef, useUserName } from "@/components/ui/user-ref";
 import { opTypeApi } from "@/lib/api";
 import { loadUserOptions, useOpTypeOptions } from "@/lib/queries";
 import type { AdmOpLogVo } from "@/lib/types";
@@ -13,6 +14,7 @@ async function loadOpTypeOptions() {
 
 export function OpLogsPage() {
   const opTypesQuery = useOpTypeOptions();
+  const userName = useUserName();
 
   const opTypeName = useMemo(() => {
     const map = new Map<string, string>();
@@ -22,7 +24,12 @@ export function OpLogsPage() {
 
   const columns: CrudColumn<AdmOpLogVo>[] = [
     { key: "createMs", label: "操作时间", type: "datetime", className: "whitespace-nowrap" },
-    { key: "userId", label: "用户", type: "id", className: "whitespace-nowrap" },
+    {
+      key: "userId",
+      label: "用户",
+      className: "whitespace-nowrap",
+      render: (row) => <UserRef userId={row.userId} name={userName(row.userId)} />,
+    },
     {
       key: "opTypeCode",
       label: "类型",

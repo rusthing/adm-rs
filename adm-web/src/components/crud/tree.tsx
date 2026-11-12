@@ -4,6 +4,7 @@ import { shortId } from "@/lib/utils";
 import { Badge, Checkbox } from "@/components/ui/primitives";
 import { ChevronDown, ChevronRight, FolderTree } from "lucide-react";
 import { useAppOptions, usePermGroupOptions, useRoleGroupOptions } from "@/lib/queries";
+import { subjectTreeCode } from "@/lib/perm-subject";
 import { buildTree, flattenTreeIds } from "./tree-utils";
 import type { TreeItem, TreeNode } from "./tree-utils";
 
@@ -250,6 +251,28 @@ function GroupHeader({
 
 /* ------------------------------ perm check list ------------------------------ */
 
+/**
+ * 权限分组是四层树：平台管理 → 菜单一级 → 主体 → 操作类型，权限挂在最末层。
+ *
+ * 授权抽屉按「主体 → 类型」两段展示：
+ * - 主体段能一次勾满某个业务对象的全部动作（授权时最常用）；
+ * - 类型段用来精细化，例如只给「查询」不给「删除」。
+ * 默认只展开「已选中」的主体，避免 500+ 条权限一次性铺满整屏。
+ */
+interface PermTypeBucket {
+  key: string;
+  label: string;
+  treeCode: string;
+  rows: AdmPermVo[];
+}
+
+interface PermSubjectBucket {
+  key: string;
+  label: string;
+  treeCode: string;
+  types: PermTypeBucket[];
+}
+
 export function PermCheckList({
   perms,
   selected,
@@ -262,44 +285,162 @@ export function PermCheckList({
   /** 批量勾选本组；不传则不显示「全选本组 / 清空本组」。 */
   onSetMany?: (ids: string[], checked: boolean) => void;
 }) {
-  const { grouped } = useGroupedOptions({ groupApi: "permGroup", items: perms });
+  const groupsQuery = usePermGroupOptions();
+  // 折叠状态记两份：显式收起（即使已有授权）与显式展开（即使还没有授权）。
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  const sections = useMemo<PermSubjectBucket[]>(() => {
+    const groups = groupsQuery.data ?? [];
+    const byId = new Map(groups.map((group) => [group.id, group]));
+    const byTree = new Map(groups.map((group) => [group.treeCode, group]));
+    const subjectBuckets = new Map<string, PermSubjectBucket>();
+    const typeBuckets = new Map<string, PermTypeBucket>();
+
+    for (const perm of perms) {
+      const group = byId.get(perm.groupId);
+      // 分组被删或未加载：单列「未分组」保底，不能静默丢权限行。
+      const subjectCode = group ? subjectTreeCode(group.treeCode) : "__ungrouped__";
+      const subject = group ? (byTree.get(subjectCode) ?? group) : undefined;
+      const subjectKey = subject?.id ?? "__ungrouped__";
+
+      const section =
+        subjectBuckets.get(subjectKey) ??
+        ({
+          key: subjectKey,
+          label: subject?.name ?? "未分组（分组已删除）",
+          treeCode: subject?.treeCode ?? "\uffff",
+          types: [],
+        } satisfies PermSubjectBucket);
+      subjectBuckets.set(subjectKey, section);
+
+      const typeKey = group?.id ?? "__ungrouped__";
+      let bucket = typeBuckets.get(typeKey);
+      if (!bucket) {
+        bucket = {
+          key: typeKey,
+          label: group?.name ?? "未归类",
+          treeCode: group?.treeCode ?? "\uffff",
+          rows: [],
+        };
+        typeBuckets.set(typeKey, bucket);
+        section.types.push(bucket);
+      }
+      bucket.rows.push(perm);
+    }
+
+    for (const bucket of typeBuckets.values()) {
+      bucket.rows.sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    return [...subjectBuckets.values()].sort(
+      (a, b) => a.treeCode.localeCompare(b.treeCode) || a.key.localeCompare(b.key),
+    );
+  }, [perms, groupsQuery.data]);
+
+  /** 主体段是否展开：显式展开或已有授权，且没被显式收起。 */
+  const isOpen = (key: string, checkedCount: number) =>
+    !collapsed.has(key) && (checkedCount > 0 || expanded.has(key));
+
+  const setOpen = (key: string, next: boolean) => {
+    setCollapsed((prev) => {
+      const draft = new Set(prev);
+      if (next) draft.delete(key);
+      else draft.add(key);
+      return draft;
+    });
+    setExpanded((prev) => {
+      const draft = new Set(prev);
+      if (next) draft.add(key);
+      else draft.delete(key);
+      return draft;
+    });
+  };
+
   if (perms.length === 0)
     return (
       <p className="rounded-lg border border-line bg-sunken px-3 py-4 text-center text-[12px] text-muted">
-        还没有权限数据。请先在「权限」里创建。
+        还没有权限数据。请先在「权限管理」里创建。
       </p>
     );
+
   return (
-    <div className="flex flex-col gap-3">
-      {grouped.map(({ key, label, treeCode, rows }) => {
-        const checked = rows.reduce((count, perm) => count + (selected.has(perm.id) ? 1 : 0), 0);
-        const ids = rows.map((perm) => perm.id);
+    <div className="flex max-h-[440px] flex-col gap-1.5 overflow-y-auto rounded-lg border border-line p-1.5">
+      {sections.map((section) => {
+        const ids = section.types.flatMap((type) => type.rows.map((perm) => perm.id));
+        const checked = ids.reduce((count, id) => count + (selected.has(id) ? 1 : 0), 0);
+        const open = isOpen(section.key, checked);
         return (
-          <div key={key}>
-            <GroupHeader
-              label={label}
-              treeCode={treeCode === "\uffff" ? undefined : treeCode}
-              total={rows.length}
-              checked={checked}
-              onToggleAll={onSetMany ? (next) => onSetMany(ids, next) : undefined}
-            />
-            <div className="flex flex-col gap-0.5">
-              {rows.map((perm) => (
-                <label key={perm.id} className="flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sunken">
-                  <Checkbox
-                    checked={selected.has(perm.id)}
-                    onChange={() => onToggle(perm.id)}
-                    label={
-                      <span className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-ink-soft">
-                        {perm.name}
-                        <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
-                        {!perm.enabled && <Badge tone="warn">停用</Badge>}
-                      </span>
-                    }
-                  />
-                </label>
-              ))}
+          <div key={section.key}>
+            <div className="flex items-center gap-2 rounded-md bg-sunken/70 px-2 py-1.5">
+              <button
+                type="button"
+                onClick={() => setOpen(section.key, !open)}
+                aria-label={open ? "收起主体" : "展开主体"}
+                aria-expanded={open}
+                className="shrink-0 rounded text-muted hover:text-ink"
+              >
+                {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+              </button>
+              {onSetMany ? (
+                <Checkbox
+                  checked={ids.length > 0 && checked === ids.length}
+                  indeterminate={checked > 0 && checked < ids.length}
+                  onChange={(next) => onSetMany(ids, next)}
+                  label={undefined}
+                />
+              ) : null}
+              <span className="truncate text-[12px] font-medium text-ink">{section.label}</span>
+              {section.treeCode !== "\uffff" && (
+                <code className="shrink-0 font-mono text-[10px] text-muted/70">{section.treeCode}</code>
+              )}
+              <span className="ml-auto shrink-0 text-[10.5px] text-muted/70">
+                {checked}/{ids.length}
+              </span>
             </div>
+            {open && (
+              <div className="mt-1 flex flex-col gap-2 pl-4">
+                {section.types.map((type) => {
+                  const typeIds = type.rows.map((perm) => perm.id);
+                  const typeChecked = typeIds.reduce(
+                    (count, id) => count + (selected.has(id) ? 1 : 0),
+                    0,
+                  );
+                  return (
+                    <div key={type.key}>
+                      <GroupHeader
+                        label={type.label}
+                        treeCode={type.treeCode === "\uffff" ? undefined : type.treeCode}
+                        total={typeIds.length}
+                        checked={typeChecked}
+                        onToggleAll={
+                          onSetMany ? (next) => onSetMany(typeIds, next) : undefined
+                        }
+                      />
+                      <div className="flex flex-col gap-0.5">
+                        {type.rows.map((perm) => (
+                          <label
+                            key={perm.id}
+                            className="flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sunken"
+                          >
+                            <Checkbox
+                              checked={selected.has(perm.id)}
+                              onChange={() => onToggle(perm.id)}
+                              label={
+                                <span className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-ink-soft">
+                                  {perm.name}
+                                  <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
+                                  {!perm.enabled && <Badge tone="warn">停用</Badge>}
+                                </span>
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}

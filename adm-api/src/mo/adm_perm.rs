@@ -11,6 +11,7 @@ pub struct Model {
     pub id: i64,
     #[sea_orm(unique_key = "ak_group_id_and_name_adm_perm")]
     pub group_id: i64,
+    pub subject_code: String,
     pub op_type_code: String,
     #[sea_orm(unique_key = "ak_group_id_and_name_adm_perm")]
     pub name: String,

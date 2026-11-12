@@ -143,10 +143,55 @@ export interface AdmMenuVo extends AuditFields {
 export interface AdmPermVo extends AuditFields {
   id: string;
   groupId: string;
+  /** 权限作用的业务对象（user / org / person ...），取值见 `lib/perm-subject.ts` */
+  subjectCode: string;
   opTypeCode: string;
   name: string;
   urn: string;
   sortOrder: number;
+  remark?: string;
+  enabled: boolean;
+}
+
+export interface AdmOrgTypeVo extends AuditFields {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number;
+  remark?: string;
+  enabled: boolean;
+}
+
+export interface AdmOrgVo extends AuditFields {
+  id: string;
+  code?: string;
+  treeCode: string;
+  name: string;
+  /** 从根到当前的名称拼接（`集团.分厂.车间`），唯一，用于展示与模糊搜索 */
+  fullName?: string;
+  orgTypeId?: string;
+  remark?: string;
+  enabled: boolean;
+}
+
+export interface AdmPersonCodeTypeVo extends AuditFields {
+  id: string;
+  name: string;
+  sortOrder: number;
+  remark?: string;
+  enabled: boolean;
+}
+
+export interface AdmPersonVo extends AuditFields {
+  id: string;
+  codeTypeId?: string;
+  code?: string;
+  name: string;
+  namePinyinAbbr?: string;
+  namePinyinFull?: string;
+  mobile?: string;
+  email?: string;
+  idCard?: string;
   remark?: string;
   enabled: boolean;
 }

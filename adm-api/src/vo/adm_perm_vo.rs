@@ -11,6 +11,12 @@ pub struct AdmPermVo {
     /// 权限分组 ID
     /// 关联 perm_group；(group_id, name) 唯一，不同分组可以重名
     pub group_id: u64,
+    /// 主体编码
+    /// 权限作用的业务对象（用户 / 人员 / 组织 / 角色 / 菜单 / 权限 / 领域 / 应用 / 日志 ...），
+    /// 与 perm_group 第三层主体分组一一对应；权限名称只写动作，不再带「用户-」这类前缀
+    /// @len 1..=50
+    /// @check is_code
+    pub subject_code: String,
     /// 操作类型编码
     /// 必填；关联 op_type.code（存编码不是 ID），一个权限点必须能对应一种操作类型，
     /// 不允许为空，取值受 op_type 字典限制

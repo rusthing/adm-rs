@@ -6,8 +6,12 @@ import { LockLogsPage } from "@/pages/LockLogsPage";
 import { LoginLogsPage } from "@/pages/LoginLogsPage";
 import { MenusPage } from "@/pages/MenusPage";
 import { OpLogsPage } from "@/pages/OpLogsPage";
+import { OrgTypesPage } from "@/pages/OrgTypesPage";
+import { OrgsPage } from "@/pages/OrgsPage";
 import { PermissionGroupsPage } from "@/pages/PermissionGroupsPage";
 import { PermissionsPage } from "@/pages/PermissionsPage";
+import { PersonCodeTypesPage } from "@/pages/PersonCodeTypesPage";
+import { PersonsPage } from "@/pages/PersonsPage";
 import { RealmsPage } from "@/pages/RealmsPage";
 import { RoleGroupsPage } from "@/pages/RoleGroupsPage";
 import { RolesPage } from "@/pages/RolesPage";
@@ -24,6 +28,10 @@ export const PAGE_COMPONENTS: Record<string, ComponentType> = {
   dashboard: DashboardPage,
   "dashboard-config": DashboardConfigPage,
   users: UsersPage,
+  orgs: OrgsPage,
+  "org-types": OrgTypesPage,
+  persons: PersonsPage,
+  "person-code-types": PersonCodeTypesPage,
   roles: RolesPage,
   menus: MenusPage,
   permissions: PermissionsPage,
@@ -39,6 +47,10 @@ export const PAGE_COMPONENTS: Record<string, ComponentType> = {
 /** 页面级权限前缀；后端菜单已经按角色过滤过，这里再做一层界面兜底。 */
 export const PAGE_PERMS: Record<string, string> = {
   users: "GET:/adm/user",
+  orgs: "GET:/adm/org",
+  "org-types": "GET:/adm/org-type",
+  persons: "GET:/adm/person",
+  "person-code-types": "GET:/adm/person-code-type",
   "dashboard-config": "GET:/adm/dashboard/config",
   roles: "GET:/adm/role",
   menus: "GET:/adm/menu",

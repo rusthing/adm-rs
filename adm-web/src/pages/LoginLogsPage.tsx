@@ -1,5 +1,6 @@
 import type { CrudColumn } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
+import { UserRef, useUserName } from "@/components/ui/user-ref";
 import { loadUserOptions } from "@/lib/queries";
 import type { AdmLoginLogVo } from "@/lib/types";
 
@@ -14,20 +15,32 @@ function duration(row: AdmLoginLogVo): string {
   return `${minutes} 分 ${seconds % 60} 秒`;
 }
 
-const columns: CrudColumn<AdmLoginLogVo>[] = [
-  { key: "loginMs", label: "登录时间", type: "datetime" },
-  { key: "logoutMs", label: "登出时间", type: "datetime" },
-  { key: "duration", label: "会话时长", render: (row) => <span className="text-[11.5px]">{duration(row)}</span> },
-  { key: "userId", label: "用户 ID", type: "id" },
-  { key: "loginIp", label: "登录 IP", type: "code" },
-  { key: "id", label: "日志 ID", type: "id" },
-];
-
 export function LoginLogsPage() {
+  const userName = useUserName();
+
+  const columns: CrudColumn<AdmLoginLogVo>[] = [
+    { key: "loginMs", label: "登录时间", type: "datetime" },
+    {
+      key: "userId",
+      label: "用户",
+      className: "whitespace-nowrap",
+      render: (row) => <UserRef userId={row.userId} name={userName(row.userId)} />,
+    },
+    { key: "loginIp", label: "登录 IP", type: "code" },
+    {
+      key: "duration",
+      label: "会话时长",
+      className: "whitespace-nowrap",
+      render: (row) => <span className="text-[11.5px]">{duration(row)}</span>,
+    },
+    { key: "logoutMs", label: "登出时间", type: "datetime" },
+    { key: "id", label: "日志 ID", type: "id" },
+  ];
+
   return (
     <CrudPage<AdmLoginLogVo>
       title="登录日志"
-      subtitle="只读审计视图：登录成功时写一条，登出时回填 logoutMs。前端不提供新增/编辑/删除入口。"
+      subtitle="只读审计视图：登录成功时写一条，登出时回填 logoutMs；「进行中」只表示还没登出，不等于实时在线。前端不提供新增/编辑/删除入口。"
       prefix="/adm/login-log"
       columns={columns}
       fields={[]}

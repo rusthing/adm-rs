@@ -1,6 +1,7 @@
 //! # 权限分组 VO
 //!
-//! 全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一
+//! 层级不固定，树形由 tree_code 表达，tree_code 全局唯一；
+//! 平台种子按「平台管理 → 菜单一级 → 主体 → 操作类型」四层组织
 
 use robotech::macros::vo;
 

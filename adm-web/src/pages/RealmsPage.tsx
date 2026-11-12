@@ -45,7 +45,7 @@ export function RealmsPage() {
       sortable={{ kind: "number", orderValue: (row) => row.sortOrder }}
       searchPlaceholder="搜索领域名 / 编码"
       filters={[{ type: "boolean", name: "enabled", label: "启用" }]}
-      emptyDescription="后端种子没有领域行。建议先建一个默认领域，再划分用户与组织的数据域。"
+      emptyDescription="种子只带一个「平台」领域（platform）。用户与组织要按数据域隔离时，再在这里补建领域。"
       toForm={toForm}
       toPayload={toPayload}
     />

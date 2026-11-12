@@ -1117,6 +1117,7 @@ user_id
 create table adm_perm (
    id                   INT8                 not null,
    group_id             INT8                 not null,
+   subject_code         VARCHAR(50)          not null,
    op_type_code         VARCHAR(50)          not null,
    name                 VARCHAR(50)          not null,
    urn                  VARCHAR(100)         not null,
@@ -1143,6 +1144,13 @@ comment on column adm_perm.id is
 comment on column adm_perm.group_id is
 '权限分组 ID
 关联 perm_group；(group_id, name) 唯一，不同分组可以重名';
+
+comment on column adm_perm.subject_code is
+'主体编码
+权限作用的业务对象（用户 / 人员 / 组织 / 角色 / 菜单 / 权限 / 领域 / 应用 / 日志 ...），
+与 perm_group 第三层主体分组一一对应；权限名称只写动作，不再带「用户-」这类前缀
+@len 1..=50
+@check is_code';
 
 comment on column adm_perm.op_type_code is
 '操作类型编码
@@ -1234,7 +1242,8 @@ create table adm_perm_group (
 
 comment on table adm_perm_group is
 '权限分组
-全局两级结构（分组 → 权限），树形由 tree_code 表达，tree_code 全局唯一';
+层级不固定，树形由 tree_code 表达，tree_code 全局唯一；
+平台种子按「平台管理 → 菜单一级 → 主体 → 操作类型」四层组织';
 
 comment on column adm_perm_group.id is
 '主键
