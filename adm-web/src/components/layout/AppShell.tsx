@@ -455,7 +455,7 @@ export function AppShell() {
             <ShieldCheck size={16} />
           </div>
           <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-            <div className="text-[13.5px] font-semibold leading-tight text-ink">Adm Console</div>
+            <div className="text-[13.5px] font-semibold leading-tight text-ink">后台管理</div>
             <div className="text-[10.5px] leading-tight text-muted">账号 · 角色 · 权限</div>
           </div>
           <button
@@ -584,7 +584,7 @@ export function AppShell() {
                 <span className="font-medium text-ink">个人中心</span>
               </nav>
             ) : (
-              <div className="text-[12px] text-muted">Adm Console</div>
+              <div className="text-[12px] text-muted">后台管理</div>
             )}
           </div>
 
@@ -636,7 +636,7 @@ export function AppShell() {
         </main>
 
         <footer className="mx-auto flex w-full max-w-[1480px] flex-wrap items-center justify-between gap-2 px-4 pb-6 text-[11px] text-muted sm:px-6">
-          <span>Adm Console</span>
+          <span>后台管理</span>
           <span>账号 · 角色 · 菜单 · 权限</span>
         </footer>
       </div>
