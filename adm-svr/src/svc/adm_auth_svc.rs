@@ -37,8 +37,8 @@ use crate::dto::{
     AdmChangePasswordDto, AdmLoginDto, AdmVerifyAuditPasswordDto, AdmVerifyPasswordDto,
 };
 use crate::mo::{
-    adm_lock_log, adm_login_log, adm_menu, adm_op_log, adm_perm, adm_role, adm_role_menu,
-    adm_role_perm, adm_role_user, adm_user,
+    adm_lock_log, adm_login_log, adm_op_log, adm_perm, adm_role, adm_role_perm, adm_role_user,
+    adm_user,
 };
 use crate::utils::{
     AdmPasswordUtils, AdmTokenUtils, get_login_fail_limit, get_login_lock_ms,
@@ -263,31 +263,9 @@ impl AdmAuthSvc {
         };
         let active_role_ids: Vec<i64> = roles.iter().map(|role| role.id).collect();
 
-        // 菜单：role_menu 取菜单 ID，再过滤启用且可见的
-        let menu_ids: Vec<i64> = if active_role_ids.is_empty() {
-            Vec::new()
-        } else {
-            adm_role_menu::Entity::find()
-                .filter(adm_role_menu::Column::RoleId.is_in(active_role_ids.clone()))
-                .all(db.as_ref())
-                .await
-                .map_err(robotech::dao::DaoError::parse_db_err)?
-                .into_iter()
-                .map(|link| link.menu_id)
-                .collect()
-        };
-        let menus = if menu_ids.is_empty() {
-            Vec::new()
-        } else {
-            adm_menu::Entity::find()
-                .filter(adm_menu::Column::Id.is_in(menu_ids))
-                .filter(adm_menu::Column::Enabled.eq(true))
-                .filter(adm_menu::Column::Visible.eq(true))
-                .order_by_asc(adm_menu::Column::TreeCode)
-                .all(db.as_ref())
-                .await
-                .map_err(robotech::dao::DaoError::parse_db_err)?
-        };
+        // 菜单：role_menu 取菜单 ID，再按角色应用可见范围收窄。
+        // 与首页 `menu.shortcuts` 共用同一份逻辑，避免 /me 把范围外的应用菜单下发到侧栏。
+        let menus = super::AdmDashboardSvc::load_menus(&active_role_ids, db.as_ref()).await?;
 
         // 权限：role_perm 取权限 ID，再过滤启用的
         let perm_ids: Vec<i64> = if active_role_ids.is_empty() {

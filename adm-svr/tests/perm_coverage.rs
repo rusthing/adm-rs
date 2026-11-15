@@ -22,6 +22,7 @@ type Route = (String, String);
 struct Perm {
     id: i64,
     group_id: i64,
+    subject_code: String,
     op_type_code: String,
     name: String,
     urn: String,
@@ -330,73 +331,57 @@ fn perms() -> Vec<Perm> {
         .map(|v| Perm {
             id: v[0].parse().expect("权限 id"),
             group_id: v[1].parse().expect("分组 id"),
-            op_type_code: unquote(&v[2]),
-            name: unquote(&v[3]),
-            urn: unquote(&v[4]),
-            sort_order: v[5].parse().expect("排序值"),
+            subject_code: unquote(&v[2]),
+            op_type_code: unquote(&v[3]),
+            name: unquote(&v[4]),
+            urn: unquote(&v[5]),
+            sort_order: v[6].parse().expect("排序值"),
         })
         .collect()
 }
 
-/// 期望的分组树：`(id, tree_code, name)`
-fn expected_groups() -> Vec<(i64, &'static str, &'static str)> {
-    vec![
-        (1, "001", "后台管理"),
-        (1001, "001001", "用户管理"),
-        (1002, "001002", "授权管理"),
-        (1003, "001003", "种子维护"),
-        (1004, "001004", "日志审计"),
-        (2001, "001001001", "用户"),
-        (2002, "001001002", "人员"),
-        (2003, "001001003", "组织"),
-        (2004, "001002001", "角色管理"),
-        (2005, "001002002", "菜单与权限"),
-        (2006, "001002003", "授权关系"),
-        (2007, "001002004", "首页配置"),
-        (2008, "001003001", "领域与应用"),
-        (2009, "001003002", "组织与人员类型"),
-        (2010, "001003003", "字典与选项"),
-    ]
-}
-
-/// 资源根路径 -> 归属的分组 id；日志审计没有三级组，权限点直接挂二级
-fn expected_bucket(path: &str) -> i64 {
-    let mut buckets: Vec<(&str, i64)> = vec![
-        ("/adm/person-code-type", 2009),
-        ("/adm/menu-perm", 2005),
-        ("/adm/perm-group", 2005),
-        ("/adm/role-group", 2004),
-        ("/adm/role-menu", 2006),
-        ("/adm/role-perm", 2006),
-        ("/adm/role-user", 2006),
-        ("/adm/org-type", 2009),
-        ("/adm/org-user", 2003),
-        ("/adm/realm-user", 2008),
-        ("/adm/realm-org", 2008),
-        ("/adm/op-type", 2010),
-        ("/adm/widget-data", 2007),
-        ("/adm/dashboard", 2007),
-        ("/adm/login-log", 1004),
-        ("/adm/lock-log", 1004),
-        ("/adm/op-log", 1004),
-        ("/adm/person", 2002),
-        ("/adm/realm", 2008),
-        ("/adm/option", 2010),
-        ("/adm/role", 2004),
-        ("/adm/menu", 2005),
-        ("/adm/perm", 2005),
-        ("/adm/user", 2001),
-        ("/adm/org", 2003),
-        ("/adm/app", 2008),
+/// 资源根路径 -> `(subject_code, 主体分组名)`。
+///
+/// 权限点必须挂在「主体 → 操作类型」的四级分组下：三级是主体（与 `subject_code`
+/// 一一对应），四级是操作类型。这里独立给出「路径 → 主体」的映射，避免直接用
+/// 种子里的 `group_id` 反推导致测试变成同义反复。
+fn expected_subject(path: &str) -> (&'static str, &'static str) {
+    let mut subjects: Vec<(&str, &'static str, &'static str)> = vec![
+        ("/adm/person-code-type", "person_code_type", "人员编码类型"),
+        ("/adm/menu-perm", "menu_perm", "菜单绑定"),
+        ("/adm/perm-group", "perm_group", "权限分组"),
+        ("/adm/role-group", "role_group", "角色分组"),
+        ("/adm/role-menu", "role_menu", "角色菜单"),
+        ("/adm/role-perm", "role_perm", "角色权限"),
+        ("/adm/role-user", "role_user", "角色用户"),
+        ("/adm/org-type", "org_type", "组织类型"),
+        ("/adm/org-user", "org_user", "组织成员"),
+        ("/adm/realm-user", "realm_user", "领域成员"),
+        ("/adm/realm-org", "realm_org", "领域组织"),
+        ("/adm/op-type", "op_type", "操作类型"),
+        ("/adm/widget-data", "widget_data", "widget 数据"),
+        ("/adm/dashboard", "dashboard", "首页配置"),
+        ("/adm/login-log", "login_log", "登录日志"),
+        ("/adm/lock-log", "lock_log", "锁定日志"),
+        ("/adm/op-log", "op_log", "操作日志"),
+        ("/adm/person", "person", "人员"),
+        ("/adm/realm", "realm", "领域"),
+        ("/adm/option", "option", "选项"),
+        ("/adm/role", "role", "角色"),
+        ("/adm/menu", "menu", "菜单"),
+        ("/adm/perm", "perm", "权限"),
+        ("/adm/user", "user", "用户"),
+        ("/adm/org", "org", "组织"),
+        ("/adm/app", "app", "应用"),
     ];
     // 长前缀优先，避免 /adm/org-user 被 /adm/org 抢走
-    buckets.sort_by_key(|(prefix, _)| std::cmp::Reverse(prefix.len()));
-    for (prefix, group_id) in buckets {
+    subjects.sort_by_key(|(prefix, _, _)| std::cmp::Reverse(prefix.len()));
+    for (prefix, subject, name) in subjects {
         if path == prefix || path.starts_with(&format!("{prefix}/")) {
-            return group_id;
+            return (subject, name);
         }
     }
-    panic!("接口 {path} 没有归属分组，请同步种子与本映射表");
+    panic!("接口 {path} 没有归属主体，请同步种子与本映射表");
 }
 
 /// # 接口与权限点严格双向相等
@@ -455,21 +440,18 @@ fn every_route_has_exact_permission_point() {
 }
 
 /// # 权限分组树形状
+///
+/// 四层结构：根（平台管理）→ 菜单一级 → 主体 → 操作类型。
+/// 只校验结构与命名约定，不固化每个操作类型分组的 id，避免新增接口时重复维护快照。
 #[test]
 fn permission_group_tree_is_expected() {
     let groups = perm_groups();
-    let expected = expected_groups();
-    let actual: Vec<(i64, String, String)> = groups
-        .iter()
-        .map(|g| (g.id, g.tree_code.clone(), g.name.clone()))
-        .collect();
-    let wanted: Vec<(i64, String, String)> = expected
-        .iter()
-        .map(|(id, code, name)| (*id, (*code).to_string(), (*name).to_string()))
-        .collect();
-    assert_eq!(actual, wanted, "权限分组树与约定不一致");
 
+    let ids: BTreeSet<i64> = groups.iter().map(|g| g.id).collect();
+    assert_eq!(ids.len(), groups.len(), "分组 id 必须唯一");
     let codes: BTreeSet<&str> = groups.iter().map(|g| g.tree_code.as_str()).collect();
+    assert_eq!(codes.len(), groups.len(), "tree_code 必须唯一");
+
     for group in &groups {
         assert_eq!(
             group.tree_code.len() % 3,
@@ -478,7 +460,7 @@ fn permission_group_tree_is_expected() {
             group.tree_code
         );
         let level = group.tree_code.len() / 3;
-        assert!((1..=3).contains(&level), "只允许三层：{}", group.tree_code);
+        assert!((1..=4).contains(&level), "只允许四层：{}", group.tree_code);
         if level > 1 {
             let parent = &group.tree_code[..group.tree_code.len() - 3];
             assert!(
@@ -489,15 +471,12 @@ fn permission_group_tree_is_expected() {
         }
     }
 
-    // 日志审计不设三级分组
-    assert!(
-        !groups
-            .iter()
-            .any(|g| g.tree_code.starts_with("001004") && g.tree_code.len() > 6),
-        "日志审计下不应有三级分组"
-    );
+    let roots: Vec<&PermGroup> = groups.iter().filter(|g| g.tree_code.len() == 3).collect();
+    assert_eq!(roots.len(), 1, "根分组必须唯一");
+    assert_eq!(roots[0].tree_code, "001");
+    assert_eq!(roots[0].name, "平台管理");
 
-    // 二级就四个，名字一个都不能错
+    // 二级是菜单一级：四个名字一个都不能错
     let second: BTreeSet<&str> = groups
         .iter()
         .filter(|g| g.tree_code.len() == 6)
@@ -505,16 +484,35 @@ fn permission_group_tree_is_expected() {
         .collect();
     assert_eq!(
         second,
-        BTreeSet::from(["用户管理", "授权管理", "种子维护", "日志审计"]),
+        BTreeSet::from(["组织与人员", "角色与授权", "系统配置", "审计日志"]),
         "四个二级分组名称不符"
     );
+
+    // 三级是主体，四级是操作类型：主体下必须有操作分组，操作分组必须挂在主体下
+    for subject in groups.iter().filter(|g| g.tree_code.len() == 9) {
+        assert!(
+            groups.iter().any(|g| {
+                g.tree_code.len() == 12 && g.tree_code.starts_with(&subject.tree_code)
+            }),
+            "三级分组 {}（{}）没有四级子分组",
+            subject.tree_code,
+            subject.name
+        );
+    }
+    for op in groups.iter().filter(|g| g.tree_code.len() == 12) {
+        let parent = &op.tree_code[..9];
+        assert!(
+            groups.iter().any(|g| g.tree_code == parent),
+            "四级分组 {} 的主体 {parent} 不存在",
+            op.tree_code
+        );
+    }
 }
 
 /// # 权限点字段契约与分组归属
 #[test]
 fn permission_rows_follow_contract() {
     let groups = perm_groups();
-    let ids: BTreeSet<i64> = groups.iter().map(|g| g.id).collect();
     let seed_perms = perms();
     let allowed_ops = BTreeSet::from([
         "query",
@@ -529,11 +527,16 @@ fn permission_rows_follow_contract() {
     let mut names = BTreeSet::new();
     let mut perm_ids = BTreeSet::new();
     for perm in &seed_perms {
-        assert!(
-            ids.contains(&perm.group_id),
-            "权限点 {} 挂在不存在的分组 {} 上",
+        let group = groups
+            .iter()
+            .find(|g| g.id == perm.group_id)
+            .unwrap_or_else(|| panic!("权限点 {} 挂在不存在的分组 {} 上", perm.id, perm.group_id));
+        assert_eq!(
+            group.tree_code.len(),
+            12,
+            "权限点 {} 必须挂在四级「操作类型」分组，实际 {}",
             perm.id,
-            perm.group_id
+            group.tree_code
         );
         assert!(
             allowed_ops.contains(perm.op_type_code.as_str()),
@@ -557,31 +560,33 @@ fn permission_rows_follow_contract() {
         );
 
         let (_, path) = split_urn(&perm.urn).expect("URN 格式");
+        let (subject, subject_name) = expected_subject(&path);
         assert_eq!(
-            expected_bucket(&path),
-            perm.group_id,
-            "接口 {path} 挂错分组：应在 {}，实际 {}",
-            expected_bucket(&path),
-            perm.group_id
+            perm.subject_code, subject,
+            "接口 {path} 的 subject_code 应为 {subject}，实际 {}",
+            perm.subject_code
+        );
+        let subject_group_code = &group.tree_code[..9];
+        let subject_group = groups
+            .iter()
+            .find(|g| g.tree_code == subject_group_code)
+            .unwrap_or_else(|| panic!("主体分组 {subject_group_code} 不存在"));
+        assert_eq!(
+            subject_group.name, subject_name,
+            "接口 {path} 挂错主体：应在「{subject_name}」，实际「{}」",
+            subject_group.name
         );
     }
 
-    // 只有二级「日志审计」和十个三级组挂权限点，根与三个中间层不挂
-    let mut counts: BTreeMap<i64, usize> = BTreeMap::new();
-    for perm in &seed_perms {
-        *counts.entry(perm.group_id).or_default() += 1;
-    }
-    for id in [1, 1001, 1002, 1003] {
+    // 每个操作类型分组都必须至少挂一个权限点；权限点只能挂四级分组
+    let perm_group_ids: BTreeSet<i64> = seed_perms.iter().map(|p| p.group_id).collect();
+    for group in groups.iter().filter(|g| g.tree_code.len() == 12) {
         assert!(
-            !counts.contains_key(&id),
-            "分组 {id} 是中间层，不应直接挂权限点"
+            perm_group_ids.contains(&group.id),
+            "四级分组 {}（{}）没有挂任何权限点",
+            group.tree_code,
+            group.name
         );
-    }
-    let leaf_count = groups.iter().filter(|g| g.tree_code.len() == 9).count();
-    assert_eq!(leaf_count, 10, "应有 10 个三级分组");
-    assert_eq!(counts.len(), leaf_count + 1, "挂权限点的分组数不符");
-    for id in 2001..=2010 {
-        assert!(counts.contains_key(&id), "三级分组 {id} 一个权限点都没有");
     }
 }
 

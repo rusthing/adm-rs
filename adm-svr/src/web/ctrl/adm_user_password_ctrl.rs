@@ -7,7 +7,7 @@
 //! `Authorization: Bearer`，再取操作者 ID 写审计列。
 
 use crate::cst::ADM_CODE_TOKEN_INVALID;
-use crate::svc::AdmUserSvc;
+use crate::svc::{AdmUserSvc, load_scope_ctx, with_scope};
 use crate::web::auth::verify_bearer;
 use axum::debug_handler;
 use axum::extract::Path;
@@ -43,7 +43,14 @@ pub async fn reset_password(
     Path(id): Path<u64>,
 ) -> Result<Json<Ro<()>>, CtrlError> {
     match verify_bearer(&headers).await {
-        Ok(operator_id) => Ok(Json(AdmUserSvc::reset_password(id, operator_id).await?)),
+        Ok(operator_id) => {
+            // 这条路由不在统一中间件下，需要自己补算数据范围，
+            // 否则会绕过 DAO 的范围过滤去重置范围外账号的口令。
+            let ctx = load_scope_ctx(operator_id).await?;
+            Ok(Json(
+                with_scope(ctx, AdmUserSvc::reset_password(id, operator_id)).await?,
+            ))
+        }
         Err(detail) => Ok(Json(
             Ro::warn("未登录或令牌已失效".to_string())
                 .code(Some(ADM_CODE_TOKEN_INVALID.to_string()))

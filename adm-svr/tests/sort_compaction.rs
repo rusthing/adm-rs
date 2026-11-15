@@ -510,6 +510,28 @@ async fn tree_move_rejects_own_descendant_as_parent() {
     tx.rollback().await.unwrap();
 }
 
+/// 真实表是否就绪。
+///
+/// 菜单级联用例需要迁移后的 `adm_*` 表；测试库能连上但没跑迁移时跳过，
+/// 避免以 `42P01 relation does not exist` 的形式误报失败。
+async fn has_tables<C: ConnectionTrait>(db: &C, tables: &[&str]) -> bool {
+    for table in tables {
+        let sql = format!("SELECT to_regclass('public.{table}') IS NOT NULL AS present");
+        let Ok(rows) = query(db, &sql).await else {
+            return false;
+        };
+        let present = rows
+            .first()
+            .and_then(|row| row.try_get::<bool>("", "present").ok())
+            .unwrap_or(false);
+        if !present {
+            eprintln!("跳过菜单级联用例：测试库缺少表 {table}，请先执行 adm-svr/migrations/pgsql");
+            return false;
+        }
+    }
+    true
+}
+
 /// 建一个应用，供菜单树测试使用；应用是全局配置，不依赖领域。
 async fn seed_menu_scope<C: ConnectionTrait>(db: &C, app_id: i64, suffix: &str) {
     exec(
@@ -528,6 +550,21 @@ async fn menu_cascade_delete_preview_and_compaction() {
     let Some(db) = connect().await else {
         return;
     };
+    if !has_tables(
+        &db,
+        &[
+            "adm_app",
+            "adm_menu",
+            "adm_menu_perm",
+            "adm_role",
+            "adm_role_group",
+            "adm_role_menu",
+        ],
+    )
+    .await
+    {
+        return;
+    }
     let tx = db.begin().await.unwrap();
     let app_id = 910_000_000_000_000_101i64;
     let root_id = 910_000_000_000_000_111i64;
@@ -600,6 +637,21 @@ async fn menu_cascade_delete_rejects_when_descendant_is_bound() {
     let Some(db) = connect().await else {
         return;
     };
+    if !has_tables(
+        &db,
+        &[
+            "adm_app",
+            "adm_menu",
+            "adm_menu_perm",
+            "adm_role",
+            "adm_role_group",
+            "adm_role_menu",
+        ],
+    )
+    .await
+    {
+        return;
+    }
     let tx = db.begin().await.unwrap();
     let app_id = 920_000_000_000_000_101i64;
     let root_id = 920_000_000_000_000_111i64;

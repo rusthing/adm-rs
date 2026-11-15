@@ -253,12 +253,14 @@ impl AdmWidgetDataSvc {
         let now = now_ms() as i64;
 
         let default_password = adm_user::Entity::find()
+            .filter(scoped("adm_user"))
             .filter(adm_user::Column::LoginPswdDefault.eq(true))
             .filter(adm_user::Column::Enabled.eq(true))
             .count(db.as_ref())
             .await
             .map_err(robotech::dao::DaoError::parse_db_err)?;
         let locked = adm_user::Entity::find()
+            .filter(scoped("adm_user"))
             .filter(
                 Condition::any()
                     .add(adm_user::Column::Status.eq(UserStatus::Locked as i16))
@@ -268,11 +270,13 @@ impl AdmWidgetDataSvc {
             .await
             .map_err(robotech::dao::DaoError::parse_db_err)?;
         let expired = adm_user::Entity::find()
+            .filter(scoped("adm_user"))
             .filter(adm_user::Column::ExpireMs.lte(now))
             .count(db.as_ref())
             .await
             .map_err(robotech::dao::DaoError::parse_db_err)?;
         let disabled = adm_user::Entity::find()
+            .filter(scoped("adm_user"))
             .filter(
                 Condition::any()
                     .add(adm_user::Column::Enabled.eq(false))

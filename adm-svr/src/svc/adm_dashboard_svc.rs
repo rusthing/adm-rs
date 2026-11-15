@@ -98,7 +98,7 @@ impl AdmDashboardSvc {
         })
     }
 
-    async fn load_menus(
+    pub(crate) async fn load_menus(
         role_ids: &[i64],
         db: &sea_orm::DatabaseConnection,
     ) -> Result<Vec<adm_menu::Model>, SvcError> {
@@ -381,15 +381,23 @@ impl AdmDashboardSvc {
         }
     }
 
-    /// 权限 URN 前缀匹配，与前端 `hasPerm` 的规则一致
+    /// 权限 URN 前缀匹配，与前端 `matchPermUrn` 的规则一致
+    ///
+    /// 必须落在路径段边界上：只做 `starts_with` 会让 `GET:/adm/role` 误命中
+    /// `GET:/adm/role-group`、`GET:/adm/role-user` 等相邻实体。
     fn permitted(perm_urns: &[String], required: Option<&str>) -> bool {
         let Some(required) = required.map(str::trim).filter(|text| !text.is_empty()) else {
             return true;
         };
-        let required = required.to_lowercase();
-        perm_urns
-            .iter()
-            .any(|urn| urn.to_lowercase().starts_with(&required))
+        let prefix = required.trim_end_matches('/').to_lowercase();
+        if prefix.is_empty() {
+            return false;
+        }
+        let nested = format!("{prefix}/");
+        perm_urns.iter().any(|urn| {
+            let value = urn.trim().to_lowercase();
+            value == prefix || value.starts_with(&nested)
+        })
     }
 
     /// # 管理页：列出全部配置
@@ -690,15 +698,35 @@ impl AdmDashboardSvc {
     /// # 删除角色配置
     ///
     /// 只允许删角色配置；全局兜底模板不允许删除，避免出现「没有任何首页」。
+    ///
+    /// `adm_dashboard_widget.dashboard_id` 是 RESTRICT 外键，必须先删 widget
+    /// 再删配置，且两步在同一事务里，否则删除任何非空配置都会撞外键。
     pub async fn delete_config(role_id: Option<i64>, _operator_id: u64) -> Result<bool, SvcError> {
         let role_id = role_id.ok_or_else(|| invalid("全局兜底配置不允许删除".to_string()))?;
         let db = get_db_conn()?;
-        let result = adm_dashboard::Entity::delete_many()
+        let tx = begin_transaction(db.as_ref()).await?;
+
+        let dashboards = adm_dashboard::Entity::find()
             .filter(adm_dashboard::Column::RoleId.eq(role_id))
-            .exec(db.as_ref())
+            .all(&tx)
             .await
             .map_err(DaoError::parse_db_err)?;
-        Ok(result.rows_affected > 0)
+        let mut deleted = 0;
+        for dashboard in dashboards {
+            adm_dashboard_widget::Entity::delete_many()
+                .filter(adm_dashboard_widget::Column::DashboardId.eq(dashboard.id))
+                .exec(&tx)
+                .await
+                .map_err(DaoError::parse_db_err)?;
+            deleted += adm_dashboard::Entity::delete_by_id(dashboard.id)
+                .exec(&tx)
+                .await
+                .map_err(DaoError::parse_db_err)?
+                .rows_affected;
+        }
+
+        commit_transaction(tx).await?;
+        Ok(deleted > 0)
     }
 
     /// # widget 类型目录
@@ -908,5 +936,36 @@ pub fn widget_type_of(endpoint: &str) -> &'static str {
         "menu.shortcuts" => "shortcuts",
         "auth.my_permissions" => "my_permissions",
         _ => "unknown",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AdmDashboardSvc;
+
+    fn urns(items: &[&str]) -> Vec<String> {
+        items.iter().map(|item| item.to_string()).collect()
+    }
+
+    /// 相邻实体不能互相命中：`GET:/adm/role` 不能匹配 `GET:/adm/role-group`
+    #[test]
+    fn permit_requires_path_segment_boundary() {
+        let perms = urns(&["GET:/adm/role-group"]);
+        assert!(!AdmDashboardSvc::permitted(&perms, Some("GET:/adm/role")));
+        assert!(AdmDashboardSvc::permitted(&perms, Some("GET:/adm/role-group")));
+        assert!(AdmDashboardSvc::permitted(
+            &perms,
+            Some("get:/adm/role-group/")
+        ));
+    }
+
+    /// 子路径命中、大小写不敏感；未配置权限要求时一律放行
+    #[test]
+    fn permit_matches_nested_paths_case_insensitively() {
+        let perms = urns(&["GET:/adm/user/page"]);
+        assert!(AdmDashboardSvc::permitted(&perms, Some("GET:/adm/user")));
+        assert!(!AdmDashboardSvc::permitted(&perms, Some("GET:/adm/person")));
+        assert!(AdmDashboardSvc::permitted(&perms, None));
+        assert!(AdmDashboardSvc::permitted(&perms, Some("   ")));
     }
 }
