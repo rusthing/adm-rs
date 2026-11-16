@@ -6,6 +6,22 @@
 -- adm_app
 INSERT INTO public.adm_app (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (1, 'adm', '平台管理', 10, '默认平台管理应用', true, 0, 1794181552953, 0, 1794181553294);
 
+-- adm_org_type
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (1, 'GROUP', '集团', 10, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (2, 'UNIT', '政府单位', 20, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (3, 'CORP', '公司', 30, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (4, 'MILITARY', '军队', 40, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (5, 'DEPT', '部门', 50, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (6, 'BRANCH_FACTORY', '分厂', 60, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (7, 'DIRECTLY_BRIGADE', '直属旅', 70, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (8, 'BRIGADE', '旅', 80, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (9, 'TEAM', '小组', 90, NULL, true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_org_type (id, code, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (10, 'CLASSES', '班级', 100, NULL, true, 0, 1794181553400, 0, 1794181553400);
+
+-- adm_person_code_type
+INSERT INTO public.adm_person_code_type (id, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (1, '工号', 10, '企业内部员工编号', true, 0, 1794181553400, 0, 1794181553400);
+INSERT INTO public.adm_person_code_type (id, name, sort_order, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (2, '学号', 20, '学生编号', true, 0, 1794181553400, 0, 1794181553400);
+
 -- adm_role_group
 INSERT INTO public.adm_role_group (id, tree_code, name, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (1, '001', '管理', '平台 / 系统 / 组织 三类管理角色', true, 0, 1794181552955, 0, 1794181553294);
 INSERT INTO public.adm_role_group (id, tree_code, name, remark, enabled, creater_id, create_ms, updater_id, update_ms) VALUES (2, '002', '审计', '审计员角色，只读日志', true, 0, 1794181553294, 0, 1794181553294);
