@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
 import { authApi, userApi } from "@/lib/api";
 import { cn, formatMs } from "@/lib/utils";
+import type { AdmUserVo } from "@/lib/types";
 import { sm3 } from "@/lib/sm3";
 import { Badge, Button, Field, Input, PageHeader, Panel, Spinner, Textarea } from "@/components/ui/primitives";
-import { useToast } from "@/components/ui/overlay";
-import { ChevronDown, KeyRound, LoaderCircle, RefreshCw, ShieldCheck, UserCircle } from "lucide-react";
+import { useToast, useConfirm } from "@/components/ui/overlay";
+import { ChevronDown, Eraser, KeyRound, LoaderCircle, RefreshCw, ShieldCheck, UserCircle } from "lucide-react";
 
 interface ProfileForm {
   nickName: string;
@@ -39,9 +40,11 @@ function resourceOfUrn(urn: string): string {
 export function ProfilePage() {
   const { session, authz, authzError, authzLoading, refreshAuthz, updateSession } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [clearingField, setClearingField] = useState<"mobile" | "email" | null>(null);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -66,6 +69,8 @@ export function ProfilePage() {
   }, [userQuery.data]);
 
   const roleNames = authz?.roles ?? [];
+  const mobileSet = Boolean(userQuery.data?.mobile);
+  const emailSet = Boolean(userQuery.data?.email);
 
   /** 权限 URN 按操作对象分组；默认全收起，只留数量。 */
   const permGroups = useMemo(() => {
@@ -107,6 +112,36 @@ export function ProfilePage() {
       toast.error(error instanceof Error ? error.message : "保存失败");
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  /**
+   * 显式清除手机号/邮箱：留空仍然表示「不修改」，只有点清除并确认后才提交 null。
+   * ModifyDto 对 Option<String> 用 `Some(None)` 表达清空，其他字段不传即保持原值。
+   */
+  const clearContact = async (field: "mobile" | "email") => {
+    if (!session) return;
+    const label = field === "mobile" ? "手机号" : "邮箱";
+    const confirmed = await confirm({
+      title: `清除${label}`,
+      description: `将清除该登录方式（${label}），清除后不能再使用它登录。此操作立即提交。`,
+      confirmText: "清除",
+      tone: "danger",
+    });
+    if (!confirmed) return;
+    setClearingField(field);
+    try {
+      await userApi.modify({ id: session.userId, [field]: null });
+      setForm((current) => ({ ...current, [field]: "" }));
+      // 只更新缓存里的该字段，避免整份 refetch 把其他未保存的草稿冲掉。
+      queryClient.setQueryData<AdmUserVo | undefined>(["user", "profile", session.userId], (current) =>
+        current ? { ...current, [field]: undefined } : current,
+      );
+      toast.success(`${label}已清除`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : `${label}清除失败`);
+    } finally {
+      setClearingField(null);
     }
   };
 
@@ -294,11 +329,53 @@ export function ProfilePage() {
               <Field label="昵称">
                 <Input value={form.nickName} onChange={(event) => setForm({ ...form, nickName: event.target.value })} />
               </Field>
-              <Field label="手机号" hint="留空表示不修改；后端 modify 不支持把可选字段清空。">
-                <Input value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} />
+              <Field
+                label="手机号"
+                hint={mobileSet ? "留空表示不修改；如需清空请点「清除」。" : "当前未设置。填写并保存后可绑定手机号登录。"}
+              >
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="min-w-0 flex-1"
+                    value={form.mobile}
+                    placeholder={mobileSet ? "请输入手机号" : "未设置"}
+                    onChange={(event) => setForm({ ...form, mobile: event.target.value })}
+                  />
+                  {mobileSet && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="清除手机号"
+                      disabled={clearingField !== null || savingProfile}
+                      onClick={() => void clearContact("mobile")}
+                    >
+                      <Eraser size={13} /> 清除
+                    </Button>
+                  )}
+                </div>
               </Field>
-              <Field label="邮箱" hint="留空表示不修改。">
-                <Input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+              <Field
+                label="邮箱"
+                hint={emailSet ? "留空表示不修改；如需清空请点「清除」。" : "当前未设置。填写并保存后可绑定邮箱登录。"}
+              >
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="min-w-0 flex-1"
+                    value={form.email}
+                    placeholder={emailSet ? "请输入邮箱" : "未设置"}
+                    onChange={(event) => setForm({ ...form, email: event.target.value })}
+                  />
+                  {emailSet && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="清除邮箱"
+                      disabled={clearingField !== null || savingProfile}
+                      onClick={() => void clearContact("email")}
+                    >
+                      <Eraser size={13} /> 清除
+                    </Button>
+                  )}
+                </div>
               </Field>
               <div className="sm:col-span-2">
                 <Field label="备注">
@@ -307,7 +384,11 @@ export function ProfilePage() {
               </div>
             </div>
             <div className="mt-3 flex justify-end">
-              <Button variant="primary" onClick={() => void saveProfile()} disabled={savingProfile}>
+              <Button
+                variant="primary"
+                onClick={() => void saveProfile()}
+                disabled={savingProfile || clearingField !== null}
+              >
                 {savingProfile ? "保存中…" : "保存资料"}
               </Button>
             </div>
