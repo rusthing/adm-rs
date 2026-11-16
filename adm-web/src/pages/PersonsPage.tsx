@@ -5,9 +5,10 @@ import type { AdmPersonVo, FormValues } from "@/lib/types";
 import { usePersonCodeTypeOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
-function optionalText(value: FormValues[string]): string | undefined {
+function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
-  return text ? text : undefined;
+  // 空串显式传 null：ModifyDto 的 Option<String> 用 Some(None) 表达清空
+  return text ? text : null;
 }
 
 /** 身份证只露前 6 后 4：列表是高频扫视的页面，没必要把完整证件号摆在屏幕上。 */

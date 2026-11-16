@@ -11,9 +11,10 @@ import { usePersonOptions, useRoleGroupOptions, useRoleOptions } from "@/lib/que
 import { formatMs, shortId } from "@/lib/utils";
 import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
 
-function optionalText(value: FormValues[string]): string | undefined {
+function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
-  return text ? text : undefined;
+  // 空串显式传 null：ModifyDto 的 Option<String> 用 Some(None) 表达清空
+  return text ? text : null;
 }
 
 const STATUS_TEXT: Record<number, { label: string; tone: "success" | "warn" | "danger" | "info" }> = {

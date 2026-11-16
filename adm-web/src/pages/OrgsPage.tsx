@@ -7,9 +7,10 @@ import type { AdmOrgVo, FormValues } from "@/lib/types";
 import { useOrgOptions, useOrgTypeOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
-function optionalText(value: FormValues[string]): string | undefined {
+function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
-  return text ? text : undefined;
+  // 空串显式传 null：ModifyDto 的 Option<String> 用 Some(None) 表达清空
+  return text ? text : null;
 }
 
 /** 树层级：treeCode 每层 3 位，深度 0 为根。 */

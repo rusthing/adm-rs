@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/primitives";
 import type { AdmRoleGroupVo, FormValues } from "@/lib/types";
 import { useRoleGroupOptions } from "@/lib/queries";
 
-function optionalText(value: FormValues[string]): string | undefined {
+function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
-  return text ? text : undefined;
+  // 空串显式传 null：ModifyDto 的 Option<String> 用 Some(None) 表达清空
+  return text ? text : null;
 }
 
 /**

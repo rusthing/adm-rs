@@ -13,9 +13,10 @@ import { useMenuOptions, usePermOptions, useRoleGroupOptions } from "@/lib/queri
 import { shortId } from "@/lib/utils";
 import { LockKeyhole, Menu as MenuIcon, ShieldCheck } from "lucide-react";
 
-function optionalText(value: FormValues[string]): string | undefined {
+function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
-  return text ? text : undefined;
+  // 空串显式传 null：ModifyDto 的 Option<String> 用 Some(None) 表达清空
+  return text ? text : null;
 }
 
 function RoleGrantsDrawer({
