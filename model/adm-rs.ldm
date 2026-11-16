@@ -11155,6 +11155,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>创建人 ID
 由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11170,6 +11171,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Comment>创建时间戳
 由框架在 insert 时写入服务端时间，不接受调用方传入
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11184,6 +11186,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>最后修改人 ID
 由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11199,6 +11202,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Comment>最后修改时间戳
 由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11304,6 +11308,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>创建人 ID
 由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11319,6 +11324,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Comment>创建时间戳
 由框架在 insert 时写入服务端时间，不接受调用方传入
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11333,6 +11339,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>最后修改人 ID
 由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11348,6 +11355,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Comment>最后修改时间戳
 由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11453,6 +11461,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>创建人 ID
 由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11468,6 +11477,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Comment>创建时间戳
 由框架在 insert 时写入服务端时间，不接受调用方传入
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11482,6 +11492,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>最后修改人 ID
 由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11497,6 +11508,7 @@ IPv4 与 IPv6 都存，45 是 IPv6 带内嵌 IPv4 时的最长文本长度（如
 <a:Comment>最后修改时间戳
 由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11618,6 +11630,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>创建人 ID
 由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11633,6 +11646,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>创建时间戳
 由框架在 insert 时写入服务端时间，不接受调用方传入
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11647,6 +11661,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>最后修改人 ID
 由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11662,6 +11677,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>最后修改时间戳
 由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11830,6 +11846,7 @@ JSON 格式的额外请求参数</a:Comment>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>是否感知数据范围
 true 时组件数据按当前用户的数据范围过滤</a:Comment>
+<a:DefaultValue>false</a:DefaultValue>
 <a:DataType>BL</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11845,6 +11862,7 @@ true 时组件数据按当前用户的数据范围过滤</a:Comment>
 <a:Comment>排序值
 同一仪表盘内排序，越小越靠前
 @range 0..=9999</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>I</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11875,6 +11893,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>创建人 ID
 由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11890,6 +11909,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>创建时间戳
 由框架在 insert 时写入服务端时间，不接受调用方传入
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11904,6 +11924,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>最后修改人 ID
 由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -11919,6 +11940,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>最后修改时间戳
 由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12042,6 +12064,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>HTTP 方法
 GET、POST、PUT、DELETE 等
 @len 1..=8</a:Comment>
+<a:DefaultValue>'POST'</a:DefaultValue>
 <a:DataType>VA8</a:DataType>
 <a:Length>8</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -12103,6 +12126,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>排序值
 越小越靠前
 @range 0..=9999</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>I</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12117,6 +12141,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>创建人 ID
 由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12132,6 +12157,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>创建时间戳
 由框架在 insert 时写入服务端时间，不接受调用方传入
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12146,6 +12172,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>最后修改人 ID
 由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12161,6 +12188,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>最后修改时间戳
 由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12342,6 +12370,7 @@ JSON 格式的默认请求参数</a:Comment>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>默认是否感知数据范围
 创建组件实例时的默认值</a:Comment>
+<a:DefaultValue>false</a:DefaultValue>
 <a:DataType>BL</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12357,6 +12386,7 @@ JSON 格式的默认请求参数</a:Comment>
 <a:Comment>排序值
 越小越靠前
 @range 0..=9999</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>I</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12387,6 +12417,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>创建人 ID
 由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12402,6 +12433,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>创建时间戳
 由框架在 insert 时写入服务端时间，不接受调用方传入
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12416,6 +12448,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>最后修改人 ID
 由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
@@ -12431,6 +12464,7 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Comment>最后修改时间戳
 由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
 @unit ms</a:Comment>
+<a:DefaultValue>0</a:DefaultValue>
 <a:DataType>LI</a:DataType>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
 <a:GlobalObjectID/>
