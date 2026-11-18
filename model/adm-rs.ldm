@@ -6984,9 +6984,8 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>登录名
 登录时输入的唯一标识，全局唯一（AK）；手机号另有唯一约束（见 mobile），邮箱没有
-4~32 位，字母开头，只含字母、数字、下划线
-@len 4..=32
-@check is_account_name</a:Comment>
+2~32 位；允许 Unicode（旧 ADM 的中文姓名登录名要原样迁入）
+@len 2..=32</a:Comment>
 <a:DataType>VA50</a:DataType>
 <a:Length>50</a:Length>
 <a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
@@ -7158,8 +7157,8 @@ true 表示姓名（real_name）与身份证号（id_card）这一组已通过�
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>登录密码组合码
 与密码组合加密用，详见登录密码备注
-6 位随机串
-@len 6..=6
+6 位随机串；兼容旧 ADM 的 5 位组合码
+@len 5..=6
 @secret</a:Comment>
 <a:DataType>A6</a:DataType>
 <a:Length>6</a:Length>

@@ -30,8 +30,10 @@ const SALT_ALPHABET: &[u8] = b"23456789abcdefghjkmnpqrstuvwxyz";
 pub struct AdmPasswordUtils;
 
 impl AdmPasswordUtils {
-    /// 组合码长度，与 `login_pswd_salt CHAR(6)` 对齐
+    /// 组合码长度，与 `login_pswd_salt` 对齐
     pub const SALT_LEN: usize = 6;
+    /// 兼容旧 ADM 的 5 位组合码
+    pub const SALT_MIN_LEN: usize = 5;
     /// 摘要长度（SM3 输出 32 字节 → 64 位小写十六进制）
     pub const HASH_LEN: usize = 64;
 
@@ -76,14 +78,16 @@ impl AdmPasswordUtils {
     ///
     /// ## 参数
     /// * `first_hash` - 前端算的 `SM3(明文)`
-    /// * `salt` - 库里的组合码
+    /// * `salt` - 库里的组合码；新生成是 6 位，旧 ADM 迁移过来的可能是 5 位
     /// * `stored` - 库里的摘要
     ///
     /// ## 返回值
     /// * `bool` - 一致返回 `true`
     pub fn verify(first_hash: &str, salt: &str, stored: &str) -> bool {
         // 长度先挡一下：省掉一次 SM3，也避免超长输入白算
-        if !Self::is_first_hash(first_hash) || salt.len() != Self::SALT_LEN {
+        if !Self::is_first_hash(first_hash)
+            || !(Self::SALT_MIN_LEN..=Self::SALT_LEN).contains(&salt.len())
+        {
             return false;
         }
         Self::seal(first_hash, salt) == stored
@@ -155,6 +159,18 @@ mod tests {
         // 明显不是摘要的输入（明文、空串）直接 false，不算 SM3
         assert!(!AdmPasswordUtils::verify("admin123", salt, &stored));
         assert!(!AdmPasswordUtils::verify("", salt, &stored));
+    }
+
+    /// 旧 ADM 的 5 位组合码也要能验通
+    #[test]
+    fn verify_accepts_legacy_five_char_salt() {
+        let first = "e".repeat(64);
+        let salt = "51345";
+        let stored = AdmPasswordUtils::seal(&first, salt);
+        assert!(AdmPasswordUtils::verify(&first, salt, &stored));
+        // 4 位、7 位仍然拒绝
+        assert!(!AdmPasswordUtils::verify(&first, "5134", &stored));
+        assert!(!AdmPasswordUtils::verify(&first, "513456", &stored));
     }
 
     /// 一次摘要的判定

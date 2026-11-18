@@ -16,9 +16,8 @@ pub struct AdmUserDto {
     pub person_id: Option<u64>,
     /// 登录名
     /// 登录时输入的唯一标识，全局唯一（AK）；手机号另有唯一约束（见 mobile），邮箱没有
-    /// 4~32 位，字母开头，只含字母、数字、下划线
-    /// @len 4..=32
-    /// @check is_account_name
+    /// 2~32 位；允许 Unicode（旧 ADM 的中文姓名登录名要原样迁入）
+    /// @len 2..=32
     pub name: String,
     /// 昵称
     /// 展示用，允许重复，不做唯一约束
@@ -78,8 +77,8 @@ pub struct AdmUserDto {
     pub login_pswd: String,
     /// 登录密码组合码
     /// 与密码组合加密用，详见登录密码备注
-    /// 6 位随机串
-    /// @len 6..=6
+    /// 6 位随机串；兼容旧 ADM 的 5 位组合码
+    /// @len 5..=6
     /// @secret
     pub login_pswd_salt: String,
     /// 登录密码是否默认密码
