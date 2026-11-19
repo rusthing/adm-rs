@@ -72,7 +72,7 @@ impl AdmPasswordUtils {
         buffer.push_str(&first_hash.to_lowercase());
         // 旧库的盐列是 CHAR(6)，5 位值读出来可能带尾部空格；比较前先去掉，
         // 否则长度校验能过、二次摘要却算错，表现为「口令正确但登录失败」。
-        buffer.push_str(salt.trim().to_lowercase());
+        buffer.push_str(&salt.trim().to_lowercase());
         sm3_hex(buffer)
     }
 
