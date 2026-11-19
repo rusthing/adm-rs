@@ -70,7 +70,9 @@ impl AdmPasswordUtils {
     pub fn seal(first_hash: &str, salt: &str) -> String {
         let mut buffer = String::with_capacity(Self::HASH_LEN + Self::SALT_LEN);
         buffer.push_str(&first_hash.to_lowercase());
-        buffer.push_str(&salt.to_lowercase());
+        // 旧库的盐列是 CHAR(6)，5 位值读出来可能带尾部空格；比较前先去掉，
+        // 否则长度校验能过、二次摘要却算错，表现为「口令正确但登录失败」。
+        buffer.push_str(salt.trim().to_lowercase());
         sm3_hex(buffer)
     }
 
@@ -85,6 +87,7 @@ impl AdmPasswordUtils {
     /// * `bool` - 一致返回 `true`
     pub fn verify(first_hash: &str, salt: &str, stored: &str) -> bool {
         // 长度先挡一下：省掉一次 SM3，也避免超长输入白算
+        let salt = salt.trim();
         if !Self::is_first_hash(first_hash)
             || !(Self::SALT_MIN_LEN..=Self::SALT_LEN).contains(&salt.len())
         {
@@ -162,6 +165,14 @@ mod tests {
     }
 
     /// 旧 ADM 的 5 位组合码也要能验通
+    #[test]
+    fn verify_accepts_legacy_five_char_salt_with_padding() {
+        let first = "706e7a650d093d0341d84da65e4913fe2d323e4b34d34a9213873ae6da396d1e";
+        let stored = "0791ba73e78c95890de622e70294b4ef00068376d8a165862d12e0e88ba84538";
+        assert!(AdmPasswordUtils::verify(first, "51345 ", stored));
+        assert!(AdmPasswordUtils::verify(first, "51345", stored));
+    }
+
     #[test]
     fn verify_accepts_legacy_five_char_salt() {
         let first = "e".repeat(64);

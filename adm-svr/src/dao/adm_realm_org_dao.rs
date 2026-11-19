@@ -10,5 +10,9 @@ use robotech::macros::dao;
     unique_keys: [
         ("realm_id_and_org_id", "领域ID与组织ID"),
     ],
+    foreign_keys: [
+        ("realm_id", "adm_realm", "领域"),
+        ("org_id", "adm_org", "组织"),
+    ],
 )]
 pub struct AdmRealmOrgDao;

@@ -16,6 +16,9 @@ use robotech::macros::dao;
         ("email", "电子邮箱"),
         ("id_card", "身份证号"),
     ],
+    foreign_keys: [
+        ("code_type_id", "adm_person_code_type", "人员编码类型"),
+    ],
     like_columns: [
         Column::Code,
         Column::Name,

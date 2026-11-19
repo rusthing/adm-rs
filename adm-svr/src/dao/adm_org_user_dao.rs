@@ -10,5 +10,9 @@ use robotech::macros::dao;
     unique_keys: [
         ("org_id_and_user_id", "组织ID与用户ID"),
     ],
+    foreign_keys: [
+        ("org_id", "adm_org", "组织"),
+        ("user_id", "adm_user", "用户"),
+    ],
 )]
 pub struct AdmOrgUserDao;
