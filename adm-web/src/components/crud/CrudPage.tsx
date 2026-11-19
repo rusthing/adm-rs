@@ -83,6 +83,25 @@ export interface CrudColumn<T> {
   truncateClassName?: string;
 }
 
+/** 顶部 tab 的一个选项（领域 / 应用）。`value` 为具体 id；「全部」由组件固定渲染，不在 options 里。 */
+export interface CrudTabOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}
+
+/**
+ * 顶部 tab 栏。与左侧分组栏（scope）互斥使用：菜单按应用、组织/用户按领域。
+ * 选择状态由页面持有，收窄条件由页面折进 `extraQuery`，CrudPage 只负责渲染与切换回调。
+ */
+export interface CrudTabsDef {
+  ariaLabel: string;
+  options: CrudTabOption[];
+  /** null = 全部 */
+  selected: string | null;
+  onSelect: (value: string | null) => void;
+}
+
 /**
  * 行操作能拿到的能力。`openCreate` 用于树形实体「在此节点下添加子节点」：
  * 传入预填值后直接打开新建表单，不必先点新建、再逐个手选父节点与所属应用/分组。
@@ -133,6 +152,24 @@ interface CrudPageProps<T extends { id: string }> {
    * 日志类实体不要声明。
    */
   sortable?: CrudSortable<T>;
+  /**
+   * 顶部 tab 栏（领域 / 应用）。仅在选项数 > 1 时由页面传入；第一个 tab 固定为「全部」。
+   * 与 `scope` 二选一：tab 的收窄条件由页面折进 `extraQuery`，这里只管渲染与切换。
+   */
+  tabs?: CrudTabsDef;
+  /** 自定义左侧面板（如用户页的组织树）。与 `scope` 一样占据主体左侧，渲染内容由页面决定。 */
+  sidePanel?: ReactNode;
+  /** 新建表单的额外预填值（如当前 tab 选中的应用），优先级低于行内「添加子级」带来的预填。 */
+  createDefaults?: FormValues;
+  /** 树形表格默认收起：只显示一级节点，展开后才露出子孙。搜索 / 筛选激活时自动展开以免藏住命中行。 */
+  treeDefaultCollapsed?: boolean;
+  /**
+   * 按一级节点分页（仅树形实体）：先取全量命中行，再按一级节点数切页，
+   * 每页含若干一级节点及其全部子孙。`total` 即一级节点数。
+   */
+  paginateByRoot?: boolean;
+  /** `paginateByRoot` 时计数单位文案，默认「一级节点」，组织页传「一级组织」。 */
+  rootLabel?: string;
 }
 
 /**
@@ -311,6 +348,12 @@ export function CrudPage<T extends { id: string }>({
   scope,
   filters,
   sortable,
+  tabs,
+  sidePanel,
+  createDefaults,
+  treeDefaultCollapsed = false,
+  paginateByRoot = false,
+  rootLabel = "一级节点",
 }: CrudPageProps<T>) {
   const api = useMemo<CrudApi<T>>(() => crudApi<T>(prefix), [prefix]);
   const queryClient = useQueryClient();
@@ -351,6 +394,8 @@ export function CrudPage<T extends { id: string }>({
   const [auditError, setAuditError] = useState<string | null>(null);
   /** 树形表格里被收起的节点（`作用域#treeCode`），只影响当前展示，不改数据。 */
   const [collapsedTree, setCollapsedTree] = useState<Set<string>>(() => new Set());
+  /** 默认收起模式下被显式展开的节点；与 collapsedTree 互斥使用（见 effectiveDefaultCollapsed）。 */
+  const [expandedTree, setExpandedTree] = useState<Set<string>>(() => new Set());
   /** 正在切换状态的行：避免同一行重复提交，也让开关有禁用反馈。 */
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -407,26 +452,40 @@ export function CrudPage<T extends { id: string }>({
     ...scopeParams,
   });
 
+  /** 按一级节点分页时取全量命中行（不带 _page/_size），切页在前端做。 */
+  const buildListQuery = (): PageQuery => ({
+    [keywordName]: appliedKeyword || undefined,
+    _orderBy: defaultOrderBy,
+    ...(extraQuery ?? {}),
+    ...filterParams,
+    ...scopeParams,
+  });
+
   const query = useQuery({
     queryKey: [
-      prefix, "page", page, size, appliedKeyword, defaultOrderBy,
+      prefix, paginateByRoot ? "root-list" : "page",
+      ...(paginateByRoot ? [] : [page, size]),
+      appliedKeyword, defaultOrderBy,
       extraKey, filterKey, scopeKey, reloadTick,
     ],
-    // search/page 是后端已暴露的检索接口，支持 `字段-op` 运算符（日期范围等）。
-    queryFn: () => api.searchPage(buildQuery()),
+    // search/page 与 search/list 是后端已暴露的检索接口，支持 `字段-op` 运算符（日期范围等）。
+    queryFn: async () => {
+      if (paginateByRoot) {
+        return { list: await api.searchList(buildListQuery()), total: 0 };
+      }
+      const rx = await api.searchPage(buildQuery());
+      return { list: rx.list ?? [], total: Number(rx.total ?? 0) };
+    },
     staleTime: 5_000,
   });
 
   const rows = query.data?.list ?? [];
-  const total = Number(query.data?.total ?? 0);
-  const pageCount = Math.max(1, Math.ceil(total / size));
   const hasActiveFilters = Boolean(appliedKeyword) || hasActiveFilterValues(filters, filterValues);
 
-  // 删除/筛选导致总数缩水时，把越界的页码拉回最后一页；用 isSuccess 避免
-  // 加载中 total=0 把用户刚点的第 3 页立刻重置成第 1 页。
+  // tab / 左侧面板等外部收窄（extraQuery）变化时回到第一页，避免停在旧范围的越界页码上。
   useEffect(() => {
-    if (query.isSuccess && page > pageCount) setPage(pageCount);
-  }, [query.isSuccess, page, pageCount]);
+    setPage(1);
+  }, [extraKey]);
 
   // ---- 统一排序模式（仅 sortable 页面启用） ----
   const [sortPreview, setSortPreview] = useState<Record<string, string[]>>({});
@@ -463,8 +522,49 @@ export function CrudPage<T extends { id: string }>({
     [rows, sortable, sortPreview],
   );
 
+  // ---- 按一级节点分页：total 是一级节点数，每页含若干一级节点及其全部子孙 ----
+  const rootKeyOf = (row: T) =>
+    `${String(sortable?.scope?.(row) ?? "")}#${(sortable?.treeCode?.(row) ?? "").slice(0, 3)}`;
+
+  /** 一级节点键按出现顺序去重（列表已按 treeCode 升序，顺序即树序）。 */
+  const rootKeys = useMemo(() => {
+    if (!paginateByRoot) return [] as string[];
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const row of displayRows) {
+      const key = rootKeyOf(row);
+      if (!seen.has(key)) {
+        seen.add(key);
+        ordered.push(key);
+      }
+    }
+    return ordered;
+    // rootKeyOf 只依赖 sortable，随 sortable 一起变化
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginateByRoot, displayRows, sortable]);
+
+  const total = paginateByRoot ? rootKeys.length : Number(query.data?.total ?? 0);
+  const pageCount = Math.max(1, Math.ceil(total / size));
+
+  /** 当前页应展示的行：按一级节点切页后取该页一级节点下的全部行。 */
+  const pageRows = useMemo(() => {
+    if (!paginateByRoot) return displayRows;
+    const start = (page - 1) * size;
+    const allowed = new Set(rootKeys.slice(start, start + size));
+    return displayRows.filter((row) => allowed.has(rootKeyOf(row)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginateByRoot, displayRows, rootKeys, page, size, sortable]);
+
+  // 删除/筛选导致总数缩水时，把越界的页码拉回最后一页；用 isSuccess 避免
+  // 加载中 total=0 把用户刚点的第 3 页立刻重置成第 1 页。
+  useEffect(() => {
+    if (query.isSuccess && page > pageCount) setPage(pageCount);
+  }, [query.isSuccess, page, pageCount]);
+
   // ---- 树形表格折叠：与左侧分组栏、授权树保持同一套交互 ----
   const isTreeTable = sortable?.kind === "tree";
+  /** 默认收起只在无搜索/筛选时生效；一旦检索就展开，避免把命中行藏在收起的父节点下。 */
+  const effectiveDefaultCollapsed = treeDefaultCollapsed && !hasActiveFilters;
   /** 有下级的节点集合（用全量列表判断，避免页码变动导致箭头闪烁）。 */
   const treeParents = useMemo(() => {
     const parents = new Set<string>();
@@ -479,30 +579,49 @@ export function CrudPage<T extends { id: string }>({
     return parents;
   }, [sortable, sortListQuery.data, rows]);
 
-  /** 祖先里有被收起的节点就隐藏；只影响当前展示，不改动数据与排序。 */
-  const visibleRows = useMemo(() => {
-    if (!sortable || sortable.kind !== "tree") return displayRows;
-    return displayRows.filter((row) => {
-      const code = sortable.treeCode?.(row) ?? "";
-      const scope = String(sortable.scope?.(row) ?? "");
-      for (let length = code.length - 3; length >= 3; length -= 3) {
-        if (collapsedTree.has(`${scope}#${code.slice(0, length)}`)) return false;
-      }
-      return true;
-    });
-  }, [displayRows, sortable, collapsedTree]);
-
   const treeKeyOf = (row: T) =>
     `${String(sortable?.scope?.(row) ?? "")}#${sortable?.treeCode?.(row) ?? ""}`;
 
-  const toggleTree = (row: T) =>
-    setCollapsedTree((prev) => {
-      const key = treeKeyOf(row);
+  /** 某节点的全部祖先键（自父向上到根）。 */
+  const ancestorKeysOf = (row: T): string[] => {
+    const code = sortable?.treeCode?.(row) ?? "";
+    const scope = String(sortable?.scope?.(row) ?? "");
+    const keys: string[] = [];
+    for (let length = code.length - 3; length >= 3; length -= 3) {
+      keys.push(`${scope}#${code.slice(0, length)}`);
+    }
+    return keys;
+  };
+
+  /** 节点自身是否展开（决定箭头朝向）：默认收起模式看 expandedTree，否则看 collapsedTree。 */
+  const isNodeOpen = (row: T) =>
+    effectiveDefaultCollapsed ? expandedTree.has(treeKeyOf(row)) : !collapsedTree.has(treeKeyOf(row));
+
+  /** 祖先里有被收起的节点就隐藏；默认收起模式则要求所有祖先都已展开。只影响展示，不改数据与排序。
+   *  只看「当前页实际存在的祖先」：按领域收窄后可能只剩森林的若干子树，缺失的上级不该把现存节点藏住。 */
+  const visibleRows = useMemo(() => {
+    if (!sortable || sortable.kind !== "tree") return pageRows;
+    const present = new Set(pageRows.map(treeKeyOf));
+    return pageRows.filter((row) => {
+      const ancestors = ancestorKeysOf(row).filter((key) => present.has(key));
+      if (effectiveDefaultCollapsed) return ancestors.every((key) => expandedTree.has(key));
+      return !ancestors.some((key) => collapsedTree.has(key));
+    });
+    // ancestorKeysOf / treeKeyOf / effectiveDefaultCollapsed 由 sortable 与筛选状态推导
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageRows, sortable, collapsedTree, expandedTree, effectiveDefaultCollapsed]);
+
+  const toggleTree = (row: T) => {
+    const key = treeKeyOf(row);
+    const flip = (prev: Set<string>) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
-    });
+    };
+    if (effectiveDefaultCollapsed) setExpandedTree(flip);
+    else setCollapsedTree(flip);
+  };
 
   // 有筛选条件时禁止排序：避免只对筛选后的子集提交完整顺序。
   const sortEnabled = Boolean(sortable) && !hasActiveFilters && !sortSaving;
@@ -637,12 +756,12 @@ export function CrudPage<T extends { id: string }>({
             (treeParents.has(treeKeyOf(row)) ? (
               <button
                 type="button"
-                aria-label={collapsedTree.has(treeKeyOf(row)) ? "展开子节点" : "收起子节点"}
-                aria-expanded={!collapsedTree.has(treeKeyOf(row))}
+                aria-label={isNodeOpen(row) ? "收起子节点" : "展开子节点"}
+                aria-expanded={isNodeOpen(row)}
                 onClick={() => toggleTree(row)}
                 className="mr-auto rounded p-0.5 text-muted hover:bg-sunken hover:text-ink"
               >
-                {collapsedTree.has(treeKeyOf(row)) ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                {isNodeOpen(row) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </button>
             ) : (
               <span className="mr-auto w-[16px]" />
@@ -728,6 +847,7 @@ export function CrudPage<T extends { id: string }>({
     setFormError(null);
     const values: FormValues = { ...defaultsOf(fields) };
     if (scope) values[scope.field] = scopeCreateValue(scope, effectiveScope);
+    Object.assign(values, createDefaults ?? {});
     Object.assign(values, initialValues ?? {});
     setEditing({ mode: "create", values, note });
   };
@@ -933,7 +1053,53 @@ export function CrudPage<T extends { id: string }>({
         }
       />
 
-      <div className={cn("flex min-w-0 flex-col gap-4", showScope && "lg:flex-row lg:items-start")}>
+      {tabs && tabs.options.length > 0 && (
+        <div
+          role="tablist"
+          aria-label={tabs.ariaLabel}
+          className="mb-4 flex flex-wrap items-center gap-1 border-b border-line"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tabs.selected === null}
+            onClick={() => tabs.onSelect(null)}
+            className={cn(
+              "-mb-px inline-flex items-center border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors",
+              tabs.selected === null
+                ? "border-accent text-accent-strong"
+                : "border-transparent text-muted hover:text-ink",
+            )}
+          >
+            全部
+          </button>
+          {tabs.options.map((option) => {
+            const active = tabs.selected === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                disabled={option.disabled}
+                onClick={() => tabs.onSelect(option.value)}
+                title={option.disabled ? `${option.label}（已停用）` : option.label}
+                className={cn(
+                  "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors",
+                  active
+                    ? "border-accent text-accent-strong"
+                    : "border-transparent text-muted hover:text-ink",
+                  option.disabled && "cursor-not-allowed opacity-50",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className={cn("flex min-w-0 flex-col gap-4", (showScope || Boolean(sidePanel)) && "lg:flex-row lg:items-start")}>
         {showScope && scope && (
           <ScopePanel
             scope={scope}
@@ -942,6 +1108,7 @@ export function CrudPage<T extends { id: string }>({
             className="lg:w-[224px] lg:shrink-0"
           />
         )}
+        {sidePanel}
         <section className="min-w-0 flex-1 overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel">
           {/* 搜索 / 筛选区 */}
           <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
@@ -1005,7 +1172,9 @@ export function CrudPage<T extends { id: string }>({
               </Button>
             )}
 
-            <span className="ml-auto text-[11.5px] text-muted">共 {total} 条</span>
+            <span className="ml-auto text-[11.5px] text-muted">
+              {paginateByRoot ? `共 ${total} 个${rootLabel}` : `共 ${total} 条`}
+            </span>
           </div>
 
           {query.isLoading ? (

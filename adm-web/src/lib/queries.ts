@@ -18,11 +18,14 @@ import {
   opTypeApi,
   orgApi,
   orgTypeApi,
+  orgUserApi,
   permApi,
   permGroupApi,
   personApi,
   personCodeTypeApi,
   realmApi,
+  realmOrgApi,
+  realmUserApi,
   roleApi,
   roleGroupApi,
   userApi,
@@ -46,6 +49,9 @@ export const optionKeys = {
   user: ["/adm/user", "options"] as const,
   person: ["/adm/person", "options"] as const,
   personCodeType: ["/adm/person-code-type", "options"] as const,
+  realmOrg: ["/adm/realm-org", "options"] as const,
+  realmUser: ["/adm/realm-user", "options"] as const,
+  orgUser: ["/adm/org-user", "options"] as const,
 };
 
 /** 应用列表：侧栏分组、菜单归属、菜单授权清单共用。 */
@@ -211,4 +217,40 @@ export function usePersonCodeTypeOptions(enabled = true) {
     value: user.id,
     label: `${user.name}（${shortId(user.id)}）`,
   }));
+}
+
+/**
+ * 领域 ↔ 组织 全量绑定：组织页按领域 tab 收窄时，先把领域下的组织 id 取齐，
+ * 再折成 `id-op=il` 条件交给检索接口。绑定量小，一次取全量比逐域请求更省。
+ */
+export function useRealmOrgBindings(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.realmOrg,
+    queryFn: () => realmOrgApi.list(),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/** 领域 ↔ 用户 全量绑定：用户页按领域 tab 收窄。 */
+export function useRealmUserBindings(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.realmUser,
+    queryFn: () => realmUserApi.list(),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/** 组织 ↔ 用户 全量绑定：用户页左侧组织树选中后，按组织（含子组织）收窄用户。 */
+export function useOrgUserBindings(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.orgUser,
+    queryFn: () => orgUserApi.list(),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
 }

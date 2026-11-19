@@ -94,6 +94,45 @@ export function scopeIndent(option: CrudScopeOption): number {
 }
 
 /**
+ * 树里「选中节点 + 全部子孙」的 id 集合（含自身）。
+ *
+ * 每层 3 位：仅当前缀按整层对齐时才算子孙，避免 "0010" 这类脏编码被误纳。
+ * 分组树脱钩领域后 treeCode 全局唯一；组织树同理。找不到目标时退回只含自身，
+ * 让调用方至少能按等值查，而不是凭空返回空集。
+ */
+export function subtreeIds<T extends { id: string; treeCode: string }>(
+  items: T[],
+  value: string,
+): string[] {
+  const target = items.find((item) => item.id === value);
+  if (!target) return [value];
+  return items
+    .filter((item) => {
+      const extra = item.treeCode.length - target.treeCode.length;
+      return extra >= 0 && extra % 3 === 0 && item.treeCode.startsWith(target.treeCode);
+    })
+    .map((item) => item.id);
+}
+
+/**
+ * 把一组 id 折成检索接口的 `id` 条件：
+ * - 0 个 → `id-op=il&id-0=-1` 哨兵，匹配不到任何行（id 均为正数），表达「该范围下没有数据」；
+ * - 1 个 → 等值 `id=X`；
+ * - 多个 → Bean Searcher 的 `il`（is_in），取值走 `id-0`、`id-1`…
+ *
+ * 领域 tab / 组织树这类「先取关联 id 再收窄主列表」的场景共用，避免各页手拼参数。
+ */
+export function idInQuery(ids: string[]): PageQuery {
+  if (ids.length === 0) return { "id-op": "il", "id-0": "-1" };
+  if (ids.length === 1) return { id: ids[0] };
+  const params: PageQuery = { "id-op": "il" };
+  ids.forEach((id, index) => {
+    params[`id-${index}`] = id;
+  });
+  return params;
+}
+
+/**
  * 把「选中树分组」展开成 `本组 + 全局树中所有子孙组` 的 is_in 条件。
  *
  * 父分组自身往往一条数据都没有，只按 group_id 等值查会莫名其妙显示空列表。
@@ -105,15 +144,7 @@ export function treeGroupQuery(
   value: string,
   groups: Array<{ id: string; treeCode: string }>,
 ): PageQuery {
-  const target = groups.find((group) => group.id === value);
-  if (!target) return { [param]: value };
-  const ids = groups
-    .filter((group) => {
-      // 每层 3 位：仅当前缀按整层对齐时才算子孙，避免 "0010" 这类脏编码被误纳。
-      const extra = group.treeCode.length - target.treeCode.length;
-      return extra >= 0 && extra % 3 === 0 && group.treeCode.startsWith(target.treeCode);
-    })
-    .map((group) => group.id);
+  const ids = subtreeIds(groups, value);
   if (ids.length <= 1) return { [param]: value };
   const params: PageQuery = { [`${param}-op`]: "il" };
   ids.forEach((id, index) => {

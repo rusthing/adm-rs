@@ -10,11 +10,14 @@ import type {
   AdmMenuVo,
   AdmOpTypeVo,
   AdmOrgTypeVo,
+  AdmOrgUserVo,
   AdmOrgVo,
   AdmPermGroupVo,
   AdmPermVo,
   AdmPersonCodeTypeVo,
   AdmPersonVo,
+  AdmRealmOrgVo,
+  AdmRealmUserVo,
   AdmRealmVo,
   AdmRoleGroupVo,
   AdmRoleMenuVo,
@@ -41,6 +44,11 @@ export interface CrudApi<T> {
    * 用于带日期范围（`字段-op=bt`）等非等值条件的搜索行。
    */
   searchPage: (query?: PageQuery) => Promise<PageRx<T>>;
+  /**
+   * 检索列表（不分页）：`{prefix}/search/list`，与 search/page 同一套 Bean Searcher
+   * 运算符，但一次返回全部命中行。树形实体按一级节点分页时，前端先取全量再自行切页。
+   */
+  searchList: (query?: PageQuery) => Promise<T[]>;
   list: (query?: PageQuery) => Promise<T[]>;
   get: (id: string) => Promise<T | undefined>;
   add: (body: Payload) => Promise<unknown>;
@@ -73,6 +81,8 @@ export function crudApi<T>(prefix: string): CrudApi<T> {
       const data = await request<PageRx<T>>(`${prefix}/search/page${toQueryString(query)}`);
       return data ?? { pageNum: "1", total: "0", list: [] };
     },
+    searchList: async (query) =>
+      (await request<T[]>(`${prefix}/search/list${toQueryString(query)}`)) ?? [],
     list: async (query) => (await request<T[]>(`${prefix}/list${toQueryString(query)}`)) ?? [],
     get: (id) => request<T>(`${prefix}/${encodeURIComponent(id)}`),
     add: (body) => request(`${prefix}`, { method: "POST", body }),
@@ -107,6 +117,9 @@ export const opTypeApi = crudApi<AdmOpTypeVo>("/adm/op-type");
 export const roleUserApi = crudApi<AdmRoleUserVo>("/adm/role-user");
 export const roleMenuApi = crudApi<AdmRoleMenuVo>("/adm/role-menu");
 export const rolePermApi = crudApi<AdmRolePermVo>("/adm/role-perm");
+export const realmOrgApi = crudApi<AdmRealmOrgVo>("/adm/realm-org");
+export const realmUserApi = crudApi<AdmRealmUserVo>("/adm/realm-user");
+export const orgUserApi = crudApi<AdmOrgUserVo>("/adm/org-user");
 
 export interface LoginInput {
   account: string;

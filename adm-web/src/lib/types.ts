@@ -240,6 +240,27 @@ export interface AdmRolePermVo extends AuditFields {
   permId: string;
 }
 
+/** 领域 ↔ 组织 绑定（adm_realm_org）：领域只决定「哪些组织属于该域」，组织本身不带领域列。 */
+export interface AdmRealmOrgVo extends AuditFields {
+  id: string;
+  realmId: string;
+  orgId: string;
+}
+
+/** 领域 ↔ 用户 绑定（adm_realm_user）。 */
+export interface AdmRealmUserVo extends AuditFields {
+  id: string;
+  realmId: string;
+  userId: string;
+}
+
+/** 组织 ↔ 用户 绑定（adm_org_user）：用户直接挂组织，不经人员档案。 */
+export interface AdmOrgUserVo extends AuditFields {
+  id: string;
+  orgId: string;
+  userId: string;
+}
+
 export interface AdmLoginLogVo extends AuditFields {
   id: string;
   userId?: string;

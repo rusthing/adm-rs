@@ -1,10 +1,11 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
+import { idInQuery, subtreeIds } from "@/components/crud/scope";
 import { Button } from "@/components/ui/primitives";
-import type { AdmOrgVo, FormValues } from "@/lib/types";
-import { useOrgOptions, useOrgTypeOptions } from "@/lib/queries";
+import type { AdmOrgVo, FormValues, PageQuery } from "@/lib/types";
+import { useOrgOptions, useOrgTypeOptions, useRealmOptions, useRealmOrgBindings } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | null {
@@ -43,7 +44,31 @@ const OrgNameCell = memo(function OrgNameCell({ row }: { row: AdmOrgVo }) {
  */
 export function OrgsPage() {
   const orgsQuery = useOrgOptions();
+  const orgs = orgsQuery.data ?? [];
   const orgTypesQuery = useOrgTypeOptions();
+  const realmsQuery = useRealmOptions();
+  const realms = realmsQuery.data ?? [];
+  /** 领域 tab 只在领域数 > 1 时出现；选中态由页面持有，收窄条件折进 extraQuery。 */
+  const [realmTab, setRealmTab] = useState<string | null>(null);
+  const showRealmTabs = realms.length > 1;
+  const realmOrgBindings = useRealmOrgBindings(showRealmTabs);
+  const activeRealm = realmTab && realms.some((realm) => realm.id === realmTab) ? realmTab : null;
+
+  /**
+   * 选中领域 → 该领域绑定的组织及其全部子孙 → `id` 的 is_in 条件；未选领域不收窄。
+   * 领域绑定的是子树根（与可见范围同一套语义），展开子孙才能在该 tab 下看到完整的组织树。
+   */
+  const extraQuery = useMemo<PageQuery>(() => {
+    if (!activeRealm) return {};
+    const boundIds = (realmOrgBindings.data ?? [])
+      .filter((binding) => binding.realmId === activeRealm)
+      .map((binding) => binding.orgId);
+    const ids = new Set<string>();
+    for (const orgId of boundIds) {
+      for (const id of subtreeIds(orgs, orgId)) ids.add(id);
+    }
+    return idInQuery([...ids]);
+  }, [activeRealm, realmOrgBindings.data, orgs]);
 
   const orgTypeName = useMemo(() => {
     const map = new Map<string, string>();
@@ -145,13 +170,31 @@ export function OrgsPage() {
   return (
     <CrudPage<AdmOrgVo>
       title="组织管理"
-      subtitle="组织是全局一棵树：treeCode 表达层级，类型来自组织类型字典，与领域多对多（领域只决定「哪些组织属于我」）。行内「添加子级」会预填上级组织。"
+      subtitle="组织是全局一棵树：treeCode 表达层级，类型来自组织类型字典，与领域多对多（领域只决定「哪些组织属于我」）。领域多于一个时按顶部 tab 切换；树默认收起，分页按一级组织数量计。行内「添加子级」会预填上级组织。"
       prefix="/adm/org"
       columns={columns}
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="tree_code:asc"
       sortable={{ kind: "tree", treeCode: (row) => row.treeCode }}
+      treeDefaultCollapsed
+      paginateByRoot
+      rootLabel="一级组织"
+      extraQuery={extraQuery}
+      tabs={
+        showRealmTabs
+          ? {
+              ariaLabel: "领域",
+              options: realms.map((realm) => ({
+                value: realm.id,
+                label: realm.name,
+                disabled: !realm.enabled,
+              })),
+              selected: activeRealm,
+              onSelect: setRealmTab,
+            }
+          : undefined
+      }
       searchPlaceholder="搜索组织名 / 全名 / 编码 / 备注"
       filters={[
         {

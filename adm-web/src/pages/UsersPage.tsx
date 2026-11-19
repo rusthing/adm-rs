@@ -3,11 +3,22 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { roleUserApi, userApi } from "@/lib/api";
 import type { CrudColumn, CrudField, FormMode } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
+import { ScopePanel } from "@/components/crud/scope-panel";
+import type { CrudScopeDef } from "@/components/crud/scope";
+import { idInQuery, subtreeIds } from "@/components/crud/scope";
 import { Badge, Button, Checkbox, Spinner } from "@/components/ui/primitives";
 import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
-import type { AdmRoleVo, AdmUserVo, FormValues } from "@/lib/types";
-import { usePersonOptions, useRoleGroupOptions, useRoleOptions } from "@/lib/queries";
+import type { AdmRoleVo, AdmUserVo, FormValues, PageQuery } from "@/lib/types";
+import {
+  useOrgOptions,
+  useOrgUserBindings,
+  usePersonOptions,
+  useRealmOptions,
+  useRealmUserBindings,
+  useRoleGroupOptions,
+  useRoleOptions,
+} from "@/lib/queries";
 import { formatMs, shortId } from "@/lib/utils";
 import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
 
@@ -37,6 +48,8 @@ function UserRolesDrawer({
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  /** 左侧角色分组树的选中态：null = 全部；选中后右侧只列该分组（含子分组）下的角色。 */
+  const [groupSelected, setGroupSelected] = useState<string | null>(null);
 
   const bindingsQuery = useQuery({
     queryKey: ["role-user", "by-user", user?.id],
@@ -46,9 +59,10 @@ function UserRolesDrawer({
   const rolesQuery = useRoleOptions(open);
   const groupsQuery = useRoleGroupOptions(open);
 
-  // 切换用户时先清空勾选，避免在新用户的绑定还没返回前沿用上一位用户的选中状态。
+  // 切换用户时先清空勾选与分组选择，避免沿用上一位用户的状态。
   useEffect(() => {
     setSelected(new Set());
+    setGroupSelected(null);
   }, [user?.id]);
 
   useEffect(() => {
@@ -79,6 +93,33 @@ function UserRolesDrawer({
         a[0].localeCompare(b[0]),
     );
   }, [roles, groupsQuery.data]);
+
+  /** 左侧分组树（单选导航）：复用 ScopePanel 的缩进 / 折叠 / 「全部」交互。 */
+  const roleGroupScope: CrudScopeDef = {
+    title: "角色分组",
+    param: "group_id",
+    field: "groupId",
+    hideWhenSingle: false,
+    options: (groupsQuery.data ?? []).map((group) => ({
+      value: group.id,
+      label: group.name,
+      treeCode: group.treeCode,
+      description: group.treeCode,
+    })),
+    loading: groupsQuery.isLoading,
+    emptyText: "还没有角色分组。",
+    hint: "选中分组后右侧只列该分组（含子分组）下的角色。",
+  };
+
+  /** 选中分组的子树 id 集合；null 表示「全部」，右侧不过滤。 */
+  const groupSubtree = useMemo(
+    () => (groupSelected ? new Set(subtreeIds(groupsQuery.data ?? [], groupSelected)) : null),
+    [groupSelected, groupsQuery.data],
+  );
+  const visibleGroups = useMemo(
+    () => (groupSubtree ? groups.filter(([groupId]) => groupSubtree.has(groupId)) : groups),
+    [groups, groupSubtree],
+  );
 
   const toggle = (roleId: string) => {
     setSelected((current) => {
@@ -131,7 +172,8 @@ function UserRolesDrawer({
       open={open}
       onClose={onClose}
       title={`分配角色 · ${user?.name ?? ""}`}
-      description="保存时只提交新增与移除的差异；同一个用户可以属于多个角色。"
+      description="左侧按角色分组树定位，右侧勾选该分组（含子分组）下的角色；保存时只提交新增与移除的差异，同一个用户可以属于多个角色。"
+      width="w-full max-w-[780px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
@@ -150,55 +192,69 @@ function UserRolesDrawer({
           还没有角色数据。请先到「角色管理」创建角色，再回来分配。
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          {groups.map(([groupId, groupRoles]) => {
-            const ids = groupRoles.map((role) => role.id);
-            const checkedCount = ids.reduce((count, id) => count + (selected.has(id) ? 1 : 0), 0);
-            return (
-              <section key={groupId}>
-                <div className="mb-1.5 flex items-center gap-2 text-[11.5px] font-medium text-muted">
-                  <ShieldCheck size={13} />
-                  <span className="truncate">{groupName.get(groupId) ?? shortId(groupId)}</span>
-                  <span className="shrink-0 text-[10.5px] text-muted/70">
-                    {checkedCount}/{ids.length}
-                  </span>
-                  <span className="flex-1" />
-                  <button
-                    type="button"
-                    onClick={() => setMany(ids, true)}
-                    disabled={checkedCount >= ids.length}
-                    className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    全选本组
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMany(ids, false)}
-                    disabled={checkedCount === 0}
-                    className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    清空本组
-                  </button>
-                </div>
-                <div className="flex flex-col gap-0.5 rounded-xl border border-line p-1.5">
-                  {groupRoles.map((role) => (
-                    <label
-                      key={role.id}
-                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sunken"
-                    >
-                      <Checkbox checked={selected.has(role.id)} onChange={() => toggle(role.id)} />
-                      <span className="flex-1 text-[12.5px] text-ink-soft">{role.name}</span>
-                      {!role.enabled && <Badge tone="warn">停用</Badge>}
-                      <code className="font-mono text-[10.5px] text-muted">{role.sortOrder}</code>
-                    </label>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-          <p className="text-[11.5px] leading-relaxed text-muted">
-            说明：用户本身没有 roleId 字段，用户与角色是多对多；同一个用户可以有多个角色，权限取并集。
-          </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <ScopePanel
+            scope={roleGroupScope}
+            selected={groupSelected}
+            onSelect={setGroupSelected}
+            className="lg:w-[220px] lg:shrink-0"
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            {visibleGroups.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-line px-3.5 py-6 text-center text-[12px] text-muted">
+                该分组下暂无角色。
+              </div>
+            ) : (
+              visibleGroups.map(([groupId, groupRoles]) => {
+                const ids = groupRoles.map((role) => role.id);
+                const checkedCount = ids.reduce((count, id) => count + (selected.has(id) ? 1 : 0), 0);
+                return (
+                  <section key={groupId}>
+                    <div className="mb-1.5 flex items-center gap-2 text-[11.5px] font-medium text-muted">
+                      <ShieldCheck size={13} />
+                      <span className="truncate">{groupName.get(groupId) ?? shortId(groupId)}</span>
+                      <span className="shrink-0 text-[10.5px] text-muted/70">
+                        {checkedCount}/{ids.length}
+                      </span>
+                      <span className="flex-1" />
+                      <button
+                        type="button"
+                        onClick={() => setMany(ids, true)}
+                        disabled={checkedCount >= ids.length}
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        全选本组
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMany(ids, false)}
+                        disabled={checkedCount === 0}
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        清空本组
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-0.5 rounded-xl border border-line p-1.5">
+                      {groupRoles.map((role) => (
+                        <label
+                          key={role.id}
+                          className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sunken"
+                        >
+                          <Checkbox checked={selected.has(role.id)} onChange={() => toggle(role.id)} />
+                          <span className="flex-1 text-[12.5px] text-ink-soft">{role.name}</span>
+                          {!role.enabled && <Badge tone="warn">停用</Badge>}
+                          <code className="font-mono text-[10.5px] text-muted">{role.sortOrder}</code>
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })
+            )}
+            <p className="text-[11.5px] leading-relaxed text-muted">
+              说明：用户本身没有 roleId 字段，用户与角色是多对多；同一个用户可以有多个角色，权限取并集。切换左侧分组不会丢失已勾选的角色。
+            </p>
+          </div>
         </div>
       )}
     </Drawer>
@@ -220,6 +276,67 @@ export function UsersPage() {
     }
     return map;
   }, [personsQuery.data]);
+
+  // ---- 领域 tab：领域多于一个时顶部切换，按 realm_user 绑定收窄用户 ----
+  const realmsQuery = useRealmOptions();
+  const realms = realmsQuery.data ?? [];
+  const [realmTab, setRealmTab] = useState<string | null>(null);
+  const showRealmTabs = realms.length > 1;
+  const realmUserBindings = useRealmUserBindings(showRealmTabs);
+  const activeRealm = realmTab && realms.some((realm) => realm.id === realmTab) ? realmTab : null;
+
+  // ---- 左侧组织树：组织非空即展示，选中组织（含子组织）按 org_user 绑定收窄用户 ----
+  const orgsQuery = useOrgOptions();
+  const orgs = orgsQuery.data ?? [];
+  const [orgSelected, setOrgSelected] = useState<string | null>(null);
+  const orgUserBindings = useOrgUserBindings(orgs.length > 0);
+  const activeOrg = orgSelected && orgs.some((org) => org.id === orgSelected) ? orgSelected : null;
+  const orgScope: CrudScopeDef = {
+    title: "组织",
+    param: "org_id",
+    field: "orgId",
+    hideWhenSingle: false,
+    options: orgs.map((org) => ({
+      value: org.id,
+      label: org.name,
+      treeCode: org.treeCode,
+      description: org.treeCode,
+      disabled: !org.enabled,
+    })),
+    loading: orgsQuery.isLoading,
+    emptyText: "还没有组织，请先到「组织管理」创建。",
+    hint: "选中组织后只列该组织（含子组织）下的用户。",
+  };
+
+  /** 领域命中的用户 id 集合；未选领域为 null（不收窄）。 */
+  const realmUserIds = useMemo(() => {
+    if (!activeRealm) return null;
+    return new Set(
+      (realmUserBindings.data ?? [])
+        .filter((binding) => binding.realmId === activeRealm)
+        .map((binding) => binding.userId),
+    );
+  }, [activeRealm, realmUserBindings.data]);
+
+  /** 选中组织子树命中的用户 id 集合；未选组织为 null。 */
+  const orgUserIds = useMemo(() => {
+    if (!activeOrg) return null;
+    const orgIds = new Set(subtreeIds(orgs, activeOrg));
+    return new Set(
+      (orgUserBindings.data ?? [])
+        .filter((binding) => orgIds.has(binding.orgId))
+        .map((binding) => binding.userId),
+    );
+  }, [activeOrg, orgs, orgUserBindings.data]);
+
+  /** 领域与组织同时选中时取交集，折成 `id` 的 is_in 条件。 */
+  const extraQuery = useMemo<PageQuery>(() => {
+    let ids: string[] | null = null;
+    if (realmUserIds && orgUserIds) ids = [...realmUserIds].filter((id) => orgUserIds.has(id));
+    else if (realmUserIds) ids = [...realmUserIds];
+    else if (orgUserIds) ids = [...orgUserIds];
+    return ids ? idInQuery(ids) : {};
+  }, [realmUserIds, orgUserIds]);
 
   const columns: CrudColumn<AdmUserVo>[] = [
     {
@@ -466,13 +583,38 @@ export function UsersPage() {
     <>
       <CrudPage<AdmUserVo>
         title="用户管理"
-        subtitle="账号是能登录的凭据；人员档案是自然人（在「人员管理」维护），一个自然人可挂多个账号，不关联人员的即纯账号。列表里的手机 / 邮箱 / 身份证 / 姓名都是服务端遮蔽值，编辑时会先取单条详情回显原值。"
+        subtitle="账号是能登录的凭据；人员档案是自然人（在「人员管理」维护），一个自然人可挂多个账号，不关联人员的即纯账号。领域多于一个时按顶部 tab 切换；组织非空时左侧组织树选中后只列该组织（含子组织）下的用户。列表里的手机 / 邮箱 / 身份证 / 姓名都是服务端遮蔽值，编辑时会先取单条详情回显原值。"
         prefix="/adm/user"
         columns={columns}
         fields={fields}
         itemLabel={(row) => row.name}
         defaultOrderBy="update_ms:desc"
         searchPlaceholder="搜索登录名 / 昵称 / 手机号 / 邮箱 / 身份证 / 实名 / 备注"
+        extraQuery={extraQuery}
+        tabs={
+          showRealmTabs
+            ? {
+                ariaLabel: "领域",
+                options: realms.map((realm) => ({
+                  value: realm.id,
+                  label: realm.name,
+                  disabled: !realm.enabled,
+                })),
+                selected: activeRealm,
+                onSelect: setRealmTab,
+              }
+            : undefined
+        }
+        sidePanel={
+          orgs.length > 0 ? (
+            <ScopePanel
+              scope={orgScope}
+              selected={activeOrg}
+              onSelect={setOrgSelected}
+              className="lg:w-[224px] lg:shrink-0"
+            />
+          ) : undefined
+        }
         filters={[
           {
             type: "select",

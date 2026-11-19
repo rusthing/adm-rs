@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   effectiveScopeValue,
+  idInQuery,
   initialScopeValue,
   scopeCreateValue,
   scopeIndent,
   scopePanelVisible,
+  subtreeIds,
   treeGroupQuery,
 } from "@/components/crud/scope";
 import type { CrudScopeDef } from "@/components/crud/scope";
@@ -122,5 +124,46 @@ describe("treeGroupQuery", () => {
     const ids = [params["group_id-0"], params["group_id-1"]].filter(Boolean);
     expect(ids).toContain("ok");
     expect(ids).not.toContain("bad");
+  });
+});
+
+describe("subtreeIds", () => {
+  const items = [
+    { id: "1", treeCode: "001" },
+    { id: "2", treeCode: "001001" },
+    { id: "3", treeCode: "001001001" },
+    { id: "4", treeCode: "001002" },
+    { id: "5", treeCode: "002" },
+  ];
+
+  it("选中节点返回自身 + 全部子孙（含多层）", () => {
+    expect(subtreeIds(items, "1")).toEqual(["1", "2", "3", "4"]);
+    expect(subtreeIds(items, "2")).toEqual(["2", "3"]);
+  });
+
+  it("叶子只含自身，兄弟根不被误纳", () => {
+    expect(subtreeIds(items, "3")).toEqual(["3"]);
+    expect(subtreeIds(items, "5")).toEqual(["5"]);
+  });
+
+  it("未知 id 退回只含自身，至少能按等值查", () => {
+    expect(subtreeIds(items, "nope")).toEqual(["nope"]);
+  });
+});
+
+describe("idInQuery", () => {
+  it("空集用 -1 哨兵表达「该范围下没有数据」，而不是退化成查全部", () => {
+    expect(idInQuery([])).toEqual({ "id-op": "il", "id-0": "-1" });
+  });
+
+  it("单个 id 走等值查询", () => {
+    expect(idInQuery(["7"])).toEqual({ id: "7" });
+  });
+
+  it("多个 id 走 Bean Searcher 的 il（is_in）运算符", () => {
+    const params = idInQuery(["7", "8", "9"]);
+    expect(params["id-op"]).toBe("il");
+    expect([params["id-0"], params["id-1"], params["id-2"]]).toEqual(["7", "8", "9"]);
+    expect(params["id-3"]).toBeUndefined();
   });
 });
