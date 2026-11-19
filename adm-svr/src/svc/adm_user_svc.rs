@@ -27,9 +27,9 @@
 //! 两边口径一致，改算法只改那一处。
 
 use crate::config::get_adm_config;
-use crate::dto::{AdmUserAddDto, AdmUserModifyDto, AdmUserSaveDto};
+use crate::dto::{AdmUserAddDto, AdmUserModifyDto, AdmUserSaveDto, AdmUserSyncDto};
 use crate::mo::adm_user;
-use crate::utils::AdmPasswordUtils;
+use crate::utils::{AdmPasswordUtils, normalize_id_card};
 use robotech::db::get_db_conn;
 use robotech::macros::svc;
 use sea_orm::{ActiveValue, Set};
@@ -50,7 +50,8 @@ use wheel_rs::sm3_utils::sm3_hex;
     list_vo = AdmUserListVo,
     before_add = seal_passwords_on_add,
     before_modify = seal_passwords_on_modify,
-    before_save = seal_passwords_on_save
+    before_save = seal_passwords_on_save,
+    before_sync = validate_user_id_card_on_sync
 )]
 pub struct AdmUserSvc;
 
@@ -166,30 +167,30 @@ fn required_login_pswd() -> SvcError {
 /// `SM3(明文)`：前者由服务端算一次摘要，后者原样使用，避免重复摘要。
 impl AdmUserSvc {
     pub async fn reset_password(user_id: u64, operator_id: u64) -> Result<Ro<()>, SvcError> {
-    let db = get_db_conn()?;
-    let user = AdmUserDao::get_by_id::<_, adm_user::Model>(U64(user_id), db.as_ref())
-        .await?
-        .ok_or_else(|| SvcError::NotFound(format!("用户 {user_id} 不存在")))?;
+        let db = get_db_conn()?;
+        let user = AdmUserDao::get_by_id::<_, adm_user::Model>(U64(user_id), db.as_ref())
+            .await?
+            .ok_or_else(|| SvcError::NotFound(format!("用户 {user_id} 不存在")))?;
 
-    let config = get_adm_config()?;
-    let default_password = config.default_password.trim();
-    let first_hash = if AdmPasswordUtils::is_first_hash(default_password) {
-        default_password.to_lowercase()
-    } else {
-        sm3_hex(default_password)
-    };
-    let salt = AdmPasswordUtils::gen_salt();
-    let sealed = AdmPasswordUtils::seal(&first_hash, &salt);
+        let config = get_adm_config()?;
+        let default_password = config.default_password.trim();
+        let first_hash = if AdmPasswordUtils::is_first_hash(default_password) {
+            default_password.to_lowercase()
+        } else {
+            sm3_hex(default_password)
+        };
+        let salt = AdmPasswordUtils::gen_salt();
+        let sealed = AdmPasswordUtils::seal(&first_hash, &salt);
 
-    let mut active: adm_user::ActiveModel = user.into();
-    active.login_pswd = Set(sealed);
-    active.login_pswd_salt = Set(salt);
-    active.login_pswd_default = Set(true);
-    active.updater_id = Set(operator_id as i64);
-    active.update_ms = ActiveValue::NotSet;
-    AdmUserDao::update(active, db.as_ref()).await?;
+        let mut active: adm_user::ActiveModel = user.into();
+        active.login_pswd = Set(sealed);
+        active.login_pswd_salt = Set(salt);
+        active.login_pswd_default = Set(true);
+        active.updater_id = Set(operator_id as i64);
+        active.update_ms = ActiveValue::NotSet;
+        AdmUserDao::update(active, db.as_ref()).await?;
 
-    Ok(Ro::success("口令已重置为默认值".to_string()))
+        Ok(Ro::success("口令已重置为默认值".to_string()))
     }
 }
 
@@ -204,6 +205,7 @@ pub async fn seal_passwords_on_modify<C>(
 where
     C: ConnectionTrait,
 {
+    dto.id_card = normalize_id_card(dto.id_card)?;
     (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
     (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;
     (dto.pay_pswd, dto.pay_pswd_salt) = seal_pswd_pair(dto.pay_pswd, dto.pay_pswd_salt)?;
@@ -214,11 +216,25 @@ where
 ///
 /// `save` 的钩子不带连接（框架给的签名如此），本钩子也不需要。
 #[allow(clippy::result_large_err)]
-pub async fn seal_passwords_on_save(
-    mut dto: AdmUserSaveDto,
-) -> Result<AdmUserSaveDto, SvcError> {
+pub async fn seal_passwords_on_save(mut dto: AdmUserSaveDto) -> Result<AdmUserSaveDto, SvcError> {
+    dto.id_card = normalize_id_card(dto.id_card)?;
     (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
     (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;
     (dto.pay_pswd, dto.pay_pswd_salt) = seal_pswd_pair(dto.pay_pswd, dto.pay_pswd_salt)?;
+    Ok(dto)
+}
+
+/// # 同步用户前校验身份证
+///
+/// 用户表的 `real_name` / `id_card` 必须成对；格式不对的号码在这里拒绝，
+/// 让同步任务按 fatal 进死信，而不是落库后再人工清理。
+pub async fn validate_user_id_card_on_sync<C>(
+    mut dto: AdmUserSyncDto,
+    _db: &C,
+) -> Result<AdmUserSyncDto, SvcError>
+where
+    C: ConnectionTrait,
+{
+    dto.id_card = normalize_id_card(dto.id_card)?;
     Ok(dto)
 }
