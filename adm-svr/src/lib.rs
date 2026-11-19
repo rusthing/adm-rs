@@ -13,9 +13,10 @@ pub mod web;
 ///
 /// `/sync` **不挂用户鉴权**：它是给 syn 做单向复制的内部接口，审计字段全部
 /// 来自请求体（`createrId` / `createMs` / `updaterId` / `updateMs`），本来就不
-/// 依赖当前用户；框架生成的 `sync` 处理器也不读 `X-User-Id`。把它放进鉴权层
-/// 只会逼同步任务长期持有用户 Bearer token，与框架里 `dtw` 等服务的 `/sync`
-/// 口径不一致。
+/// 依赖当前用户；框架生成的 `sync` 处理器也不读 `X-User-Id`。CDC 删除同理，
+/// 走 `DELETE {prefix}/sync/{id}`，复用 `del_by_id`，也不要求用户令牌。
+/// 把它放进鉴权层只会逼同步任务长期持有用户 Bearer token，与框架里 `dtw`
+/// 等服务的 `/sync`、`DELETE /{id}` 口径不一致。
 ///
 /// **框架里 `#[router(crud)]` 加路由时这里要跟着加**——两边是手工同步的，
 /// 少一条就是「接口 404、编译全绿」。
@@ -47,6 +48,9 @@ macro_rules! adm_crud_router {
                 // `/sync` 是 syn 的内部复制入口，不走用户鉴权；框架生成的
                 // `sync` 处理器从请求体取审计字段，不需要 `X-User-Id`。
                 .route(concat!($prefix, "/sync"), post(sync))
+                // CDC 删除同样属于复制动作：给 syn 一个不带用户鉴权的专用删除入口，
+                // 复用 ctrl 生成的 `del_by_id`（它只读 Path，不读身份头）。
+                .route(concat!($prefix, "/sync/{id}"), delete(del_by_id))
                 .merge(
                     Router::new()
                         .route(concat!($prefix, "/list"), get(list_by_query_dto))
