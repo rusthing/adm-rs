@@ -52,6 +52,8 @@ fn copy_dir_recursive(src: &Path, dest: &Path) {
             if src_path.is_dir() {
                 copy_dir_recursive(&src_path, &dest_path);
             } else {
+                // 迁移文件变化也要重跑 build.rs，否则 target 里留旧副本
+                println!("cargo:rerun-if-changed={}", src_path.display());
                 fs::copy(&src_path, &dest_path).ok();
             }
         }
@@ -61,6 +63,8 @@ fn copy_dir_recursive(src: &Path, dest: &Path) {
 fn copy_file(project_root: &str, file_name: &str, ext: &str, dest_dir_path: &Path) {
     let src_path = Path::new(project_root).join(format!("{file_name}.{ext}"));
     if src_path.exists() {
+        // 配置文件变化要重跑 build.rs，否则运行的 target 配置一直是旧副本
+        println!("cargo:rerun-if-changed={file_name}.{ext}");
         let dest_path = dest_dir_path.join(format!("{file_name}.{ext}"));
         fs::copy(&src_path, &dest_path).ok();
     }

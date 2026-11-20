@@ -54,7 +54,6 @@ macro_rules! adm_crud_router {
                 .merge(
                     Router::new()
                         .route(concat!($prefix, "/list"), get(list_by_query_dto))
-                .route(concat!($prefix, "/count"), get(count_by_query_dto))
                         .route(concat!($prefix, "/count"), get(count_by_query_dto))
                         .route(concat!($prefix, "/list-ex"), get(list_ex_by_query_dto))
                         .route(concat!($prefix, "/page"), get(page_by_query_dto))

@@ -5,6 +5,8 @@
 #   APP_PROFILE=prod ./adm-svr          # 生产环境（默认）
 #
 # 没有配置 profile 时按 prod 处理；prod 下 adm.jwt-secret 仍是默认值会启动失败。
+# 本地开发统一用 dev + dev-bypass：前端 VITE_AUTH_MODE=disabled 只发 X-User-Id:0，不带令牌。
+profile = "dev"
 
 [db]
 url = "postgresql://admrs:admrs@localhost:5432/admrs"
@@ -39,7 +41,7 @@ option-refresh-ms = 60000
 # 当前用户固定为系统账号 user_id=0（需要执行 20261108120000_system_account.sql）。
 # 非 dev 环境写 true 会启动失败。
 [auth]
-dev-bypass = false
+dev-bypass = true
 
 [micro-svc.consul]
 base-url = "http://consul:8500"
