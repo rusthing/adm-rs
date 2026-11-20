@@ -14018,7 +14018,7 @@ DAT 1793541529</a:History>
 <a:ModificationDate>1793541527</a:ModificationDate>
 <a:Modifier>张柏子</a:Modifier>
 <a:Comment>手机号（档案联系方式）
-人员档案上的号码，可与账号登录手机号不同；不做唯一约束
+全局唯一（AK）：一个手机号只对应一个人员档案
 @check is_mobile_cn</a:Comment>
 <a:History>ORG {698C694D-9962-4FE9-8ECE-499C88F123CE}
 DAT 1793541529</a:History>
@@ -14230,6 +14230,19 @@ DAT 1793541529</a:History>
 <o:Column Ref="o341"/>
 </c:Key.Columns>
 </o:Key>
+<o:Key Id="o812">
+<a:ObjectID>11C531CA-6934-44F7-BF9C-57720E91D1C3</a:ObjectID>
+<a:Name>手机号</a:Name>
+<a:Code>mobile</a:Code>
+<a:CreationDate>1795156938</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795156938</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Key.Columns>
+<o:Column Ref="o339"/>
+</c:Key.Columns>
+</o:Key>
 </c:Keys>
 <c:Indexes>
 <o:Index Id="o352">
@@ -14391,6 +14404,36 @@ DAT 1793541529</a:History>
 </c:Column>
 <c:Elements>
 <o:Column Ref="o341"/>
+</c:Elements>
+</o:IndexColumn>
+</c:IndexColumns>
+</o:Index>
+<o:Index Id="o813">
+<a:ObjectID>CED36BA2-867E-41E7-B769-2D255D62441F</a:ObjectID>
+<a:Name>adm_person_AK4</a:Name>
+<a:Code>adm_person_AK4</a:Code>
+<a:CreationDate>1795156938</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795156938</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<a:Unique>1</a:Unique>
+<c:LinkedObject>
+<o:Key Ref="o812"/>
+</c:LinkedObject>
+<c:IndexColumns>
+<o:IndexColumn Id="o814">
+<a:ObjectID>BF5A3626-5D7B-424B-9C7F-6170E1F7D586</a:ObjectID>
+<a:CreationDate>1795156938</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795156938</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Column>
+<o:Column Ref="o339"/>
+</c:Column>
+<c:Elements>
+<o:Column Ref="o339"/>
 </c:Elements>
 </o:IndexColumn>
 </c:IndexColumns>

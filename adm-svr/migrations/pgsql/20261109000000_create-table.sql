@@ -1319,7 +1319,8 @@ create table adm_person (
    constraint PK_ADM_PERSON primary key (id),
    constraint AK_CODE_TYPE_ID_AND_CODE_ADM_PERSON unique (code_type_id, code),
    constraint AK_EMAIL_ADM_PERSON unique (email),
-   constraint AK_ID_CARD_ADM_PERSON unique (id_card)
+   constraint AK_ID_CARD_ADM_PERSON unique (id_card),
+   constraint AK_MOBILE_ADM_PERSON unique (mobile)
 );
 
 comment on table adm_person is
@@ -1360,7 +1361,7 @@ comment on column adm_person.name_pinyin_full is
 
 comment on column adm_person.mobile is
 '手机号（档案联系方式）
-人员档案上的号码，可与账号登录手机号不同；不做唯一约束
+全局唯一（AK）：一个手机号只对应一个人员档案
 @check is_mobile_cn';
 
 comment on column adm_person.email is

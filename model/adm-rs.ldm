@@ -7961,6 +7961,19 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <o:EntityAttribute Ref="o275"/>
 </c:Identifier.Attributes>
 </o:Identifier>
+<o:Identifier Id="o581">
+<a:ObjectID>18E2A64D-9A29-4FF0-A568-7448C03A263C</a:ObjectID>
+<a:Name>手机号</a:Name>
+<a:Code>mobile</a:Code>
+<a:CreationDate>1795156938</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795156938</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Identifier.Attributes>
+<o:EntityAttribute Ref="o279"/>
+</c:Identifier.Attributes>
+</o:Identifier>
 </c:Identifiers>
 <c:PrimaryIdentifier>
 <o:Identifier Ref="o267"/>
