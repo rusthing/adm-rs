@@ -104,7 +104,11 @@ function renderMenu(menu: AdmMenuVo) {
   return perm ? <Guarded perm={perm}>{page}</Guarded> : page;
 }
 
-export function App() {
+/**
+ * 路由表本体：独立入口与联邦入口共用同一份实现，避免两处菜单渲染漂移。
+ * Provider（QueryClient/Auth/Toast/Confirm）与 Router 由各自入口负责包裹。
+ */
+export function AppRoutes() {
   const { authz, authzError, authzLoading, refreshAuthz } = useAuth();
 
   // 应用的 sort_order 决定侧栏分段顺序；默认落地页必须跟着同一顺序走，
@@ -199,4 +203,9 @@ export function App() {
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
+}
+
+/** 独立入口：Provider 与 Router 都在 main.tsx，这里只渲染路由表。 */
+export function App() {
+  return <AppRoutes />;
 }
