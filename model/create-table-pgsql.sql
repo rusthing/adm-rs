@@ -1046,6 +1046,7 @@ id
 /*==============================================================*/
 create table adm_org_user (
    id                   INT8                 not null,
+   realm_id             INT8                 not null,
    org_id               INT8                 not null,
    user_id              INT8                 not null,
    creater_id           INT8                 not null,
@@ -1053,24 +1054,30 @@ create table adm_org_user (
    updater_id           INT8                 not null,
    update_ms            INT8                 not null,
    constraint PK_ADM_ORG_USER primary key (id),
-   constraint AK_ORG_ID_AND_USER_ID_ADM_ORG_USER unique (org_id, user_id)
+   constraint AK_REALM_ID_AND_ORG_ID_AND_USER_ID_ADM_ORG_USER unique (realm_id, org_id, user_id)
 );
 
 comment on table adm_org_user is
 '组织用户
-组织与用户的多对多关系，一个人在多个组织任职时有多行';
+领域、组织与用户的三方关系：一个人在某领域的某组织任职，同一人可在多个领域/组织各占一行；
+每行都要与 realm_org / realm_user 对齐：(realm_id, org_id) 属于 realm_org，(realm_id, user_id) 属于 realm_user';
 
 comment on column adm_org_user.id is
 '主键
 代理键，由框架生成（雪花 ID），业务层不需要关心取值';
 
+comment on column adm_org_user.realm_id is
+'领域 ID
+关联 realm；决定这条任职记录属于哪个领域
+(realm_id, org_id, user_id) 唯一（AK）';
+
 comment on column adm_org_user.org_id is
 '组织 ID
-关联 org；(org_id, user_id) 唯一（AK）';
+关联 org；同一领域内 (realm_id, org_id, user_id) 唯一（AK）';
 
 comment on column adm_org_user.user_id is
 '用户 ID
-关联 user；(org_id, user_id) 唯一（AK）';
+关联 user；同一领域内 (realm_id, org_id, user_id) 唯一（AK）';
 
 comment on column adm_org_user.creater_id is
 '创建人 ID
@@ -1109,6 +1116,13 @@ org_id
 /*==============================================================*/
 create  index Relationship_11_FK on adm_org_user (
 user_id
+);
+
+/*==============================================================*/
+/* Index: Relationship_36_FK                                    */
+/*==============================================================*/
+create  index Relationship_36_FK on adm_org_user (
+realm_id
 );
 
 /*==============================================================*/
@@ -2774,6 +2788,11 @@ alter table adm_org_user
 alter table adm_org_user
    add constraint fk_user_id__from__adm_user foreign key (user_id)
       references adm_user (id)
+      on delete restrict on update restrict;
+
+alter table adm_org_user
+   add constraint fk_realm_id__from__adm_realm foreign key (realm_id)
+      references adm_realm (id)
       on delete restrict on update restrict;
 
 alter table adm_perm

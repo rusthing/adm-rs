@@ -318,16 +318,17 @@ export function UsersPage() {
     );
   }, [activeRealm, realmUserBindings.data]);
 
-  /** 选中组织子树命中的用户 id 集合；未选组织为 null。 */
+  /** 选中组织子树命中的用户 id 集合；未选组织为 null。选了领域时只认该领域下的任职。 */
   const orgUserIds = useMemo(() => {
     if (!activeOrg) return null;
     const orgIds = new Set(subtreeIds(orgs, activeOrg));
     return new Set(
       (orgUserBindings.data ?? [])
         .filter((binding) => orgIds.has(binding.orgId))
+        .filter((binding) => !activeRealm || binding.realmId === activeRealm)
         .map((binding) => binding.userId),
     );
-  }, [activeOrg, orgs, orgUserBindings.data]);
+  }, [activeOrg, activeRealm, orgs, orgUserBindings.data]);
 
   /** 领域与组织同时选中时取交集，折成 `id` 的 is_in 条件。 */
   const extraQuery = useMemo<PageQuery>(() => {

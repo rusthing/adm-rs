@@ -9,14 +9,24 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, unique)]
     pub id: i64,
-    #[sea_orm(unique_key = "ak_org_id_and_user_id_adm_org_user")]
+    #[sea_orm(unique_key = "ak_realm_id_and_org_id_and_user_id_adm_org_user")]
+    pub realm_id: i64,
+    #[sea_orm(unique_key = "ak_realm_id_and_org_id_and_user_id_adm_org_user")]
     pub org_id: i64,
-    #[sea_orm(unique_key = "ak_org_id_and_user_id_adm_org_user")]
+    #[sea_orm(unique_key = "ak_realm_id_and_org_id_and_user_id_adm_org_user")]
     pub user_id: i64,
     pub creater_id: i64,
     pub create_ms: i64,
     pub updater_id: i64,
     pub update_ms: i64,
+    #[sea_orm(
+        belongs_to,
+        from = "realm_id",
+        to = "id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    pub adm_realm: BelongsTo<super::adm_realm::Entity>,
     #[sea_orm(
         belongs_to,
         from = "org_id",

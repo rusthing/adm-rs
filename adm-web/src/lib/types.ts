@@ -254,9 +254,10 @@ export interface AdmRealmUserVo extends AuditFields {
   userId: string;
 }
 
-/** 组织 ↔ 用户 绑定（adm_org_user）：用户直接挂组织，不经人员档案。 */
+/** 组织 ↔ 用户 绑定（adm_org_user）：用户在某领域的某组织任职，不经人员档案。 */
 export interface AdmOrgUserVo extends AuditFields {
   id: string;
+  realmId: string;
   orgId: string;
   userId: string;
 }
