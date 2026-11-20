@@ -68,7 +68,7 @@ function AccountMenu({
   }, [open]);
 
   return (
-    <div className="relative shrink-0" ref={rootRef}>
+    <div className="relative shrink-0" ref={rootRef} data-federated-hide-user>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -516,8 +516,8 @@ export function AppShell() {
             </span>
             <span className={cn("font-mono", collapsed && "lg:hidden")}>adm-web</span>
           </div>
-          {/* 移动端抽屉里也能进入个人中心 / 退出 */}
-          <div className="mt-2.5 flex gap-1.5 lg:hidden">
+          {/* 移动端抽屉里也能进入个人中心 / 退出；联邦窗口由宿主统一提供，隐藏 */}
+          <div className="mt-2.5 flex gap-1.5 lg:hidden" data-federated-hide-user>
             <Link
               to="/profile"
               onClick={() => setMobileOpen(false)}

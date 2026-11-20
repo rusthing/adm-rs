@@ -34,7 +34,8 @@ const queryClient = new QueryClient({
 
 /** 常见静态路径的可读名；动态菜单路径回退到末段，仍是稳定可复现的标题。 */
 const PATH_TITLES: Record<string, string> = {
-  "/": "权限管理",
+  "/": "后台管理",
+  "/dashboard": "后台管理",
   "/login": "登录",
   "/profile": "个人资料",
 };
@@ -42,7 +43,7 @@ const PATH_TITLES: Record<string, string> = {
 function titleOf(pathname: string): string {
   if (PATH_TITLES[pathname]) return PATH_TITLES[pathname];
   const last = pathname.split("/").filter(Boolean).pop();
-  return last ? `${last}` : "权限管理";
+  return last ? `${last}` : "后台管理";
 }
 
 function RouteReporter({ onRoute }: { onRoute?: AdmFederatedProps["onRoute"] }) {
