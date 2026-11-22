@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { idInQuery, subtreeIds } from "@/components/crud/scope";
+import { idInQuery, narrowToSubtrees } from "@/components/crud/scope";
 import { Button } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/overlay";
 import { realmOrgApi } from "@/lib/api";
@@ -75,11 +75,7 @@ export function OrgsPage() {
     const boundIds = (realmOrgBindings.data ?? [])
       .filter((binding) => binding.realmId === activeRealm)
       .map((binding) => binding.orgId);
-    const ids = new Set<string>();
-    for (const orgId of boundIds) {
-      for (const id of subtreeIds(orgs, orgId)) ids.add(id);
-    }
-    return idInQuery([...ids]);
+    return idInQuery(narrowToSubtrees(orgs, boundIds).map((org) => org.id));
   }, [activeRealm, realmOrgBindings.data, orgs]);
 
   const orgTypeName = useMemo(() => {
@@ -101,11 +97,7 @@ export function OrgsPage() {
         .filter((binding) => binding.realmId === realmId)
         .map((binding) => binding.orgId);
       if (boundIds.length > 0) {
-        const allowed = new Set<string>();
-        for (const orgId of boundIds) {
-          for (const id of subtreeIds(candidates, orgId)) allowed.add(id);
-        }
-        candidates = candidates.filter((org) => allowed.has(org.id));
+        candidates = narrowToSubtrees(candidates, boundIds);
       }
     }
     return candidates.map((org) => ({

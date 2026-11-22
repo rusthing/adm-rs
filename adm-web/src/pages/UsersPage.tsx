@@ -6,7 +6,7 @@ import { CrudPage } from "@/components/crud/CrudPage";
 import { ScopePanel } from "@/components/crud/scope-panel";
 import { LinkedGroupSelector } from "@/components/crud/linked-group";
 import type { CrudScopeDef } from "@/components/crud/scope";
-import { idInQuery, subtreeIds } from "@/components/crud/scope";
+import { idInQuery, narrowToSubtrees, subtreeIds } from "@/components/crud/scope";
 import { Badge, Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
@@ -16,6 +16,7 @@ import {
   useOrgUserBindings,
   usePersonOptions,
   useRealmOptions,
+  useRealmOrgBindings,
   useRealmUserBindings,
   useRoleGroupOptions,
   useRoleOptions,
@@ -195,21 +196,40 @@ export function UsersPage() {
   const orgs = orgsQuery.data ?? [];
   const [orgSelected, setOrgSelected] = useState<string | null>(null);
   const orgUserBindings = useOrgUserBindings(orgs.length > 0);
-  const activeOrg = orgSelected && orgs.some((org) => org.id === orgSelected) ? orgSelected : null;
+  const realmOrgBindings = useRealmOrgBindings(showRealmTabs);
+
+  /**
+   * 左侧组织树按领域 tab 收窄，与「组织管理」页同一套语义：领域绑定的是子树根，
+   * 展开子孙才是该领域可见的完整组织树；未选领域（tab 为 null）时用全量。
+   */
+  const visibleOrgs = useMemo(() => {
+    if (!activeRealm) return orgs;
+    const boundIds = (realmOrgBindings.data ?? [])
+      .filter((binding) => binding.realmId === activeRealm)
+      .map((binding) => binding.orgId);
+    return narrowToSubtrees(orgs, boundIds);
+  }, [activeRealm, realmOrgBindings.data, orgs]);
+
+  // 切领域后若原选中组织已不在新领域树内，重置选中，避免用旧组织过滤出新领域的用户。
+  useEffect(() => {
+    if (orgSelected && !visibleOrgs.some((org) => org.id === orgSelected)) setOrgSelected(null);
+  }, [visibleOrgs, orgSelected]);
+
+  const activeOrg = orgSelected && visibleOrgs.some((org) => org.id === orgSelected) ? orgSelected : null;
   const orgScope: CrudScopeDef = {
     title: "组织",
     param: "org_id",
     field: "orgId",
     hideWhenSingle: false,
-    options: orgs.map((org) => ({
+    options: visibleOrgs.map((org) => ({
       value: org.id,
       label: org.name,
       treeCode: org.treeCode,
       description: org.treeCode,
       disabled: !org.enabled,
     })),
-    loading: orgsQuery.isLoading,
-    emptyText: "还没有组织，请先到「组织管理」创建。",
+    loading: orgsQuery.isLoading || (showRealmTabs && realmOrgBindings.isLoading),
+    emptyText: activeRealm ? "该领域还没有绑定组织。" : "还没有组织，请先到「组织管理」创建。",
     hint: "选中组织后只列该组织（含子组织）下的用户。",
   };
 

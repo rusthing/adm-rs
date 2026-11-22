@@ -3,6 +3,7 @@ import {
   effectiveScopeValue,
   idInQuery,
   initialScopeValue,
+  narrowToSubtrees,
   scopeCreateValue,
   scopeIndent,
   scopePanelVisible,
@@ -148,6 +149,36 @@ describe("subtreeIds", () => {
 
   it("未知 id 退回只含自身，至少能按等值查", () => {
     expect(subtreeIds(items, "nope")).toEqual(["nope"]);
+  });
+});
+
+describe("narrowToSubtrees", () => {
+  const items = [
+    { id: "1", treeCode: "001" },
+    { id: "2", treeCode: "001001" },
+    { id: "3", treeCode: "001001001" },
+    { id: "4", treeCode: "001002" },
+    { id: "5", treeCode: "002" },
+    { id: "6", treeCode: "002001" },
+  ];
+  const ids = (rows: typeof items) => rows.map((row) => row.id);
+
+  it("按子树根收窄：保留根及其全部子孙", () => {
+    expect(ids(narrowToSubtrees(items, ["1"]))).toEqual(["1", "2", "3", "4"]);
+  });
+
+  it("多个根取并集，根之间有重叠时去重", () => {
+    // 根 1 已含 2、3；再给根 2 不应重复，且并上根 5 的子树。
+    expect(ids(narrowToSubtrees(items, ["1", "2", "5"]))).toEqual(["1", "2", "3", "4", "5", "6"]);
+  });
+
+  it("根集合为空返回空数组——领域无组织绑定时收窄出空树", () => {
+    expect(narrowToSubtrees(items, [])).toEqual([]);
+  });
+
+  it("先在全量树展开再过滤，子孙不因根缺失而漏掉", () => {
+    // 根 2 的父 1 不在 rootIds 里，但孙 3 仍应保留（按 treeCode 前缀展开不依赖父在结果中）。
+    expect(ids(narrowToSubtrees(items, ["2"]))).toEqual(["2", "3"]);
   });
 });
 

@@ -115,6 +115,24 @@ export function subtreeIds<T extends { id: string; treeCode: string }>(
 }
 
 /**
+ * 把一棵全量树按「子树根 id 集合」收窄：保留每个根及其全部子孙。
+ *
+ * 领域 ↔ 组织绑定存的是子树根，页面按领域切换时用它把全量组织树收窄到该领域可见范围。
+ * 用全量 items 展开子孙（先展开再过滤），避免收窄后的残缺树算漏中间层级。
+ * 根集合为空时返回空数组，由调用方决定空态文案。
+ */
+export function narrowToSubtrees<T extends { id: string; treeCode: string }>(
+  items: T[],
+  rootIds: string[],
+): T[] {
+  const allowed = new Set<string>();
+  for (const rootId of rootIds) {
+    for (const id of subtreeIds(items, rootId)) allowed.add(id);
+  }
+  return items.filter((item) => allowed.has(item.id));
+}
+
+/**
  * 把一组 id 折成检索接口的 `id` 条件：
  * - 0 个 → `id-op=il&id-0=-1` 哨兵，匹配不到任何行（id 均为正数），表达「该范围下没有数据」；
  * - 1 个 → 等值 `id=X`；
