@@ -3,11 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { roleApi, roleMenuApi, rolePermApi } from "@/lib/api";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { MenuCheckList, PermCheckList } from "@/components/crud/tree";
-import { ScopePanel } from "@/components/crud/scope-panel";
-import type { CrudScopeDef } from "@/components/crud/scope";
-import { subtreeIds, treeGroupQuery } from "@/components/crud/scope";
-import { Badge, Button, Spinner } from "@/components/ui/primitives";
+import { LinkedGroupSelector } from "@/components/crud/linked-group";
+import { LinkedMenuSelector } from "@/components/crud/linked-menu";
+import { treeGroupQuery } from "@/components/crud/scope";
+import { Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
 import { useAuth } from "@/auth/AuthContext";
 import type { AdmRoleVo, FormValues } from "@/lib/types";
@@ -71,7 +70,6 @@ function RolePermsDrawer({
   const { refreshAuthz } = useAuth();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-  const [groupSelected, setGroupSelected] = useState<string | null>(null);
 
   const bindingsQuery = useQuery({
     queryKey: ["role-perm", "by-role", role?.id],
@@ -81,41 +79,15 @@ function RolePermsDrawer({
   const permsQuery = usePermOptions(open);
   const groupsQuery = usePermGroupOptions(open);
 
-  // 切换角色时清空勾选与分组选择，避免绑定尚未返回时沿用上一个角色的状态。
+  // 切换角色时清空勾选，避免绑定尚未返回时沿用上一个角色的状态。
   useEffect(() => {
     setSelected(new Set());
-    setGroupSelected(null);
   }, [role?.id]);
 
   useEffect(() => {
     if (!bindingsQuery.data) return;
     setSelected(new Set(bindingsQuery.data.map((binding) => binding.permId)));
   }, [bindingsQuery.data]);
-
-  const permGroupScope: CrudScopeDef = {
-    title: "权限分组",
-    param: "group_id",
-    field: "groupId",
-    hideWhenSingle: false,
-    options: (groupsQuery.data ?? []).map((group) => ({
-      value: group.id,
-      label: group.name,
-      treeCode: group.treeCode,
-      description: group.treeCode,
-    })),
-    loading: groupsQuery.isLoading,
-    emptyText: "还没有权限分组。",
-    hint: "选中分组后右侧只列该分组（含子分组）下的权限点。",
-  };
-
-  const groupSubtree = useMemo(
-    () => (groupSelected ? new Set(subtreeIds(groupsQuery.data ?? [], groupSelected)) : null),
-    [groupSelected, groupsQuery.data],
-  );
-  const visiblePerms = useMemo(() => {
-    const perms = permsQuery.data ?? [];
-    return groupSubtree ? perms.filter((perm) => groupSubtree.has(perm.groupId)) : perms;
-  }, [permsQuery.data, groupSubtree]);
 
   const save = async () => {
     if (!role) return;
@@ -153,8 +125,8 @@ function RolePermsDrawer({
       open={open}
       onClose={onClose}
       title={`授权 · ${role?.name ?? ""}`}
-      description="左侧按权限分组树定位，右侧勾选该分组（含子分组）下的权限点，主体段可一键全选；保存只提交差异，授权变更对所属账号立即生效。"
-      width="w-full max-w-[820px]"
+      description="左侧分组树可勾选「本组及全部子孙」的权限；点分组名切换右侧展示范围，右侧按该级以下的真实分组树展示，叶子分组直接平铺权限。两侧勾选同一份数据，双向联动；保存只提交差异。"
+      width="w-full max-w-[900px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
@@ -173,36 +145,33 @@ function RolePermsDrawer({
           还没有权限点。请先到「权限管理」登记接口权限，再回来授权。
         </div>
       ) : (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <ScopePanel
-            scope={permGroupScope}
-            selected={groupSelected}
-            onSelect={setGroupSelected}
-            className="lg:w-[220px] lg:shrink-0"
-          />
-          <div className="min-w-0 flex-1">
-            {visiblePerms.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-line px-3.5 py-6 text-center text-[12px] text-muted">
-                该分组下暂无权限点。
-              </div>
-            ) : (
-              <PermCheckList
-                perms={visiblePerms}
-                selected={selected}
-                onToggle={(id) => toggleIn(setSelected, id)}
-                onSetMany={(ids, checked) => setManyIn(setSelected, ids, checked)}
-              />
-            )}
-          </div>
-        </div>
+        <LinkedGroupSelector
+          groups={groupsQuery.data ?? []}
+          items={permsQuery.data ?? []}
+          selectedIds={selected}
+          onToggle={(id) => toggleIn(setSelected, id)}
+          onSetMany={(ids, checked) => setManyIn(setSelected, ids, checked)}
+          renderItem={(perm) => (
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              {perm.name}
+              <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
+              {!perm.enabled && <span className="text-[10px] text-warn">停用</span>}
+            </span>
+          )}
+          leftTitle="权限分组"
+          rightTitle="权限"
+          leftHint="勾选分组即勾选它和所有子分组下的权限；点名称只切换右侧展示范围。"
+          rightHint="选中分组以下按真实层级展开；若没有子分组，这里直接平铺权限。"
+          emptyText="该分组下暂无权限点。"
+        />
       )}
     </Drawer>
   );
 }
 
 /**
- * 菜单抽屉：应用多于一个时左侧竖排 tab 分应用，右侧 MenuCheckList 列出该应用的菜单树，
- * 联动选择；只有一个应用时不显示 tab，直接列全部菜单。只保存 role-menu 差异。
+ * 菜单抽屉：左栏应用、右栏该应用的菜单树，整组勾选与单节点勾选双向联动。
+ * 只保存 role-menu 差异。
  */
 function RoleMenusDrawer({
   role,
@@ -229,14 +198,9 @@ function RoleMenusDrawer({
   const menusQuery = useMenuOptions(open);
   const appsQuery = useAppOptions(open);
   const apps = appsQuery.data ?? [];
-  const showAppTabs = apps.length > 1;
-  // 多应用时默认停在第一个应用；单应用不收窄（activeApp = null）。
+  // 左右两栏始终展示：默认停在第一个应用，单应用时也保持同样的布局。
   const activeApp =
-    appTab && apps.some((app) => app.id === appTab)
-      ? appTab
-      : showAppTabs
-        ? apps[0]?.id ?? null
-        : null;
+    appTab && apps.some((app) => app.id === appTab) ? appTab : apps[0]?.id ?? null;
 
   useEffect(() => {
     setSelected(new Set());
@@ -247,11 +211,6 @@ function RoleMenusDrawer({
     if (!bindingsQuery.data) return;
     setSelected(new Set(bindingsQuery.data.map((binding) => binding.menuId)));
   }, [bindingsQuery.data]);
-
-  const visibleMenus = useMemo(() => {
-    const menus = menusQuery.data ?? [];
-    return activeApp ? menus.filter((menu) => menu.appId === activeApp) : menus;
-  }, [menusQuery.data, activeApp]);
 
   const save = async () => {
     if (!role) return;
@@ -286,8 +245,8 @@ function RoleMenusDrawer({
       open={open}
       onClose={onClose}
       title={`菜单 · ${role?.name ?? ""}`}
-      description="勾选该角色可见的菜单；应用多于一个时左侧按应用切换，右侧菜单树随选中应用联动。保存只提交差异，菜单变更对所属账号立即生效。"
-      width="w-full max-w-[720px]"
+      description="左栏应用可整组勾选并切换，右栏按选中应用展示完整菜单树、父子级联勾选；保存只提交差异，菜单变更对所属账号立即生效。"
+      width="w-full max-w-[820px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
@@ -306,50 +265,15 @@ function RoleMenusDrawer({
           还没有菜单。请先到「菜单管理」创建，再回来授权。
         </div>
       ) : (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          {showAppTabs && (
-            <div
-              role="tablist"
-              aria-label="应用"
-              className="flex shrink-0 flex-row flex-wrap gap-1 lg:w-[180px] lg:flex-col"
-            >
-              {apps.map((app) => {
-                const active = activeApp === app.id;
-                return (
-                  <button
-                    key={app.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setAppTab(app.id)}
-                    className={
-                      active
-                        ? "flex items-center gap-2 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2 text-left text-[12.5px] font-medium text-accent-strong"
-                        : "flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-left text-[12.5px] text-ink-soft hover:bg-sunken"
-                    }
-                  >
-                    <span className="min-w-0 flex-1 truncate">{app.name}</span>
-                    {!app.enabled && <Badge tone="warn">停用</Badge>}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            {visibleMenus.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-line px-3.5 py-6 text-center text-[12px] text-muted">
-                该应用下暂无菜单。
-              </div>
-            ) : (
-              <MenuCheckList
-                menus={visibleMenus}
-                selected={selected}
-                onToggle={(id) => toggleIn(setSelected, id)}
-                onSetMany={(ids, checked) => setManyIn(setSelected, ids, checked)}
-              />
-            )}
-          </div>
-        </div>
+        <LinkedMenuSelector
+          apps={apps}
+          menus={menusQuery.data ?? []}
+          activeApp={activeApp}
+          onSelectApp={setAppTab}
+          selected={selected}
+          onToggle={(id) => toggleIn(setSelected, id)}
+          onSetMany={(ids, checked) => setManyIn(setSelected, ids, checked)}
+        />
       )}
     </Drawer>
   );

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
-import type { ReactNode, RefObject } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/primitives";
 import { CheckCircle2, Info, X, XCircle } from "lucide-react";
@@ -127,6 +127,124 @@ function useOverlay(open: boolean, onClose: () => void): RefObject<HTMLDivElemen
   return dialogRef;
 }
 
+const MIN_PANEL_WIDTH = 320;
+const MIN_PANEL_HEIGHT = 220;
+const VIEWPORT_MARGIN = 16;
+
+type ResizeEdge = "n" | "s" | "e" | "w" | "nw" | "ne" | "sw" | "se";
+
+/** 四边 + 四角，触控用 touch-none 防止浏览器把手势当成滚动。 */
+const RESIZE_HANDLES: Array<{ edge: ResizeEdge; className: string }> = [
+  { edge: "n", className: "-top-1 left-3 right-3 h-2 cursor-n-resize" },
+  { edge: "s", className: "-bottom-1 left-3 right-3 h-2 cursor-s-resize" },
+  { edge: "w", className: "-left-1 bottom-3 top-3 w-2 cursor-w-resize" },
+  { edge: "e", className: "-right-1 bottom-3 top-3 w-2 cursor-e-resize" },
+  { edge: "nw", className: "-left-1 -top-1 h-3 w-3 cursor-nwse-resize" },
+  { edge: "ne", className: "-right-1 -top-1 h-3 w-3 cursor-nesw-resize" },
+  { edge: "sw", className: "-bottom-1 -left-1 h-3 w-3 cursor-nesw-resize" },
+  { edge: "se", className: "-bottom-1 -right-1 h-3 w-3 cursor-nwse-resize" },
+];
+
+/**
+ * 弹窗的拖动 / 缩放。
+ *
+ * 拖动只改 `translate`，缩放改 `width/height`；两者都写进 inline style，
+ * 所以面板上不能再挂带 transform 的入场动画（animate-rise / animate-slide-left），
+ * 否则 `animation-fill-mode: both` 会把 inline transform 覆盖掉。改用只动透明度的
+ * animate-fade，遮罩层负责整体淡入。
+ *
+ * 指针监听器挂在 window 上并在抬起时移除；即使指针移出面板也能继续拖动 / 缩放。
+ */
+function useMovablePanel(open: boolean, panelRef: RefObject<HTMLDivElement | null>) {
+  const offsetRef = useRef({ x: 0, y: 0 });
+  const sizeRef = useRef<{ width: number; height: number } | null>(null);
+  const [style, setStyle] = useState<CSSProperties>({});
+
+  const apply = useCallback(() => {
+    const { x, y } = offsetRef.current;
+    const size = sizeRef.current;
+    setStyle({
+      transform: `translate3d(${x}px, ${y}px, 0)`,
+      ...(size
+        ? { width: size.width, height: size.height, maxWidth: "none", maxHeight: "none" }
+        : {}),
+    });
+  }, []);
+
+  // 每次重新打开都回到初始位置与尺寸，不沿用上一次拖动的结果。
+  useEffect(() => {
+    if (!open) return;
+    offsetRef.current = { x: 0, y: 0 };
+    sizeRef.current = null;
+    setStyle({});
+  }, [open]);
+
+  const begin = useCallback(
+    (event: ReactPointerEvent<HTMLElement>, mode: "move" | ResizeEdge) => {
+      // 标题栏里的关闭按钮等交互不能被拖动吞掉。缩放手柄上没有按钮。
+      if (mode === "move" && (event.target as HTMLElement).closest("button")) return;
+      const rect = panelRef.current?.getBoundingClientRect();
+      if (!rect || event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const origin = {
+        x: event.clientX,
+        y: event.clientY,
+        offset: { ...offsetRef.current },
+        // 第一次缩放时把当前实际尺寸固化为基准，连续缩放不会累积误差。
+        size: sizeRef.current ?? { width: rect.width, height: rect.height },
+      };
+      const maxWidth = window.innerWidth - VIEWPORT_MARGIN * 2;
+      const maxHeight = window.innerHeight - VIEWPORT_MARGIN * 2;
+      const clamp = (value: number, min: number, max: number) =>
+        Math.min(Math.max(value, min), Math.max(min, max));
+
+      const onMove = (next: PointerEvent) => {
+        const dx = next.clientX - origin.x;
+        const dy = next.clientY - origin.y;
+        if (mode === "move") {
+          // 至少留 80px 在视口内，避免把面板整个拖出屏幕找不回来。
+          offsetRef.current = {
+            x: clamp(origin.offset.x + dx, VIEWPORT_MARGIN - rect.right, window.innerWidth - 80 - rect.left),
+            y: clamp(origin.offset.y + dy, VIEWPORT_MARGIN - rect.bottom, window.innerHeight - 60 - rect.top),
+          };
+        } else {
+          const edge = mode as ResizeEdge;
+          let width = origin.size.width;
+          let height = origin.size.height;
+          let x = origin.offset.x;
+          let y = origin.offset.y;
+          if (edge.includes("e")) width = clamp(origin.size.width + dx, MIN_PANEL_WIDTH, maxWidth);
+          if (edge.includes("w")) {
+            width = clamp(origin.size.width - dx, MIN_PANEL_WIDTH, maxWidth);
+            x = origin.offset.x + (origin.size.width - width);
+          }
+          if (edge.includes("s")) height = clamp(origin.size.height + dy, MIN_PANEL_HEIGHT, maxHeight);
+          if (edge.includes("n")) {
+            height = clamp(origin.size.height - dy, MIN_PANEL_HEIGHT, maxHeight);
+            y = origin.offset.y + (origin.size.height - height);
+          }
+          sizeRef.current = { width, height };
+          offsetRef.current = { x, y };
+        }
+        apply();
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    },
+    [apply, panelRef],
+  );
+
+  return { style, begin };
+}
+
 interface OverlayProps {
   open: boolean;
   onClose: () => void;
@@ -151,8 +269,10 @@ function DialogFrame({
   variant,
 }: OverlayProps & { variant: "modal" | "drawer" }) {
   const dialogRef = useOverlay(open, onClose);
+  const { style, begin } = useMovablePanel(open, dialogRef);
   const titleId = useId();
   if (!open) return null;
+  const resized = style.height !== undefined;
 
   const panel = (
     <div
@@ -161,31 +281,51 @@ function DialogFrame({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      style={style}
       className={cn(
-        "outline-none",
+        "animate-fade relative flex flex-col outline-none",
         variant === "modal"
-          ? cn("animate-rise w-full rounded-[14px] border border-line bg-surface shadow-float", width)
-          : cn("animate-slide-left ml-auto flex h-full flex-col border-l border-line bg-surface shadow-float", width),
+          ? cn("w-full rounded-[14px] border border-line bg-surface shadow-float", width)
+          : cn("ml-auto h-full border-l border-line bg-surface shadow-float", width),
       )}
       onClick={(event) => event.stopPropagation()}
     >
-      <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
-        <div>
+      <header
+        onPointerDown={(event) => begin(event, "move")}
+        title="按住标题栏可拖动，四边与四角可调整大小"
+        className="flex cursor-move select-none items-start justify-between gap-3 border-b border-line px-4 py-3"
+      >
+        <div className="min-w-0">
           <h2 id={titleId} className="text-[14px] font-semibold text-ink">
             {title}
           </h2>
           {description && <p className="mt-0.5 text-[11.5px] text-muted">{description}</p>}
         </div>
-        <button type="button" className="text-muted hover:text-ink" onClick={onClose} aria-label="关闭">
+        <button type="button" className="cursor-pointer text-muted hover:text-ink" onClick={onClose} aria-label="关闭">
           <X size={17} />
         </button>
       </header>
-      <div className={variant === "modal" ? "max-h-[70vh] overflow-y-auto px-4 py-4" : "flex-1 overflow-y-auto px-4 py-4"}>
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-4 py-4",
+          variant === "modal" && !resized && "max-h-[70vh]",
+          variant === "drawer" && "flex flex-col",
+        )}
+      >
         {children}
       </div>
       {footer && (
-        <footer className="flex items-center justify-end gap-2 border-t border-line px-4 py-3">{footer}</footer>
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-4 py-3">{footer}</footer>
       )}
+      {RESIZE_HANDLES.map((handle) => (
+        <div
+          key={handle.edge}
+          aria-hidden
+          title="拖动调整大小"
+          onPointerDown={(event) => begin(event, handle.edge)}
+          className={cn("absolute touch-none", handle.className)}
+        />
+      ))}
     </div>
   );
 

@@ -134,6 +134,11 @@ interface CrudPageProps<T extends { id: string }> {
   canDelete?: boolean;
   toForm: (row: T) => FormValues;
   toPayload: (values: FormValues, mode: FormMode, row?: T) => Record<string, unknown>;
+  /**
+   * 新建成功后拿到服务端回传的实体，用来补建关联（例如组织 ↔ 领域绑定）。
+   * 表单本体已提交完成；这里失败不应把用户挡在已关闭的弹窗里，调用方自行提示。
+   */
+  afterCreate?: (values: FormValues, created: T) => void | Promise<void>;
   rowActions?: (row: T, helpers: CrudRowHelpers) => ReactNode;
   emptyDescription?: string;
   /**
@@ -216,20 +221,22 @@ function FilterControl({
   }
 
   if (def.type === "boolean") {
+    // 启用 / 显示这类布尔条件统一用下拉：按钮组在筛选行里占宽且和多选筛选控件不同构，
+    // 下拉能保持所有筛选项同一形态；序列化仍走 boolean 分支，false 不会被吞掉。
     return (
-      <div className="flex items-center gap-1.5 text-[11.5px] text-muted">
+      <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
         <span className="whitespace-nowrap">{def.label}</span>
-        <OptionButtons
-          ariaLabel={def.label}
+        <Select
+          aria-label={def.label}
           value={typeof value === "string" ? value : ""}
-          onChange={onChange}
-          options={[
-            { value: "", label: "全部" },
-            { value: "true", label: "是" },
-            { value: "false", label: "否" },
-          ]}
-        />
-      </div>
+          onChange={(event) => onChange(event.target.value)}
+          className="h-8 w-auto min-w-[92px] text-[12.5px]"
+        >
+          <option value="">全部</option>
+          <option value="true">是</option>
+          <option value="false">否</option>
+        </Select>
+      </label>
     );
   }
 
@@ -343,6 +350,7 @@ export function CrudPage<T extends { id: string }>({
   canDelete = true,
   toForm,
   toPayload,
+  afterCreate,
   rowActions,
   emptyDescription,
   scope,
@@ -883,7 +891,8 @@ export function CrudPage<T extends { id: string }>({
     try {
       const payload = toPayload(editing.values, editing.mode, editing.row);
       if (editing.mode === "create") {
-        await api.add(payload);
+        const created = await api.add(payload);
+        if (created && afterCreate) await afterCreate(editing.values, created);
         toast.success("已创建");
       } else if (editing.row) {
         await api.modify({ id: editing.row.id, ...payload });

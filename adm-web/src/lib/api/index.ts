@@ -51,7 +51,8 @@ export interface CrudApi<T> {
   searchList: (query?: PageQuery) => Promise<T[]>;
   list: (query?: PageQuery) => Promise<T[]>;
   get: (id: string) => Promise<T | undefined>;
-  add: (body: Payload) => Promise<unknown>;
+  /** 新增成功时服务端在 extra 里回传新建实体，调用方可据此建关联（如组织→领域）。 */
+  add: (body: Payload) => Promise<T | undefined>;
   modify: (body: Payload) => Promise<unknown>;
   save: (body: Payload) => Promise<unknown>;
   /** 与 `save` 只差一步：有 id 但记录不存在时按该 id 补建，而不是报错 */
@@ -85,7 +86,7 @@ export function crudApi<T>(prefix: string): CrudApi<T> {
       (await request<T[]>(`${prefix}/search/list${toQueryString(query)}`)) ?? [],
     list: async (query) => (await request<T[]>(`${prefix}/list${toQueryString(query)}`)) ?? [],
     get: (id) => request<T>(`${prefix}/${encodeURIComponent(id)}`),
-    add: (body) => request(`${prefix}`, { method: "POST", body }),
+    add: (body) => request<T>(`${prefix}`, { method: "POST", body }),
     modify: (body) => request(`${prefix}`, { method: "PUT", body }),
     save: (body) => request(`${prefix}/save`, { method: "POST", body }),
     upsert: (body) => request(`${prefix}/upsert`, { method: "POST", body }),

@@ -4,12 +4,13 @@ import { roleUserApi, userApi } from "@/lib/api";
 import type { CrudColumn, CrudField, FormMode } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { ScopePanel } from "@/components/crud/scope-panel";
+import { LinkedGroupSelector } from "@/components/crud/linked-group";
 import type { CrudScopeDef } from "@/components/crud/scope";
 import { idInQuery, subtreeIds } from "@/components/crud/scope";
-import { Badge, Button, Checkbox, Spinner } from "@/components/ui/primitives";
+import { Badge, Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
-import type { AdmRoleVo, AdmUserVo, FormValues, PageQuery } from "@/lib/types";
+import type { AdmUserVo, FormValues, PageQuery } from "@/lib/types";
 import {
   useOrgOptions,
   useOrgUserBindings,
@@ -20,7 +21,7 @@ import {
   useRoleOptions,
 } from "@/lib/queries";
 import { formatMs, shortId } from "@/lib/utils";
-import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
+import { KeyRound, UserCog } from "lucide-react";
 
 function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
@@ -48,8 +49,6 @@ function UserRolesDrawer({
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-  /** 左侧角色分组树的选中态：null = 全部；选中后右侧只列该分组（含子分组）下的角色。 */
-  const [groupSelected, setGroupSelected] = useState<string | null>(null);
 
   const bindingsQuery = useQuery({
     queryKey: ["role-user", "by-user", user?.id],
@@ -59,10 +58,9 @@ function UserRolesDrawer({
   const rolesQuery = useRoleOptions(open);
   const groupsQuery = useRoleGroupOptions(open);
 
-  // 切换用户时先清空勾选与分组选择，避免沿用上一位用户的状态。
+  // 切换用户时先清空勾选，避免沿用上一位用户的状态。
   useEffect(() => {
     setSelected(new Set());
-    setGroupSelected(null);
   }, [user?.id]);
 
   useEffect(() => {
@@ -72,54 +70,6 @@ function UserRolesDrawer({
 
   const roles = rolesQuery.data ?? [];
   const bindings = bindingsQuery.data ?? [];
-  const groupName = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const group of groupsQuery.data ?? []) map.set(group.id, group.name);
-    return map;
-  }, [groupsQuery.data]);
-
-  const groups = useMemo(() => {
-    const byGroup = new Map<string, AdmRoleVo[]>();
-    for (const role of roles) {
-      const list = byGroup.get(role.groupId) ?? [];
-      list.push(role);
-      byGroup.set(role.groupId, list);
-    }
-    // 分组顺序跟随分组树（tree_code 升序），而不是角色先出现谁就排谁。
-    const order = new Map((groupsQuery.data ?? []).map((group, index) => [group.id, index]));
-    return Array.from(byGroup.entries()).sort(
-      (a, b) =>
-        (order.get(a[0]) ?? Number.MAX_SAFE_INTEGER) - (order.get(b[0]) ?? Number.MAX_SAFE_INTEGER) ||
-        a[0].localeCompare(b[0]),
-    );
-  }, [roles, groupsQuery.data]);
-
-  /** 左侧分组树（单选导航）：复用 ScopePanel 的缩进 / 折叠 / 「全部」交互。 */
-  const roleGroupScope: CrudScopeDef = {
-    title: "角色分组",
-    param: "group_id",
-    field: "groupId",
-    hideWhenSingle: false,
-    options: (groupsQuery.data ?? []).map((group) => ({
-      value: group.id,
-      label: group.name,
-      treeCode: group.treeCode,
-      description: group.treeCode,
-    })),
-    loading: groupsQuery.isLoading,
-    emptyText: "还没有角色分组。",
-    hint: "选中分组后右侧只列该分组（含子分组）下的角色。",
-  };
-
-  /** 选中分组的子树 id 集合；null 表示「全部」，右侧不过滤。 */
-  const groupSubtree = useMemo(
-    () => (groupSelected ? new Set(subtreeIds(groupsQuery.data ?? [], groupSelected)) : null),
-    [groupSelected, groupsQuery.data],
-  );
-  const visibleGroups = useMemo(
-    () => (groupSubtree ? groups.filter(([groupId]) => groupSubtree.has(groupId)) : groups),
-    [groups, groupSubtree],
-  );
 
   const toggle = (roleId: string) => {
     setSelected((current) => {
@@ -172,8 +122,8 @@ function UserRolesDrawer({
       open={open}
       onClose={onClose}
       title={`分配角色 · ${user?.name ?? ""}`}
-      description="左侧按角色分组树定位，右侧勾选该分组（含子分组）下的角色；保存时只提交新增与移除的差异，同一个用户可以属于多个角色。"
-      width="w-full max-w-[780px]"
+      description="左栏角色分组可整组勾选、点名称切换右栏；右栏按该级以下的真实分组树展示，叶子分组直接平铺角色。两栏双向联动，保存只提交差异。"
+      width="w-full max-w-[880px]"
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
@@ -192,70 +142,25 @@ function UserRolesDrawer({
           还没有角色数据。请先到「角色管理」创建角色，再回来分配。
         </div>
       ) : (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <ScopePanel
-            scope={roleGroupScope}
-            selected={groupSelected}
-            onSelect={setGroupSelected}
-            className="lg:w-[220px] lg:shrink-0"
-          />
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            {visibleGroups.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-line px-3.5 py-6 text-center text-[12px] text-muted">
-                该分组下暂无角色。
-              </div>
-            ) : (
-              visibleGroups.map(([groupId, groupRoles]) => {
-                const ids = groupRoles.map((role) => role.id);
-                const checkedCount = ids.reduce((count, id) => count + (selected.has(id) ? 1 : 0), 0);
-                return (
-                  <section key={groupId}>
-                    <div className="mb-1.5 flex items-center gap-2 text-[11.5px] font-medium text-muted">
-                      <ShieldCheck size={13} />
-                      <span className="truncate">{groupName.get(groupId) ?? shortId(groupId)}</span>
-                      <span className="shrink-0 text-[10.5px] text-muted/70">
-                        {checkedCount}/{ids.length}
-                      </span>
-                      <span className="flex-1" />
-                      <button
-                        type="button"
-                        onClick={() => setMany(ids, true)}
-                        disabled={checkedCount >= ids.length}
-                        className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        全选本组
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMany(ids, false)}
-                        disabled={checkedCount === 0}
-                        className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted hover:bg-sunken disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        清空本组
-                      </button>
-                    </div>
-                    <div className="flex flex-col gap-0.5 rounded-xl border border-line p-1.5">
-                      {groupRoles.map((role) => (
-                        <label
-                          key={role.id}
-                          className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sunken"
-                        >
-                          <Checkbox checked={selected.has(role.id)} onChange={() => toggle(role.id)} />
-                          <span className="flex-1 text-[12.5px] text-ink-soft">{role.name}</span>
-                          {!role.enabled && <Badge tone="warn">停用</Badge>}
-                          <code className="font-mono text-[10.5px] text-muted">{role.sortOrder}</code>
-                        </label>
-                      ))}
-                    </div>
-                  </section>
-                );
-              })
-            )}
-            <p className="text-[11.5px] leading-relaxed text-muted">
-              说明：用户本身没有 roleId 字段，用户与角色是多对多；同一个用户可以有多个角色，权限取并集。切换左侧分组不会丢失已勾选的角色。
-            </p>
-          </div>
-        </div>
+        <LinkedGroupSelector
+          groups={groupsQuery.data ?? []}
+          items={roles}
+          selectedIds={selected}
+          onToggle={toggle}
+          onSetMany={setMany}
+          renderItem={(role) => (
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              {role.name}
+              {!role.enabled && <span className="text-[10px] text-warn">停用</span>}
+              <code className="font-mono text-[10.5px] text-muted">{role.sortOrder}</code>
+            </span>
+          )}
+          leftTitle="角色分组"
+          rightTitle="角色"
+          leftHint="勾选分组即勾选它和所有子分组下的角色；点名称只切换右侧展示范围。"
+          rightHint="选中分组以下按真实层级展开；没有子分组时直接平铺角色。"
+          emptyText="该分组下暂无角色。"
+        />
       )}
     </Drawer>
   );
@@ -596,11 +501,7 @@ export function UsersPage() {
           showRealmTabs
             ? {
                 ariaLabel: "领域",
-                options: realms.map((realm) => ({
-                  value: realm.id,
-                  label: realm.name,
-                  disabled: !realm.enabled,
-                })),
+                options: realms.map((realm) => ({ value: realm.id, label: realm.name })),
                 selected: activeRealm,
                 onSelect: setRealmTab,
               }

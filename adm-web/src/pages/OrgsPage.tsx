@@ -1,11 +1,20 @@
 import { memo, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { idInQuery, subtreeIds } from "@/components/crud/scope";
 import { Button } from "@/components/ui/primitives";
+import { useToast } from "@/components/ui/overlay";
+import { realmOrgApi } from "@/lib/api";
 import type { AdmOrgVo, FormValues, PageQuery } from "@/lib/types";
-import { useOrgOptions, useOrgTypeOptions, useRealmOptions, useRealmOrgBindings } from "@/lib/queries";
+import {
+  optionKeys,
+  useOrgOptions,
+  useOrgTypeOptions,
+  useRealmOptions,
+  useRealmOrgBindings,
+} from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | null {
@@ -43,6 +52,8 @@ const OrgNameCell = memo(function OrgNameCell({ row }: { row: AdmOrgVo }) {
  * 不在组织表上存领域列。类型来自组织类型字典，成员关系在 org_user 上维护。
  */
 export function OrgsPage() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const orgsQuery = useOrgOptions();
   const orgs = orgsQuery.data ?? [];
   const orgTypesQuery = useOrgTypeOptions();
@@ -51,7 +62,8 @@ export function OrgsPage() {
   /** 领域 tab 只在领域数 > 1 时出现；选中态由页面持有，收窄条件折进 extraQuery。 */
   const [realmTab, setRealmTab] = useState<string | null>(null);
   const showRealmTabs = realms.length > 1;
-  const realmOrgBindings = useRealmOrgBindings(showRealmTabs);
+  // 新建表单按领域收窄上级组织、保存后写 realm_org 绑定，所以无论 tab 是否显示都要加载。
+  const realmOrgBindings = useRealmOrgBindings();
   const activeRealm = realmTab && realms.some((realm) => realm.id === realmTab) ? realmTab : null;
 
   /**
@@ -76,12 +88,31 @@ export function OrgsPage() {
     return map;
   }, [orgTypesQuery.data]);
 
-  /** 上级组织下拉：只在新建时出现，所以不存在「选到自己」的问题；缩进按 treeCode 深度。 */
-  const parentOptions = () =>
-    (orgsQuery.data ?? []).map((org) => ({
+  /**
+   * 上级组织下拉：只在新建时出现，所以不存在「选到自己」的问题；缩进按 treeCode 深度。
+   * 选了领域后只列该领域绑定组织（含子孙）作为上级，避免把组织挂到别的领域树下；
+   * 该领域还没有任何绑定时退回全量，否则新建第一个组织会无从下手。
+   */
+  const parentOptions = (values: FormValues) => {
+    let candidates = orgsQuery.data ?? [];
+    const realmId = String(values.realmId ?? "");
+    if (realmId) {
+      const boundIds = (realmOrgBindings.data ?? [])
+        .filter((binding) => binding.realmId === realmId)
+        .map((binding) => binding.orgId);
+      if (boundIds.length > 0) {
+        const allowed = new Set<string>();
+        for (const orgId of boundIds) {
+          for (const id of subtreeIds(candidates, orgId)) allowed.add(id);
+        }
+        candidates = candidates.filter((org) => allowed.has(org.id));
+      }
+    }
+    return candidates.map((org) => ({
       value: org.treeCode,
       label: `${"　".repeat(depthOf(org.treeCode))}${org.name} · ${org.treeCode}`,
     }));
+  };
 
   const columns: CrudColumn<AdmOrgVo>[] = [
     {
@@ -114,25 +145,34 @@ export function OrgsPage() {
 
   const fields: CrudField[] = [
     {
+      name: "realmId",
+      label: "领域",
+      type: "select",
+      createOnly: true,
+      options: realms.map((realm) => ({ value: realm.id, label: realm.name })),
+      hint: "领域决定这个组织归哪个数据域；保存后会建立领域↔组织绑定，上级组织也只列该领域的树。",
+    },
+    { name: "name", label: "名称", required: true, placeholder: "同一父节点下允许重名，靠 treeCode 区分" },
+    {
       name: "parentCode",
       label: "上级组织",
       type: "select",
       createOnly: true,
       options: parentOptions,
+      resetOn: ["realmId"],
       hint: "不选则创建根组织。treeCode 由服务端按上级生成、建好后不能再改上级——挂错层只能删掉重建（行内排序只调同级先后）。",
-    },
-    { name: "name", label: "名称", required: true, placeholder: "同一父节点下允许重名，靠 treeCode 区分" },
-    {
-      name: "code",
-      label: "编码",
-      placeholder: "可选，对接外部系统的组织编号",
-      hint: "全局唯一；留空表示纯内部组织。",
     },
     {
       name: "fullName",
       label: "全名",
       placeholder: "如 集团.分厂.车间",
       hint: "可选，便于按路径检索；填写后在列表里作为副标题展示。",
+    },
+    {
+      name: "code",
+      label: "编码",
+      placeholder: "可选，对接外部系统的组织编号",
+      hint: "全局唯一；留空表示纯内部组织。",
     },
     {
       name: "orgTypeId",
@@ -185,11 +225,7 @@ export function OrgsPage() {
         showRealmTabs
           ? {
               ariaLabel: "领域",
-              options: realms.map((realm) => ({
-                value: realm.id,
-                label: realm.name,
-                disabled: !realm.enabled,
-              })),
+              options: realms.map((realm) => ({ value: realm.id, label: realm.name })),
               selected: activeRealm,
               onSelect: setRealmTab,
             }
@@ -206,6 +242,19 @@ export function OrgsPage() {
         { type: "boolean", name: "enabled", label: "启用" },
       ]}
       createLabel="新建组织"
+      createDefaults={{ realmId: activeRealm ?? realms[0]?.id ?? "" }}
+      afterCreate={async (values, created) => {
+        const realmId = String(values.realmId ?? "");
+        if (!realmId || !created?.id) return;
+        try {
+          await realmOrgApi.add({ realmId, orgId: created.id });
+          await queryClient.invalidateQueries({ queryKey: optionKeys.realmOrg });
+        } catch (error) {
+          toast.error(
+            `组织已创建，但登记到所选领域失败：${error instanceof Error ? error.message : "请稍后重试绑定"}`,
+          );
+        }
+      }}
       emptyDescription="还没有组织。先建根组织，再用行内「添加子级」逐级建成分厂 / 部门。"
       rowActions={(row, { openCreate, canCreate }) =>
         canCreate ? (

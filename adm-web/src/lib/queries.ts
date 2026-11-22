@@ -65,11 +65,20 @@ export function useAppOptions(enabled = true) {
   });
 }
 
-/** 领域列表：用户/组织数据域归属与角色领域可见范围选择；应用、菜单、角色、权限不选领域。 */
+/**
+ * 领域列表：用户/组织数据域归属与角色领域可见范围选择；应用、菜单、角色、权限不选领域。
+ *
+ * 除「领域管理」页自己（它直接查 /adm/realm 分页列表）外，所有引用领域的地方
+ * 都只应看到启用领域；停用领域一旦出现在 tab / 下拉里，用户选中后数据会被后端
+ * 数据范围过滤成空，却看不出原因。这里统一过滤，调用方不必各自记得筛。
+ */
 export function useRealmOptions(enabled = true) {
   return useQuery({
     queryKey: optionKeys.realm,
-    queryFn: () => realmApi.list({ _orderBy: "sort_order:asc" }),
+    queryFn: async () => {
+      const realms = (await realmApi.list({ _orderBy: "sort_order:asc" })) ?? [];
+      return realms.filter((realm) => realm.enabled);
+    },
     staleTime: OPTION_STALE,
     retry: 0,
     enabled,
