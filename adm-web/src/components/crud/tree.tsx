@@ -120,10 +120,6 @@ function TreeRow<T extends TreeNode>({
         ) : (
           <span className="w-[13px] shrink-0" />
         )}
-        <FolderTree size={14} className={depth === 0 ? "text-accent" : "text-muted/70"} />
-        <span className="flex-1 truncate text-[12.5px] text-ink-soft">{item.name}</span>
-        <code className="font-mono text-[10px] text-muted">{item.treeCode}</code>
-        {!item.enabled && <Badge tone="warn">停用</Badge>}
         {checkable && (
           <Checkbox
             checked={checked}
@@ -132,6 +128,9 @@ function TreeRow<T extends TreeNode>({
             label={undefined}
           />
         )}
+        <FolderTree size={14} className={depth === 0 ? "text-accent" : "text-muted/70"} />
+        <span className="flex-1 truncate text-[12.5px] text-ink-soft">{item.name}</span>
+        {!item.enabled && <Badge tone="warn">停用</Badge>}
       </div>
       {open &&
         children.length > 0 && (

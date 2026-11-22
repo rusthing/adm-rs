@@ -115,8 +115,14 @@ export function LinkedGroupSelector<T extends SelectableItem>({
     ? selectedGroup
     : null;
   const activeGroup = groups.find((group) => group.id === activeGroupId);
+  // 右栏只展示选中分组「以下」的层级，不含选中本级本身；全部视图则是整棵树。
   const descendants = useMemo(
-    () => (activeGroup ? groups.filter((group) => group.treeCode.startsWith(activeGroup.treeCode)) : groups),
+    () =>
+      activeGroup
+        ? groups.filter(
+            (group) => group.id !== activeGroup.id && group.treeCode.startsWith(activeGroup.treeCode),
+          )
+        : groups,
     [groups, activeGroup],
   );
   const rightTree = useMemo(() => buildTree(descendants), [descendants]);
@@ -182,13 +188,11 @@ export function LinkedGroupSelector<T extends SelectableItem>({
               )}
             >
               <span className="truncate">{node.name}</span>
-              <code className="shrink-0 font-mono text-[10px] text-muted">{node.treeCode}</code>
               {!node.enabled && <span className="shrink-0 text-[10px] text-warn">停用</span>}
             </button>
           ) : (
             <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[12px] text-ink">
               <span className="truncate">{node.name}</span>
-              <code className="shrink-0 font-mono text-[10px] text-muted/70">{node.treeCode}</code>
               <span className="ml-auto shrink-0 text-[10.5px] text-muted/70">
                 {state.count}/{ids.length}
               </span>
@@ -216,10 +220,14 @@ export function LinkedGroupSelector<T extends SelectableItem>({
     </div>
   );
 
-  /** 右侧：选中分组下还有子分组 → 画完整分组树；否则不画分组标题，直接列条目。 */
-  const hasSubGroups = descendants.length > 1;
+  /**
+   * 右侧不画选中的本级：本级自身条目（若有）平铺在最上，下面接「该级之下」的子分组树；
+   * 没有下级分组时不画任何分组标题，直接平铺本级条目。
+   */
+  const hasSubGroups = descendants.length > 0;
+  const ownItems = activeGroup ? (itemsByGroup.get(activeGroup.id) ?? []) : [];
   const rightContent = () => {
-    if (descendants.length === 0 && ungrouped.length === 0) {
+    if (!hasSubGroups && ownItems.length === 0 && ungrouped.length === 0) {
       return (
         <p className="rounded-lg border border-dashed border-line px-3 py-8 text-center text-[12px] text-muted">
           {emptyText}
@@ -228,15 +236,12 @@ export function LinkedGroupSelector<T extends SelectableItem>({
     }
     return (
       <div className="flex flex-col gap-2">
+        {ownItems.length > 0 && itemRows(ownItems)}
         {hasSubGroups
           ? rightTree.map((node) =>
               groupRow(node, 0, false, (groupId) => itemRows(itemsByGroup.get(groupId) ?? [])),
             )
-          : itemRows(
-              activeGroup
-                ? (itemsByGroup.get(activeGroup.id) ?? [])
-                : descendants.flatMap((group) => itemsByGroup.get(group.id) ?? []),
-            )}
+          : null}
         {ungrouped.length > 0 && (
           <div className="mt-1 border-t border-line pt-2">
             <div className="mb-1 text-[11.5px] font-medium text-muted">{ungroupedLabel}</div>
