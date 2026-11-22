@@ -251,6 +251,37 @@ export function UsersPage() {
     return map;
   }, [pickerUsersQuery.data, orgUserBindings.data]);
 
+  /** 组织 → 领域：领域绑定的是子树根，根下所有子孙都归该领域。 */
+  const orgRealmMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const binding of realmOrgBindings.data ?? []) {
+      for (const id of subtreeIds(orgs, binding.orgId)) {
+        const list = map.get(id) ?? [];
+        list.push(binding.realmId);
+        map.set(id, list);
+      }
+    }
+    return map;
+  }, [orgs, realmOrgBindings.data]);
+
+  /** 人员 → 领域：经关联账号的 realm_user 绑定得出。 */
+  const personRealmMap = useMemo(() => {
+    const realmsByUser = new Map<string, string[]>();
+    for (const binding of realmUserBindings.data ?? []) {
+      const list = realmsByUser.get(binding.userId) ?? [];
+      list.push(binding.realmId);
+      realmsByUser.set(binding.userId, list);
+    }
+    const map = new Map<string, string[]>();
+    for (const user of pickerUsersQuery.data ?? []) {
+      if (!user.personId) continue;
+      map.set(user.personId, realmsByUser.get(user.id) ?? []);
+    }
+    return map;
+  }, [pickerUsersQuery.data, realmUserBindings.data]);
+
+  const pickerRealms = useMemo(() => realms.map((realm) => ({ id: realm.id, label: realm.name })), [realms]);
+
   const personColumns: PickerColumn<AdmPersonVo>[] = [
     {
       key: "name",
@@ -438,9 +469,13 @@ export function UsersPage() {
               .join(" ")
           }
           rowGroups={(person) => personOrgMap.get(person.id) ?? []}
+          realms={pickerRealms}
+          rowRealms={(person) => personRealmMap.get(person.id) ?? []}
+          treeNodeRealms={(node) => orgRealmMap.get(node.id) ?? []}
           tree={
-            visibleOrgs.length > 0
-              ? visibleOrgs.map((org) => ({
+            // 面板自带领域 tab，左树用全量组织，由 tab 收窄；不跟页面顶部的 tab 绑定。
+            orgs.length > 0
+              ? orgs.map((org) => ({
                   id: org.id,
                   label: org.name,
                   treeCode: org.treeCode,

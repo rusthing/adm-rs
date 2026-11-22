@@ -3,13 +3,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
-import { idInQuery, narrowToSubtrees } from "@/components/crud/scope";
+import { idInQuery, narrowToSubtrees, subtreeIds } from "@/components/crud/scope";
 import { ManagedPicker } from "@/components/picker/ManagedPicker";
 import type { PickerColumn } from "@/components/picker/ManagedPicker";
 import { Badge, Button } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/overlay";
 import { realmOrgApi } from "@/lib/api";
-import type { AdmOrgVo, FormValues, PageQuery } from "@/lib/types";
+import type { AdmOrgVo, AdmRealmVo, FormValues, PageQuery } from "@/lib/types";
 import {
   optionKeys,
   useOrgOptions,
@@ -79,6 +79,19 @@ export function OrgsPage() {
       .map((binding) => binding.orgId);
     return idInQuery(narrowToSubtrees(orgs, boundIds).map((org) => org.id));
   }, [activeRealm, realmOrgBindings.data, orgs]);
+
+  /** 组织 → 领域：领域绑定的是子树根，根下所有子孙都归该领域。 */
+  const orgRealmMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const binding of realmOrgBindings.data ?? []) {
+      for (const id of subtreeIds(orgs, binding.orgId)) {
+        const list = map.get(id) ?? [];
+        list.push(binding.realmId);
+        map.set(id, list);
+      }
+    }
+    return map;
+  }, [orgs, realmOrgBindings.data]);
 
   const orgTypeName = useMemo(() => {
     const map = new Map<string, string>();
@@ -169,13 +182,51 @@ export function OrgsPage() {
     { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
   ];
 
+  const realmPickerColumns: PickerColumn<AdmRealmVo>[] = [
+    {
+      key: "name",
+      label: "领域",
+      render: (realm) => (
+        <div className="min-w-0">
+          <div className="truncate font-medium text-ink">{realm.name}</div>
+          <div className="truncate font-mono text-[10.5px] text-muted">{realm.code}</div>
+        </div>
+      ),
+    },
+    {
+      key: "sort",
+      label: "排序",
+      className: "w-[64px]",
+      render: (realm) => <span className="font-mono text-[11px] text-muted">{realm.sortOrder}</span>,
+    },
+    {
+      key: "enabled",
+      label: "状态",
+      className: "w-[64px]",
+      render: (realm) => <Badge tone={realm.enabled ? "success" : "warn"}>{realm.enabled ? "启用" : "停用"}</Badge>,
+    },
+  ];
+
   const fields: CrudField[] = [
     {
       name: "realmId",
       label: "领域",
-      type: "select",
       createOnly: true,
-      options: realms.map((realm) => ({ value: realm.id, label: realm.name })),
+      render: (value, onChange) => (
+        <ManagedPicker<AdmRealmVo>
+          value={String(value ?? "")}
+          onChange={(next) => onChange(next)}
+          items={realms}
+          rowId={(realm) => realm.id}
+          rowLabel={(realm) => realm.name}
+          rowSearchText={(realm) => [realm.name, realm.code, realm.id].filter(Boolean).join(" ")}
+          columns={realmPickerColumns}
+          title="选择领域"
+          placeholder="选择领域"
+          loading={realmsQuery.isLoading}
+          emptyText="还没有领域，请先到「领域管理」创建。"
+        />
+      ),
       hint: "领域决定这个组织归哪个数据域；保存后会建立领域↔组织绑定，上级组织也只列该领域的树。",
     },
     { name: "name", label: "名称", required: true, placeholder: "同一父节点下允许重名，靠 treeCode 区分" },
@@ -187,6 +238,11 @@ export function OrgsPage() {
       span: 2,
       render: (value, onChange, values) => {
         const candidates = parentCandidates(values);
+        // 已选领域时上级组织只能落在该领域内，只保留一个 tab；未选时可按领域切换。
+        const realmId = String(values.realmId ?? "");
+        const pickerRealms = (realmId ? realms.filter((realm) => realm.id === realmId) : realms).map(
+          (realm) => ({ id: realm.id, label: realm.name }),
+        );
         return (
           <ManagedPicker<AdmOrgVo>
             value={String(value ?? "")}
@@ -196,6 +252,9 @@ export function OrgsPage() {
             rowLabel={(org) => `${org.name} · ${org.treeCode}`}
             rowSearchText={(org) => [org.name, org.fullName, org.treeCode, org.code, org.id].filter(Boolean).join(" ")}
             rowGroups={(org) => [org.id]}
+            realms={pickerRealms}
+            rowRealms={(org) => orgRealmMap.get(org.id) ?? []}
+            treeNodeRealms={(node) => orgRealmMap.get(node.id) ?? []}
             tree={candidates.map((org) => ({
               id: org.id,
               label: org.name,

@@ -20,6 +20,12 @@ export interface PickerColumn<T> {
   render: (row: T) => ReactNode;
 }
 
+/** 领域 tab：与用户管理页顶部同一套数据域切换。 */
+export interface PickerRealm {
+  id: string;
+  label: string;
+}
+
 export interface ManagedPickerProps<T> {
   value: string;
   onChange: (value: string) => void;
@@ -36,6 +42,12 @@ export interface ManagedPickerProps<T> {
   treeEmptyText?: string;
   /** 行归属的分组 id 集合，用于选中树节点后收窄；不传表示不按树筛选。 */
   rowGroups?: (row: T) => string[];
+  /** 领域列表：多于一个时在面板顶部显示 tab，与用户管理页一致。 */
+  realms?: PickerRealm[];
+  /** 行所属领域 id 集合；配合 `realms` 收窄右侧表格。 */
+  rowRealms?: (row: T) => string[];
+  /** 左树节点所属领域 id 集合；配合 `realms` 收窄左侧组织树。 */
+  treeNodeRealms?: (node: PickerTreeNode) => string[];
   title?: string;
   placeholder?: string;
   loading?: boolean;
@@ -87,6 +99,9 @@ export function ManagedPicker<T>({
   treeTitle = "组织",
   treeEmptyText = "暂无可选分组",
   rowGroups,
+  realms,
+  rowRealms,
+  treeNodeRealms,
   title = "请选择",
   placeholder = "请选择",
   loading = false,
@@ -104,20 +119,28 @@ export function ManagedPicker<T>({
   const [treeQuery, setTreeQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [treeSelected, setTreeSelected] = useState<string | null>(null);
+  const [activeRealm, setActiveRealm] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [rect, setRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
 
   const selected = useMemo(() => items.find((item) => rowId(item) === value), [items, rowId, value]);
 
+  /** 领域 tab 收窄后的左树；未选领域时保持全量。 */
+  const realmTree = useMemo(() => {
+    if (!activeRealm || !treeNodeRealms) return tree;
+    return (tree ?? []).filter((node) => treeNodeRealms(node).includes(activeRealm));
+  }, [activeRealm, tree, treeNodeRealms]);
+
   /** 当前树节点（含子孙）对应的分组 id；未选节点为 null。 */
   const allowedGroups = useMemo(() => {
-    if (!tree || !treeSelected) return null;
-    return new Set(subtreeGroupIds(tree, treeSelected));
-  }, [tree, treeSelected]);
+    if (!realmTree || !treeSelected) return null;
+    return new Set(subtreeGroupIds(realmTree, treeSelected));
+  }, [realmTree, treeSelected]);
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return items.filter((item) => {
+      if (activeRealm && rowRealms && !rowRealms(item).includes(activeRealm)) return false;
       if (allowedGroups && rowGroups) {
         const groups = rowGroups(item);
         if (!groups.some((id) => allowedGroups.has(id))) return false;
@@ -125,7 +148,7 @@ export function ManagedPicker<T>({
       if (!keyword) return true;
       return rowSearchText(item).toLowerCase().includes(keyword);
     });
-  }, [allowedGroups, items, query, rowGroups, rowSearchText]);
+  }, [activeRealm, allowedGroups, items, query, rowGroups, rowRealms, rowSearchText]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -207,16 +230,16 @@ export function ManagedPicker<T>({
   /** 树节点是否被折叠：只看祖先编码。 */
   const parentCodes = useMemo(() => {
     const codes = new Set<string>();
-    for (const node of tree ?? []) {
+    for (const node of realmTree ?? []) {
       const code = node.treeCode;
       if (!code) continue;
       for (let length = code.length - 3; length >= 3; length -= 3) codes.add(code.slice(0, length));
     }
     return codes;
-  }, [tree]);
+  }, [realmTree]);
 
   const treeVisible = useMemo(() => {
-    const nodes = tree ?? [];
+    const nodes = realmTree ?? [];
     const keyword = treeQuery.trim().toLowerCase();
     if (!keyword) return nodes;
     // 搜索时保留命中节点及其全部祖先，并忽略折叠状态。
@@ -233,7 +256,7 @@ export function ManagedPicker<T>({
       }
     }
     return nodes.filter((node) => keep.has(node.id));
-  }, [tree, treeQuery]);
+  }, [realmTree, treeQuery]);
 
   const isHidden = (node: PickerTreeNode) => {
     const code = node.treeCode;
@@ -309,6 +332,44 @@ export function ManagedPicker<T>({
                 </span>
               </div>
 
+              {realms && realms.length > 1 ? (
+                <div className="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRealm(null);
+                      setTreeSelected(null);
+                    }}
+                    className={cn(
+                      "shrink-0 rounded-md px-2 py-0.5 text-[11.5px] transition-colors",
+                      activeRealm === null
+                        ? "bg-accent-soft font-medium text-accent-strong"
+                        : "text-ink-soft hover:bg-sunken hover:text-ink",
+                    )}
+                  >
+                    全部领域
+                  </button>
+                  {realms.map((realm) => (
+                    <button
+                      key={realm.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveRealm(realm.id);
+                        setTreeSelected(null);
+                      }}
+                      className={cn(
+                        "shrink-0 rounded-md px-2 py-0.5 text-[11.5px] transition-colors",
+                        activeRealm === realm.id
+                          ? "bg-accent-soft font-medium text-accent-strong"
+                          : "text-ink-soft hover:bg-sunken hover:text-ink",
+                      )}
+                    >
+                      {realm.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="flex min-h-0 flex-1">
                 {tree ? (
                   <aside className="flex w-[188px] shrink-0 flex-col border-r border-line">
@@ -334,7 +395,7 @@ export function ManagedPicker<T>({
                         全部
                         <span className="ml-auto text-[10.5px] font-normal text-muted">不限</span>
                       </button>
-                      {tree.length === 0 ? (
+                      {(realmTree ?? []).length === 0 ? (
                         <p className="px-2 py-3 text-[11px] leading-relaxed text-muted">{treeEmptyText}</p>
                       ) : (
                         <div className="mt-0.5 flex flex-col gap-0.5">
