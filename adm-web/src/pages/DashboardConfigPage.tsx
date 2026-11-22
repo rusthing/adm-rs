@@ -6,10 +6,14 @@ import { fetchWidget } from "@/lib/widget-fetch";
 import type {
   AdmDashboardSaveInput,
   AdmDashboardVo,
+  AdmRoleVo,
   AdmWidgetServiceVo,
   AdmWidgetTypeVo,
   DashboardWidgetView,
 } from "@/lib/types";
+import { useRoleGroupOptions } from "@/lib/queries";
+import { ManagedPicker } from "@/components/picker/ManagedPicker";
+import type { PickerColumn } from "@/components/picker/ManagedPicker";
 import {
   Badge,
   Button,
@@ -167,6 +171,7 @@ export function DashboardConfigPage() {
     queryFn: () => roleApi.list(),
     staleTime: 60_000,
   });
+  const roleGroupsQuery = useRoleGroupOptions();
   const configsQuery = useQuery({
     queryKey: ["dashboard", "configs"],
     queryFn: () => dashboardApi.listConfigs(),
@@ -193,6 +198,42 @@ export function DashboardConfigPage() {
     [configsQuery.data],
   );
   const currentRoleName = roles.find((role) => role.id === target)?.name;
+  const roleGroupName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of roleGroupsQuery.data ?? []) map.set(group.id, group.name);
+    return map;
+  }, [roleGroupsQuery.data]);
+
+  const roleColumns: PickerColumn<AdmRoleVo>[] = [
+    {
+      key: "name",
+      label: "角色",
+      render: (role) => (
+        <div className="min-w-0">
+          <div className="truncate font-medium text-ink">{role.name}</div>
+          <div className="truncate text-[10.5px] text-muted">
+            {role.groupId ? roleGroupName.get(role.groupId) ?? "未分组" : "未分组"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "configured",
+      label: "配置",
+      className: "w-[80px]",
+      render: (role) => (
+        <Badge tone={configuredRoleIds.has(role.id) ? "info" : "neutral"}>
+          {configuredRoleIds.has(role.id) ? "已配置" : "未配置"}
+        </Badge>
+      ),
+    },
+    {
+      key: "enabled",
+      label: "状态",
+      className: "w-[64px]",
+      render: (role) => <Badge tone={role.enabled ? "success" : "warn"}>{role.enabled ? "启用" : "停用"}</Badge>,
+    },
+  ];
   // 下拉只列启用项，但已保存配置可能引用停用/已下线的项：额外补一条「当前值」
   // 占位，避免 <select value=...> 找不到 option 被浏览器静默改成第一项。
   const enabledTypes = types.filter((type) => type.enabled);
@@ -513,20 +554,30 @@ export function DashboardConfigPage() {
         className="mb-4"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Field label="目标角色">
-            <Select
+          <Field label="目标角色" hint="清除选择即编辑全局兜底模板">
+            <ManagedPicker<AdmRoleVo>
               value={target}
-              onChange={(event) => void changeTarget(event.target.value)}
+              onChange={(next) => void changeTarget(next)}
+              items={roles}
+              rowId={(role) => role.id}
+              rowLabel={(role) => role.name}
+              rowSearchText={(role) => [role.name, role.remark, role.id].filter(Boolean).join(" ")}
+              rowGroups={(role) => (role.groupId ? [role.groupId] : [])}
+              tree={(roleGroupsQuery.data ?? []).map((group) => ({
+                id: group.id,
+                label: group.name,
+                treeCode: group.treeCode,
+                disabled: !group.enabled,
+              }))}
+              treeTitle="角色分组"
+              treeEmptyText="还没有角色分组。"
+              columns={roleColumns}
+              title="选择目标角色"
+              placeholder="全局兜底模板"
+              loading={rolesQuery.isLoading}
               disabled={saving}
-            >
-              <option value="">全局兜底模板</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                  {configuredRoleIds.has(role.id) ? "（已配置）" : "（未配置）"}
-                </option>
-              ))}
-            </Select>
+              emptyText="还没有角色，请先到「角色管理」创建。"
+            />
           </Field>
           <Field label="配置名称" required>
             <Input

@@ -3,6 +3,7 @@
  *
  * 与渲染分离后这部分可以直接单测，CrudPage 只负责把结果画出来。
  */
+import type { ReactNode } from "react";
 import type { FormValues } from "@/lib/types";
 
 export type FormMode = "create" | "edit";
@@ -25,6 +26,16 @@ export interface CrudField {
   options?: CrudFieldOption[] | ((values: FormValues, mode: FormMode) => CrudFieldOption[]);
   /** 固定枚举：2–5 个选项按规范渲染为按钮组；接口驱动的选项不要设置。 */
   fixedOptions?: boolean;
+  /**
+   * 自定义控件：人员 / 组织 / 角色这类需要「左树 + 右表」选择器的字段用它，
+   * 页面自己组合控件并回写表单值，CrudPage 只提供当前值与 onChange。
+   */
+  render?: (
+    value: FormValues[string],
+    onChange: (value: FormValues[string]) => void,
+    values: FormValues,
+    mode: FormMode,
+  ) => ReactNode;
   /** 自定义校验：返回错误文案，null 表示通过。 */
   validate?: (value: FormValues[string], values: FormValues, mode: FormMode) => string | null;
   /** 列出的字段变化时清空本字段，避免留下跨应用的失效引用。 */

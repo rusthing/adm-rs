@@ -1406,11 +1406,18 @@ export function CrudPage<T extends { id: string }>({
               <div key={fieldKey(field, index)} className={field.span === 2 || field.type === "textarea" ? "col-span-2" : ""}>
                 <Field
                   label={field.label}
-                  htmlFor={field.type === "switch" || useOptionButtons || staticOption ? undefined : inputId}
+                  htmlFor={field.render || field.type === "switch" || useOptionButtons || staticOption ? undefined : inputId}
                   required={field.required}
                   hint={field.hint}
                 >
-                  {field.type === "switch" ? (
+                  {field.render ? (
+                    field.render(
+                      current,
+                      (next) => setFieldValue(field.name, next),
+                      editing?.values ?? {},
+                      editing?.mode ?? "create",
+                    )
+                  ) : field.type === "switch" ? (
                     <div className="flex h-9 items-center">
                       <Switch
                         checked={Boolean(value)}

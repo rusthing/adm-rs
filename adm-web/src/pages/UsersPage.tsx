@@ -5,12 +5,14 @@ import type { CrudColumn, CrudField, FormMode } from "@/components/crud/CrudPage
 import { CrudPage } from "@/components/crud/CrudPage";
 import { ScopePanel } from "@/components/crud/scope-panel";
 import { LinkedGroupSelector } from "@/components/crud/linked-group";
+import { ManagedPicker } from "@/components/picker/ManagedPicker";
+import type { PickerColumn } from "@/components/picker/ManagedPicker";
 import type { CrudScopeDef } from "@/components/crud/scope";
 import { idInQuery, narrowToSubtrees, subtreeIds } from "@/components/crud/scope";
 import { Badge, Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
-import type { AdmUserVo, FormValues, PageQuery } from "@/lib/types";
+import type { AdmPersonVo, AdmUserVo, FormValues, PageQuery } from "@/lib/types";
 import {
   useOrgOptions,
   useOrgUserBindings,
@@ -20,6 +22,7 @@ import {
   useRealmUserBindings,
   useRoleGroupOptions,
   useRoleOptions,
+  useUserOptions,
 } from "@/lib/queries";
 import { formatMs, shortId } from "@/lib/utils";
 import { KeyRound, UserCog } from "lucide-react";
@@ -233,6 +236,59 @@ export function UsersPage() {
     hint: "选中组织后只列该组织（含子组织）下的用户。",
   };
 
+  // ---- 关联人员选择器：人员档案 ↔ 组织靠 adm 用户（personId）+ org_user 映射 ----
+  const pickerUsersQuery = useUserOptions();
+  const personOrgMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    const userById = new Map((pickerUsersQuery.data ?? []).map((user) => [user.id, user]));
+    for (const binding of orgUserBindings.data ?? []) {
+      const personId = userById.get(binding.userId)?.personId;
+      if (!personId) continue;
+      const list = map.get(personId) ?? [];
+      list.push(binding.orgId);
+      map.set(personId, list);
+    }
+    return map;
+  }, [pickerUsersQuery.data, orgUserBindings.data]);
+
+  const personColumns: PickerColumn<AdmPersonVo>[] = [
+    {
+      key: "name",
+      label: "人员",
+      render: (person) => (
+        <div className="min-w-0">
+          <div className="truncate font-medium text-ink">{person.name}</div>
+          <div className="truncate text-[10.5px] text-muted">{person.namePinyinAbbr || "--"}</div>
+        </div>
+      ),
+    },
+    {
+      key: "code",
+      label: "工号",
+      className: "w-[110px]",
+      render: (person) => <span className="font-mono text-[11px] text-ink-soft">{person.code || "--"}</span>,
+    },
+    {
+      key: "mobile",
+      label: "联系方式",
+      className: "w-[140px]",
+      render: (person) => (
+        <span className="text-[11px] text-ink-soft">
+          {person.mobile || "--"}
+          <span className="block truncate text-[10px] text-muted">{person.email || ""}</span>
+        </span>
+      ),
+    },
+    {
+      key: "enabled",
+      label: "状态",
+      className: "w-[64px]",
+      render: (person) => (
+        <Badge tone={person.enabled ? "success" : "warn"}>{person.enabled ? "启用" : "停用"}</Badge>
+      ),
+    },
+  ];
+
   /** 领域命中的用户 id 集合；未选领域为 null（不收窄）。 */
   const realmUserIds = useMemo(() => {
     if (!activeRealm) return null;
@@ -368,11 +424,39 @@ export function UsersPage() {
     {
       name: "personId",
       label: "关联人员",
-      type: "select",
-      options: (personsQuery.data ?? []).map((person) => ({
-        value: person.id,
-        label: person.code ? `${person.code} · ${person.name}` : person.name,
-      })),
+      span: 2,
+      render: (value, onChange) => (
+        <ManagedPicker<AdmPersonVo>
+          value={String(value ?? "")}
+          onChange={(next) => onChange(next)}
+          items={personsQuery.data ?? []}
+          rowId={(person) => person.id}
+          rowLabel={(person) => (person.code ? `${person.name} · ${person.code}` : person.name)}
+          rowSearchText={(person) =>
+            [person.name, person.code, person.namePinyinAbbr, person.mobile, person.email, person.id]
+              .filter(Boolean)
+              .join(" ")
+          }
+          rowGroups={(person) => personOrgMap.get(person.id) ?? []}
+          tree={
+            visibleOrgs.length > 0
+              ? visibleOrgs.map((org) => ({
+                  id: org.id,
+                  label: org.name,
+                  treeCode: org.treeCode,
+                  disabled: !org.enabled,
+                }))
+              : undefined
+          }
+          treeTitle="组织"
+          treeEmptyText="还没有组织，无法按组织筛选人员。"
+          columns={personColumns}
+          title="选择人员"
+          placeholder="选择人员（不选为纯账号）"
+          loading={personsQuery.isLoading}
+          emptyText="还没有人员档案，请先到「人员管理」录入。"
+        />
+      ),
       hint: personsQuery.data?.length
         ? "选人员档案表示「这个人用这个账号登录」；不选是纯账号（外部认证、系统账号、机器人）。列表里的姓名已遮蔽，按工号区分人。"
         : "还没有人员档案。先在「人员管理」录入人员，再回来关联；不关联即纯账号。",

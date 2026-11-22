@@ -4,7 +4,9 @@ import { Plus } from "lucide-react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { idInQuery, narrowToSubtrees } from "@/components/crud/scope";
-import { Button } from "@/components/ui/primitives";
+import { ManagedPicker } from "@/components/picker/ManagedPicker";
+import type { PickerColumn } from "@/components/picker/ManagedPicker";
+import { Badge, Button } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/overlay";
 import { realmOrgApi } from "@/lib/api";
 import type { AdmOrgVo, FormValues, PageQuery } from "@/lib/types";
@@ -89,7 +91,7 @@ export function OrgsPage() {
    * 选了领域后只列该领域绑定组织（含子孙）作为上级，避免把组织挂到别的领域树下；
    * 该领域还没有任何绑定时退回全量，否则新建第一个组织会无从下手。
    */
-  const parentOptions = (values: FormValues) => {
+  const parentCandidates = (values: FormValues): AdmOrgVo[] => {
     let candidates = orgsQuery.data ?? [];
     const realmId = String(values.realmId ?? "");
     if (realmId) {
@@ -100,11 +102,43 @@ export function OrgsPage() {
         candidates = narrowToSubtrees(candidates, boundIds);
       }
     }
-    return candidates.map((org) => ({
-      value: org.treeCode,
-      label: `${"　".repeat(depthOf(org.treeCode))}${org.name} · ${org.treeCode}`,
-    }));
+    return candidates;
   };
+
+  const orgPickerColumns: PickerColumn<AdmOrgVo>[] = [
+    {
+      key: "name",
+      label: "组织",
+      render: (org) => (
+        <div className="min-w-0">
+          <div className="truncate font-medium text-ink">{org.name}</div>
+          <div className="truncate text-[10.5px] text-muted">{org.fullName || org.treeCode}</div>
+        </div>
+      ),
+    },
+    {
+      key: "code",
+      label: "编码",
+      className: "w-[110px]",
+      render: (org) => <span className="font-mono text-[11px] text-ink-soft">{org.code || "--"}</span>,
+    },
+    {
+      key: "type",
+      label: "类型",
+      className: "w-[90px]",
+      render: (org) => (
+        <span className="truncate text-[11px] text-ink-soft">
+          {org.orgTypeId ? orgTypeName.get(org.orgTypeId) ?? shortId(org.orgTypeId) : "未分类"}
+        </span>
+      ),
+    },
+    {
+      key: "enabled",
+      label: "状态",
+      className: "w-[64px]",
+      render: (org) => <Badge tone={org.enabled ? "success" : "warn"}>{org.enabled ? "启用" : "停用"}</Badge>,
+    },
+  ];
 
   const columns: CrudColumn<AdmOrgVo>[] = [
     {
@@ -148,10 +182,36 @@ export function OrgsPage() {
     {
       name: "parentCode",
       label: "上级组织",
-      type: "select",
       createOnly: true,
-      options: parentOptions,
       resetOn: ["realmId"],
+      span: 2,
+      render: (value, onChange, values) => {
+        const candidates = parentCandidates(values);
+        return (
+          <ManagedPicker<AdmOrgVo>
+            value={String(value ?? "")}
+            onChange={(next) => onChange(next)}
+            items={candidates}
+            rowId={(org) => org.treeCode}
+            rowLabel={(org) => `${org.name} · ${org.treeCode}`}
+            rowSearchText={(org) => [org.name, org.fullName, org.treeCode, org.code, org.id].filter(Boolean).join(" ")}
+            rowGroups={(org) => [org.id]}
+            tree={candidates.map((org) => ({
+              id: org.id,
+              label: org.name,
+              treeCode: org.treeCode,
+              disabled: !org.enabled,
+            }))}
+            treeTitle="组织"
+            treeEmptyText="该领域下还没有组织。"
+            columns={orgPickerColumns}
+            title="选择上级组织"
+            placeholder="不选则创建根组织"
+            loading={orgsQuery.isLoading}
+            emptyText="没有匹配的组织"
+          />
+        );
+      },
       hint: "不选则创建根组织。treeCode 由服务端按上级生成、建好后不能再改上级——挂错层只能删掉重建（行内排序只调同级先后）。",
     },
     {
