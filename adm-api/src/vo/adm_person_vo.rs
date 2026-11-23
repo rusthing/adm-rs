@@ -19,6 +19,10 @@ pub struct AdmPersonVo {
     /// @len 1..=50
     /// @check is_code
     pub code: Option<String>,
+    /// 人员类型
+    /// 存 person_type.value（0 内部员工、1 第三方施工人员、2 访客、3 其他人员）；为空表示未分类
+    /// @range 0..=999
+    pub person_type: Option<i16>,
     /// 姓名
     /// 人员的真实姓名；长度 200 是为了容纳少数民族长姓名（多个间隔号拼接）
     /// @len 1..=200

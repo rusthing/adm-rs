@@ -1318,6 +1318,7 @@ create table adm_person (
    id                   INT8                 not null,
    code_type_id         INT8                 null,
    code                 VARCHAR(50)          null,
+   person_type          INT2                 null,
    name                 VARCHAR(200)         not null,
    name_pinyin_abbr     VARCHAR(200)         null,
    name_pinyin_full     VARCHAR(200)         null,
@@ -1358,6 +1359,12 @@ comment on column adm_person.code is
 (code_type_id, code) 唯一（AK）
 @len 1..=50
 @check is_code';
+
+comment on column adm_person.person_type is
+'人员类型
+存 person_type.value（0 内部员工、1 第三方施工人员、2 访客、3 其他人员）；为空表示未分类
+字典为弱引用，不建外键
+@range 0..=999';
 
 comment on column adm_person.name is
 '姓名
@@ -1504,6 +1511,84 @@ comment on column adm_person_code_type.update_ms is
 /* Index: adm_person_code_type_PK                               */
 /*==============================================================*/
 create unique index adm_person_code_type_PK on adm_person_code_type (
+id
+);
+
+/*==============================================================*/
+/* Table: adm_person_type                                       */
+/*==============================================================*/
+create table adm_person_type (
+   id                   INT8                 not null,
+   code                 VARCHAR(50)          not null,
+   name                 VARCHAR(50)          not null,
+   value                INT2                 not null,
+   remark               VARCHAR(50)          null,
+   enabled              BOOL                 not null default true,
+   creater_id           INT8                 not null,
+   create_ms            INT8                 not null,
+   updater_id           INT8                 not null,
+   update_ms            INT8                 not null,
+   constraint PK_ADM_PERSON_TYPE primary key (id),
+   constraint AK_CODE_ADM_PERSON_TYPE unique (code),
+   constraint AK_NAME_ADM_PERSON_TYPE unique (name),
+   constraint AK_VALUE_ADM_PERSON_TYPE unique (value)
+);
+
+comment on table adm_person_type is
+'人员类型
+选项值来自旧 ADM 字典 DTW_LOCATION_LOGO_TYPE 的人员项（0-3），业务表只存 value、不建外键';
+
+comment on column adm_person_type.id is
+'主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值';
+
+comment on column adm_person_type.code is
+'编码
+与旧字典项 CODE 一致（INTERNAL_EMPLOYEES 等），全局唯一（AK）
+@len 1..=50
+@check is_code';
+
+comment on column adm_person_type.name is
+'名称
+与旧字典项 NAME 一致，全局唯一（AK）
+@len 1..=50';
+
+comment on column adm_person_type.value is
+'值
+与旧字典项 VALUE 一致，人员档案的 person_type 存这个值；全局唯一（AK）
+@range 0..=999';
+
+comment on column adm_person_type.remark is
+'备注
+@len 0..=50';
+
+comment on column adm_person_type.enabled is
+'是否启用
+false 时不可再被选择，历史数据与关联全部保留
+与删除的区别：删除是物理删除（外键 restrict 会挡住），停用只影响后续使用';
+
+comment on column adm_person_type.creater_id is
+'创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_person_type.create_ms is
+'创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms';
+
+comment on column adm_person_type.updater_id is
+'最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0';
+
+comment on column adm_person_type.update_ms is
+'最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms';
+
+/*==============================================================*/
+/* Index: adm_person_type_PK                                    */
+/*==============================================================*/
+create unique index adm_person_type_PK on adm_person_type (
 id
 );
 

@@ -22,6 +22,7 @@ export const PERM_SUBJECTS: PermSubjectOption[] = [
   { value: "org_user", label: "组织成员", section: "组织与人员" },
   { value: "person", label: "人员", section: "组织与人员" },
   { value: "person_code_type", label: "人员编码类型", section: "系统配置" },
+  { value: "person_type", label: "人员类型", section: "系统配置" },
   { value: "user", label: "用户", section: "组织与人员" },
   { value: "role_group", label: "角色分组", section: "角色与授权" },
   { value: "role", label: "角色", section: "角色与授权" },

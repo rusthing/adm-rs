@@ -182,10 +182,20 @@ export interface AdmPersonCodeTypeVo extends AuditFields {
   enabled: boolean;
 }
 
+export interface AdmPersonTypeVo extends AuditFields {
+  id: string;
+  code: string;
+  name: string;
+  value: number;
+  remark?: string;
+  enabled: boolean;
+}
+
 export interface AdmPersonVo extends AuditFields {
   id: string;
   codeTypeId?: string;
   code?: string;
+  personType?: number;
   name: string;
   namePinyinAbbr?: string;
   namePinyinFull?: string;

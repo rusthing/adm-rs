@@ -51,7 +51,24 @@ fn read_migration(name: &str) -> String {
 }
 
 fn seed_sql() -> String {
-    read_migration("20261109000002_init-data.sql")
+    // 种子分散在基线与后续增量迁移里：按文件名顺序拼接全部 pgsql 迁移，
+    // 新增资源的权限点不用再回改基线文件（基线已执行过，改它会破坏 checksum）。
+    let mut files: Vec<PathBuf> = fs::read_dir(migrations_dir())
+        .expect("读取 migrations/pgsql 目录")
+        .filter_map(|entry| {
+            let path = entry.ok()?.path();
+            (path.extension().and_then(|ext| ext.to_str()) == Some("sql")).then_some(path)
+        })
+        .collect();
+    files.sort();
+    files
+        .into_iter()
+        .map(|path| {
+            fs::read_to_string(&path)
+                .unwrap_or_else(|error| panic!("读取迁移 {}: {error}", path.display()))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// 建表基线（`create-table.sql` 是 PowerDesigner 导出脚本的副本）与
@@ -348,6 +365,7 @@ fn perms() -> Vec<Perm> {
 fn expected_subject(path: &str) -> (&'static str, &'static str) {
     let mut subjects: Vec<(&str, &'static str, &'static str)> = vec![
         ("/adm/person-code-type", "person_code_type", "人员编码类型"),
+        ("/adm/person-type", "person_type", "人员类型"),
         ("/adm/menu-perm", "menu_perm", "菜单绑定"),
         ("/adm/perm-group", "perm_group", "权限分组"),
         ("/adm/role-group", "role_group", "角色分组"),

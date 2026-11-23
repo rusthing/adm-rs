@@ -23,6 +23,7 @@ import {
   permGroupApi,
   personApi,
   personCodeTypeApi,
+  personTypeApi,
   realmApi,
   realmOrgApi,
   realmUserApi,
@@ -49,6 +50,7 @@ export const optionKeys = {
   user: ["/adm/user", "options"] as const,
   person: ["/adm/person", "options"] as const,
   personCodeType: ["/adm/person-code-type", "options"] as const,
+  personType: ["/adm/person-type", "options"] as const,
   realmOrg: ["/adm/realm-org", "options"] as const,
   realmUser: ["/adm/realm-user", "options"] as const,
   orgUser: ["/adm/org-user", "options"] as const,
@@ -211,6 +213,17 @@ export function usePersonCodeTypeOptions(enabled = true) {
   return useQuery({
     queryKey: optionKeys.personCodeType,
     queryFn: () => personCodeTypeApi.list({ _orderBy: "sort_order:asc" }),
+    staleTime: OPTION_STALE,
+    retry: 0,
+    enabled,
+  });
+}
+
+/** 人员类型字典：人员表单的类型下拉，按旧字典 value 升序。 */
+export function usePersonTypeOptions(enabled = true) {
+  return useQuery({
+    queryKey: optionKeys.personType,
+    queryFn: () => personTypeApi.list({ _orderBy: "value:asc" }),
     staleTime: OPTION_STALE,
     retry: 0,
     enabled,

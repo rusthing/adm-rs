@@ -13,6 +13,7 @@ pub struct Model {
     pub code_type_id: Option<i64>,
     #[sea_orm(unique_key = "ak_code_type_id_and_code_adm_person")]
     pub code: Option<String>,
+    pub person_type: Option<i16>,
     pub name: String,
     pub name_pinyin_abbr: Option<String>,
     pub name_pinyin_full: Option<String>,

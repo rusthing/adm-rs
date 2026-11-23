@@ -40,6 +40,10 @@ pub struct AdmPersonListVo {
     /// (code_type_id, code) 唯一（AK）
     #[builder(default, setter(into))]
     pub code: Option<String>,
+    /// 人员类型
+    /// 存 person_type.value（0 内部员工、1 第三方施工人员、2 访客、3 其他人员）；为空表示未分类
+    #[builder(default, setter(into))]
+    pub person_type: Option<i16>,
     /// 姓名（脱敏）
     /// 序列化输出 `张*`；与拼音两列合起来仍能定位到人的只有原值路径（单条详情）
     pub name: MaskedName,
@@ -91,6 +95,7 @@ impl From<crate::mo::adm_person::ModelEx> for AdmPersonListVo {
             id: m.id.into(),
             code_type_id: m.code_type_id.map(Into::into),
             code: m.code,
+            person_type: m.person_type,
             name: m.name.into(),
             name_pinyin_abbr: m.name_pinyin_abbr,
             name_pinyin_full: m.name_pinyin_full,

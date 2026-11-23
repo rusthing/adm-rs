@@ -2,13 +2,18 @@ import { useMemo } from "react";
 import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import type { AdmPersonVo, FormValues } from "@/lib/types";
-import { usePersonCodeTypeOptions } from "@/lib/queries";
+import { usePersonCodeTypeOptions, usePersonTypeOptions } from "@/lib/queries";
 import { shortId } from "@/lib/utils";
 
 function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
   // 空串显式传 null：ModifyDto 的 Option<String> 用 Some(None) 表达清空
   return text ? text : null;
+}
+
+function optionalNumber(value: FormValues[string]): number | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text ? Number(text) : null;
 }
 
 /** 身份证只露前 6 后 4：列表是高频扫视的页面，没必要把完整证件号摆在屏幕上。 */
@@ -24,12 +29,19 @@ function maskIdCard(value: string | undefined): string {
  */
 export function PersonsPage() {
   const codeTypesQuery = usePersonCodeTypeOptions();
+  const personTypesQuery = usePersonTypeOptions();
 
   const codeTypeName = useMemo(() => {
     const map = new Map<string, string>();
     for (const type of codeTypesQuery.data ?? []) map.set(type.id, type.name);
     return map;
   }, [codeTypesQuery.data]);
+
+  const personTypeName = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const type of personTypesQuery.data ?? []) map.set(type.value, type.name);
+    return map;
+  }, [personTypesQuery.data]);
 
   const columns: CrudColumn<AdmPersonVo>[] = [
     {
@@ -58,6 +70,17 @@ export function PersonsPage() {
       },
     },
     { key: "mobile", label: "手机", className: "whitespace-nowrap" },
+    {
+      key: "personType",
+      label: "人员类型",
+      className: "whitespace-nowrap",
+      render: (row) =>
+        row.personType === undefined ? (
+          <span className="text-muted">—</span>
+        ) : (
+          <span>{personTypeName.get(row.personType) ?? String(row.personType)}</span>
+        ),
+    },
     { key: "email", label: "邮箱", truncate: true, truncateClassName: "max-w-[200px]" },
     {
       key: "idCard",
@@ -103,6 +126,18 @@ export function PersonsPage() {
       hint: "仅「手工填写」时生效：小写、音节间无分隔，用于拼音检索。",
     },
     {
+      name: "personType",
+      label: "人员类型",
+      type: "select",
+      options: (personTypesQuery.data ?? []).map((type) => ({
+        value: String(type.value),
+        label: type.name,
+      })),
+      hint: personTypesQuery.data?.length
+        ? "来自「人员类型」字典，可留空表示未分类。"
+        : "还没有人员类型，可先到「人员类型」维护。",
+    },
+    {
       name: "codeTypeId",
       label: "编码类型",
       type: "select",
@@ -130,6 +165,7 @@ export function PersonsPage() {
     namePinyinFull: row.namePinyinFull ?? "",
     codeTypeId: row.codeTypeId ?? "",
     code: row.code ?? "",
+    personType: row.personType === undefined ? "" : String(row.personType),
     mobile: row.mobile ?? "",
     email: row.email ?? "",
     idCard: row.idCard ?? "",
@@ -143,6 +179,7 @@ export function PersonsPage() {
     namePinyinFull: optionalText(values.namePinyinFull),
     codeTypeId: optionalText(values.codeTypeId),
     code: optionalText(values.code),
+    personType: optionalNumber(values.personType),
     mobile: optionalText(values.mobile),
     email: optionalText(values.email),
     idCard: optionalText(values.idCard),
@@ -165,6 +202,15 @@ export function PersonsPage() {
           name: "code_type_id",
           label: "编码类型",
           options: (codeTypesQuery.data ?? []).map((type) => ({ value: type.id, label: type.name })),
+        },
+        {
+          type: "entity",
+          name: "person_type",
+          label: "人员类型",
+          options: (personTypesQuery.data ?? []).map((type) => ({
+            value: String(type.value),
+            label: type.name,
+          })),
         },
         { type: "boolean", name: "enabled", label: "启用" },
         { type: "date-range", name: "create_ms", label: "创建时间" },

@@ -19,6 +19,7 @@ pub mod adm_perm;
 pub mod adm_perm_group;
 pub mod adm_person;
 pub mod adm_person_code_type;
+pub mod adm_person_type;
 pub mod adm_realm;
 pub mod adm_realm_org;
 pub mod adm_realm_user;

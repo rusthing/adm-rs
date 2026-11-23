@@ -12,6 +12,7 @@ import { PermissionGroupsPage } from "@/pages/PermissionGroupsPage";
 import { PermissionsPage } from "@/pages/PermissionsPage";
 import { PersonCodeTypesPage } from "@/pages/PersonCodeTypesPage";
 import { PersonsPage } from "@/pages/PersonsPage";
+import { PersonTypesPage } from "@/pages/PersonTypesPage";
 import { RealmsPage } from "@/pages/RealmsPage";
 import { RoleGroupsPage } from "@/pages/RoleGroupsPage";
 import { RolesPage } from "@/pages/RolesPage";
@@ -32,6 +33,7 @@ export const PAGE_COMPONENTS: Record<string, ComponentType> = {
   "org-types": OrgTypesPage,
   persons: PersonsPage,
   "person-code-types": PersonCodeTypesPage,
+  "person-types": PersonTypesPage,
   roles: RolesPage,
   menus: MenusPage,
   permissions: PermissionsPage,
@@ -51,6 +53,7 @@ export const PAGE_PERMS: Record<string, string> = {
   "org-types": "GET:/adm/org-type",
   persons: "GET:/adm/person",
   "person-code-types": "GET:/adm/person-code-type",
+  "person-types": "GET:/adm/person-type",
   "dashboard-config": "GET:/adm/dashboard/config",
   roles: "GET:/adm/role",
   menus: "GET:/adm/menu",
