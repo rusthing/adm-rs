@@ -432,7 +432,9 @@ export function AppShell() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas">
+    /* 外壳按容器高度铺满（联邦窗口 / 独立站 #root），滚动只发生在内容区，
+       侧栏 fixed inset-y-0 因此始终贴着窗口上下边，不会跟着右侧内容滚走。 */
+    <div className="flex h-full min-h-0 bg-canvas">
       {/* 移动端遮罩 */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 bg-ink/35 lg:hidden" onClick={() => setMobileOpen(false)} />
@@ -552,11 +554,11 @@ export function AppShell() {
 
       <div
         className={cn(
-          "transition-[padding] duration-200",
+          "flex h-full min-h-0 flex-col transition-[padding] duration-200",
           collapsed ? "lg:pl-[64px]" : "lg:pl-[238px]",
         )}
       >
-        <header className="sticky top-0 z-30 flex h-[58px] items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur">
+        <header className="sticky top-0 z-30 flex h-[58px] shrink-0 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur">
           <button
             type="button"
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line text-muted hover:text-ink lg:hidden"
@@ -610,35 +612,38 @@ export function AppShell() {
           />
         </header>
 
-        {session?.loginPswdDefault && (
-          <div className="border-b border-warn/30 bg-warn-soft px-4 py-2 text-[12px] text-warn">
-            当前账号仍在使用初始口令，请尽快到
-            <Link to="/profile" className="mx-1 underline underline-offset-2">
-              个人中心
-            </Link>
-            修改。
-          </div>
-        )}
+        {/* 只让这一列滚动：顶栏与侧栏都留在原位 */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {session?.loginPswdDefault && (
+            <div className="border-b border-warn/30 bg-warn-soft px-4 py-2 text-[12px] text-warn">
+              当前账号仍在使用初始口令，请尽快到
+              <Link to="/profile" className="mx-1 underline underline-offset-2">
+                个人中心
+              </Link>
+              修改。
+            </div>
+          )}
 
-        {authzError && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-danger/25 bg-danger-soft px-4 py-2 text-[12px] text-danger">
-            <AlertTriangle size={14} />
-            权限信息加载失败：{authzError}。
-            {authz ? "当前沿用上次缓存的菜单与权限，刷新成功后自动更新。" : "菜单与页面暂不可用，可重试或重新登录。"}
-            <Button size="sm" variant="ghost" onClick={() => void refreshAuthz()}>
-              重试
-            </Button>
-          </div>
-        )}
+          {authzError && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-danger/25 bg-danger-soft px-4 py-2 text-[12px] text-danger">
+              <AlertTriangle size={14} />
+              权限信息加载失败：{authzError}。
+              {authz ? "当前沿用上次缓存的菜单与权限，刷新成功后自动更新。" : "菜单与页面暂不可用，可重试或重新登录。"}
+              <Button size="sm" variant="ghost" onClick={() => void refreshAuthz()}>
+                重试
+              </Button>
+            </div>
+          )}
 
-        <main className="mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6">
-          <Outlet />
-        </main>
+          <main className="mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6">
+            <Outlet />
+          </main>
 
-        <footer className="mx-auto flex w-full max-w-[1480px] flex-wrap items-center justify-between gap-2 px-4 pb-6 text-[11px] text-muted sm:px-6">
-          <span>后台管理</span>
-          <span>账号 · 角色 · 菜单 · 权限</span>
-        </footer>
+          <footer className="mx-auto flex w-full max-w-[1480px] flex-wrap items-center justify-between gap-2 px-4 pb-6 text-[11px] text-muted sm:px-6">
+            <span>后台管理</span>
+            <span>账号 · 角色 · 菜单 · 权限</span>
+          </footer>
+        </div>
       </div>
     </div>
   );
