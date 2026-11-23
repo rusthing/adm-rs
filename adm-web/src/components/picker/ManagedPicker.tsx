@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import { overlayPortalTarget } from "@/components/ui/overlay";
 import { cn } from "@/lib/utils";
 
 /** 左侧树的节点：组织树、角色分组树共用 `treeCode` 表达层级。 */
@@ -531,7 +532,7 @@ export function ManagedPicker<T>({
                 </div>
               </div>
             </div>,
-            document.body,
+            overlayPortalTarget(),
           )
         : null}
     </>

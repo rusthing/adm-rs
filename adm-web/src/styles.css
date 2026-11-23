@@ -69,6 +69,11 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* 弹层 Portal 容器：需要 .adm-federated 命中工具类作用域，自身不生成盒子。 */
+  .adm-overlay-portal {
+    display: contents;
+  }
+
   ::selection {
     background: #cfdcf6;
     color: var(--color-accent-strong);
