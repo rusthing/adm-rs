@@ -26,6 +26,7 @@ mod adm_role_user_router;
 mod adm_sort_router;
 mod adm_user_password_router;
 mod adm_user_router;
+mod adm_user_unlock_router;
 
 /// # 路由自检
 ///

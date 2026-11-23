@@ -2325,7 +2325,7 @@ create table adm_user (
    pay_pswd             VARCHAR(64)          not null,
    pay_pswd_salt        CHAR(6)              not null,
    expire_ms            INT8                 null,
-   status               INT2                 not null default 1,
+   locked               BOOL                 not null default false,
    fail_count           INT2                 not null default 0,
    lock_until_ms        INT8                 null,
    last_login_ms        INT8                 null,
@@ -2344,7 +2344,7 @@ create table adm_user (
 
 comment on table adm_user is
 '用户（账号）
-回答「哪个标识能登进哪个账号」：登录名、登录用手机/邮箱、实名信息（姓名 + 身份证）、三套密码、状态
+回答「哪个标识能登进哪个账号」：登录名、登录用手机/邮箱、实名信息（姓名 + 身份证）、三套密码、锁定状态
 实名信息与核验位放在本表：登录时的实名校验以账号为单位，person 只存人员档案、不记核验状态';
 
 comment on column adm_user.id is
@@ -2466,25 +2466,22 @@ comment on column adm_user.pay_pswd_salt is
 comment on column adm_user.expire_ms is
 '过期时间戳
 账户到期时间；定时任务扫描到已过期时把 enabled 置 false
-与 status 的区别：status 是人工停用与锁定判定，expire_ms 是到期自动停用
+与 locked 的区别：locked 是安全策略或人工解锁判定的锁定状态，expire_ms 是到期自动停用
 @unit ms';
 
-comment on column adm_user.status is
-'状态
-1-正常
-2-已停用
-3-已锁定
-与 enabled 的关系：enabled=false 时账号整体不可登录，status 用于展示与锁定判定
-@range 1..=3';
+comment on column adm_user.locked is
+'是否锁定
+true 表示账号已被锁定，登录会被拒绝；由登录失败次数达到阈值自动置位，管理端只能手工解锁、不能手工锁定
+与 enabled 的关系：enabled=false 时账号整体不可登录，locked 用于展示与登录判定';
 
 comment on column adm_user.fail_count is
 '登录失败次数
-登录成功后清零；达到阈值时把 status 置 3 并写入 lock_until_ms
+登录成功后清零；达到阈值时把 locked 置 true 并写入 lock_until_ms
 @range 0..=100';
 
 comment on column adm_user.lock_until_ms is
 '锁定到期时间戳
-为空或已过期表示未锁定；解锁时置空并把 status 恢复为 1
+为空表示永久锁，需管理员手工解锁；有值且已过期时下次登录自动解锁并把 locked 恢复为 false
 @unit ms';
 
 comment on column adm_user.last_login_ms is

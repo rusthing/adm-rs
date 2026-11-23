@@ -1,12 +1,14 @@
 //! # 用户（账号） DTO
 //!
-//! 回答「哪个标识能登进哪个账号」：登录名、登录用手机/邮箱、实名信息（姓名 + 身份证）、三套密码、状态
+//! 回答「哪个标识能登进哪个账号」：登录名、登录用手机/邮箱、实名信息（姓名 + 身份证）、三套密码、锁定状态
 //! 实名信息与核验位放在本表：登录时的实名校验以账号为单位，person 只存人员档案、不记核验状态
 //!
 //! 校验标签：`@len` / `@range` 是结构约束，`@check is_xxx` 调
 //! `wheel_rs::regex_utils` 的谓词做语义校验（能带校验位），`@unit` 只是单位说明。
 
 use robotech::macros::crud_dto;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 #[crud_dto]
 pub struct AdmUserDto {
@@ -113,24 +115,21 @@ pub struct AdmUserDto {
     pub pay_pswd_salt: String,
     /// 过期时间戳
     /// 账户到期时间；定时任务扫描到已过期时把 enabled 置 false
-    /// 与 status 的区别：status 是人工停用与锁定判定，expire_ms 是到期自动停用
+    /// 与 locked 的区别：locked 是安全策略或人工解锁判定的锁定状态，expire_ms 是到期自动停用
     /// @unit ms
     pub expire_ms: Option<u64>,
-    /// 状态
-    /// 1-正常
-    /// 2-已停用
-    /// 3-已锁定
-    /// 与 enabled 的关系：enabled=false 时账号整体不可登录，status 用于展示与锁定判定
-    /// @range 1..=3
+    /// 是否锁定
+    /// true 表示账号已被锁定，登录会被拒绝；由登录失败次数达到阈值自动置位，管理端只能手工解锁、不能手工锁定
+    /// 与 enabled 的关系：enabled=false 时账号整体不可登录，locked 用于展示与登录判定
     #[db_default]
-    pub status: i16,
+    pub locked: bool,
     /// 登录失败次数
-    /// 登录成功后清零；达到阈值时把 status 置 3 并写入 lock_until_ms
+    /// 登录成功后清零；达到阈值时把 locked 置 true 并写入 lock_until_ms
     /// @range 0..=100
     #[db_default]
     pub fail_count: i16,
     /// 锁定到期时间戳
-    /// 为空或已过期表示未锁定；解锁时置空并把 status 恢复为 1
+    /// 为空表示永久锁，需管理员手工解锁；有值且已过期时下次登录自动解锁并把 locked 恢复为 false
     /// @unit ms
     pub lock_until_ms: Option<u64>,
     /// 最近登录时间戳
@@ -145,4 +144,16 @@ pub struct AdmUserDto {
     /// 与删除的区别：删除是物理删除（外键 restrict 会挡住），停用只影响后续使用
     #[db_default]
     pub enabled: bool,
+}
+
+/// # 手工解锁请求
+///
+/// 管理端只允许手工解锁、不允许手工锁定：锁定只能由登录失败次数达到阈值触发。
+/// 解锁原因必填，并回填到 `adm_lock_log.unlock_reason`。
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AdmUserUnlockDto {
+    /// 解锁原因
+    /// @len 1..=100
+    pub unlock_reason: String,
 }

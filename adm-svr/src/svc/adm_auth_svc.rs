@@ -32,7 +32,6 @@ use crate::cst::{
     ADM_CODE_VERIFY_PASSWORD_USER_UNAVAILABLE,
 };
 use crate::dao::{AdmLockLogDao, AdmLoginLogDao, AdmOpLogDao, AdmUserDao};
-use crate::dic::UserStatus;
 use crate::dto::{
     AdmChangePasswordDto, AdmLoginDto, AdmVerifyAuditPasswordDto, AdmVerifyPasswordDto,
 };
@@ -109,8 +108,8 @@ pub struct AdmAuthSvc;
 
 /// 账号的锁定状态
 ///
-/// 区分四种是为了处理 `status` 与 `lock_until_ms` 两处记录的先后：
-/// 管理端直接把 `status` 改成锁定时不会填 `lock_until_ms`，那是永久锁；
+/// 区分四种是为了处理 `locked` 与 `lock_until_ms` 两处记录的先后：
+/// `locked=true` 但没有 `lock_until_ms` 时是永久锁，需要管理员手工解锁；
 /// 登录失败触发的锁定两者都会写，到期能自动解。
 enum LockState {
     /// 未锁定
@@ -234,7 +233,7 @@ impl AdmAuthSvc {
             .await?
             .ok_or_else(|| SvcError::NotFound(format!("用户 {user_id} 不存在")))?;
 
-        if !user.enabled || user.status == UserStatus::Disabled as i16 {
+        if !user.enabled {
             return Ok(Ro::warn("账号已停用，请联系管理员".to_string())
                 .code(Some(ADM_CODE_ACCOUNT_DISABLED.to_string())));
         }
@@ -409,8 +408,8 @@ impl AdmAuthSvc {
             return Ok(Self::verify_password_user_unavailable("当前用户不可用"));
         };
 
-        // 只读判断账号状态：不自动解锁、不修改 status / lock_until_ms / fail_count
-        if !user.enabled || user.status == UserStatus::Disabled as i16 {
+        // 只读判断账号状态：不自动解锁、不修改 locked / lock_until_ms / fail_count
+        if !user.enabled {
             Self::audit_verify(
                 &user,
                 false,
@@ -424,7 +423,7 @@ impl AdmAuthSvc {
                 "当前用户不可用：账号已停用",
             ));
         }
-        if user.status == UserStatus::Locked as i16 {
+        if user.locked {
             Self::audit_verify(
                 &user,
                 false,
@@ -532,7 +531,7 @@ impl AdmAuthSvc {
             return Ok(Self::verify_password_user_unavailable("当前用户不可用"));
         };
 
-        if !user.enabled || user.status == UserStatus::Disabled as i16 {
+        if !user.enabled {
             Self::audit_verify(
                 &user,
                 false,
@@ -546,7 +545,7 @@ impl AdmAuthSvc {
                 "当前用户不可用：账号已停用",
             ));
         }
-        if user.status == UserStatus::Locked as i16 {
+        if user.locked {
             Self::audit_verify(
                 &user,
                 false,
@@ -798,7 +797,7 @@ impl AdmAuthSvc {
         }
 
         // 5. 账号状态：口令对了才有必要告诉对方「停用 / 过期」
-        if !user.enabled || user.status == UserStatus::Disabled as i16 {
+        if !user.enabled {
             return Ok(Ro::warn("账号已停用，请联系管理员".to_string())
                 .code(Some(ADM_CODE_ACCOUNT_DISABLED.to_string())));
         }
@@ -813,7 +812,7 @@ impl AdmAuthSvc {
         let mut active: adm_user::ActiveModel = user.clone().into();
         active.fail_count = Set(0);
         active.lock_until_ms = Set(None);
-        active.status = Set(UserStatus::Normal as i16);
+        active.locked = Set(false);
         active.last_login_ms = Set(Some(now as i64));
         active.updater_id = Set(user.id);
         active.update_ms = ActiveValue::NotSet;
@@ -860,6 +859,9 @@ impl AdmAuthSvc {
 
     /// 判定锁定状态
     fn lock_state(user: &adm_user::Model, now: u64) -> LockState {
+        if !user.locked {
+            return LockState::Unlocked;
+        }
         match user.lock_until_ms {
             Some(until) => {
                 // 负值只可能来自脏数据，按「已到期」处理（宁可放行也不要永久锁死）
@@ -870,9 +872,8 @@ impl AdmAuthSvc {
                     LockState::Expired
                 }
             }
-            // 没有到期时间却标着「已锁定」：管理端手工锁的，等人工解
-            None if user.status == UserStatus::Locked as i16 => LockState::Permanent,
-            None => LockState::Unlocked,
+            // 标着「已锁定」却没有到期时间：永久锁，等人工解
+            None => LockState::Permanent,
         }
     }
 
@@ -886,7 +887,7 @@ impl AdmAuthSvc {
         C: ConnectionTrait,
     {
         let mut active: adm_user::ActiveModel = user.clone().into();
-        active.status = Set(UserStatus::Normal as i16);
+        active.locked = Set(false);
         active.lock_until_ms = Set(None);
         active.fail_count = Set(0);
         active.updater_id = Set(SYSTEM_OPERATOR_ID);
@@ -938,11 +939,11 @@ impl AdmAuthSvc {
             return Ok(Self::login_failed());
         }
 
-        // 到阈值：锁定 + 留痕。lock_until_ms 与 status 一起写，
+        // 到阈值：锁定 + 留痕。lock_until_ms 与 locked 一起写，
         // 到期后由登录流程自己解开（见 `unlock_expired`）
         let lock_ms = get_login_lock_ms();
         let until = now.saturating_add(lock_ms);
-        active.status = Set(UserStatus::Locked as i16);
+        active.locked = Set(true);
         active.lock_until_ms = Set(Some(until as i64));
         AdmUserDao::update(active, db).await?;
 

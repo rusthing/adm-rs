@@ -9,8 +9,8 @@ import { ManagedPicker } from "@/components/picker/ManagedPicker";
 import type { PickerColumn } from "@/components/picker/ManagedPicker";
 import type { CrudScopeDef } from "@/components/crud/scope";
 import { idInQuery, narrowToSubtrees, subtreeIds } from "@/components/crud/scope";
-import { Badge, Button, Spinner } from "@/components/ui/primitives";
-import { Drawer, useConfirm, useToast } from "@/components/ui/overlay";
+import { Badge, Button, Input, Spinner } from "@/components/ui/primitives";
+import { Drawer, Modal, useConfirm, useToast } from "@/components/ui/overlay";
 import { sm3 } from "@/lib/sm3";
 import type { AdmPersonVo, AdmUserVo, FormValues, PageQuery } from "@/lib/types";
 import {
@@ -25,19 +25,13 @@ import {
   useUserOptions,
 } from "@/lib/queries";
 import { formatMs, shortId } from "@/lib/utils";
-import { KeyRound, UserCog } from "lucide-react";
+import { KeyRound, LockOpen, UserCog } from "lucide-react";
 
 function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
   // 空串显式传 null：ModifyDto 的 Option<String> 用 Some(None) 表达清空
   return text ? text : null;
 }
-
-const STATUS_TEXT: Record<number, { label: string; tone: "success" | "warn" | "danger" | "info" }> = {
-  1: { label: "正常", tone: "success" },
-  2: { label: "停用", tone: "warn" },
-  3: { label: "锁定", tone: "danger" },
-};
 
 function UserRolesDrawer({
   user,
@@ -175,6 +169,9 @@ export function UsersPage() {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [roleUser, setRoleUser] = useState<AdmUserVo | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<AdmUserVo | null>(null);
+  const [unlockReason, setUnlockReason] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
   const personsQuery = usePersonOptions();
 
   /** personId → 人员档案；列表返回的姓名是服务端遮蔽值（张*），所以靠工号区分人。 */
@@ -418,22 +415,21 @@ export function UsersPage() {
       },
     },
     {
-      key: "status",
-      label: "状态",
+      key: "locked",
+      label: "锁定",
       className: "whitespace-nowrap",
-      render: (row) => {
-        const status = STATUS_TEXT[row.status] ?? { label: `状态 ${row.status}`, tone: "neutral" as const };
-        return (
-          <span className="inline-flex flex-col gap-0.5">
-            <Badge tone={status.tone}>{status.label}</Badge>
-            {row.status === 3 && row.lockUntilMs ? (
-              <span className="text-[10.5px] text-muted">锁至 {formatMs(row.lockUntilMs).slice(5, 16)}</span>
-            ) : row.failCount > 0 ? (
-              <span className="text-[10.5px] text-warn">失败 {row.failCount} 次</span>
-            ) : null}
-          </span>
-        );
-      },
+      render: (row) => (
+        <span className="inline-flex flex-col gap-0.5">
+          <Badge tone={row.locked ? "danger" : "success"}>{row.locked ? "已锁定" : "正常"}</Badge>
+          {row.locked && row.lockUntilMs ? (
+            <span className="text-[10.5px] text-muted">锁至 {formatMs(row.lockUntilMs).slice(5, 16)}</span>
+          ) : row.locked ? (
+            <span className="text-[10.5px] text-muted">永久锁定</span>
+          ) : row.failCount > 0 ? (
+            <span className="text-[10.5px] text-warn">失败 {row.failCount} 次</span>
+          ) : null}
+        </span>
+      ),
     },
     { key: "lastLoginMs", label: "最近登录", type: "datetime" },
     { key: "createMs", label: "创建时间", type: "datetime" },
@@ -607,6 +603,28 @@ export function UsersPage() {
     }
   };
 
+  const openUnlock = (row: AdmUserVo) => {
+    setUnlockReason("");
+    setUnlockTarget(row);
+  };
+
+  const confirmUnlock = async () => {
+    if (!unlockTarget) return;
+    const reason = unlockReason.trim();
+    if (!reason) return;
+    setUnlocking(true);
+    try {
+      await userApi.unlock(unlockTarget.id, reason);
+      toast.success(`已解锁「${unlockTarget.name}」`);
+      await queryClient.invalidateQueries({ queryKey: ["user"] });
+      setUnlockTarget(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "解锁失败");
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   const resetPassword = async (row: AdmUserVo) => {
     const ok = await confirm({
       title: "重置登录口令",
@@ -657,16 +675,7 @@ export function UsersPage() {
           ) : undefined
         }
         filters={[
-          {
-            type: "select",
-            name: "status",
-            label: "账号状态",
-            options: [
-              { value: "1", label: "正常" },
-              { value: "2", label: "停用" },
-              { value: "3", label: "锁定" },
-            ],
-          },
+          { type: "boolean", name: "locked", label: "锁定" },
           { type: "boolean", name: "enabled", label: "启用" },
           { type: "date-range", name: "create_ms", label: "创建时间" },
         ]}
@@ -681,6 +690,11 @@ export function UsersPage() {
             <Button size="sm" variant="ghost" onClick={() => void resetPassword(row)}>
               <KeyRound size={13} /> 重置口令
             </Button>
+            {row.locked && (
+              <Button size="sm" variant="ghost" onClick={() => openUnlock(row)}>
+                <LockOpen size={13} /> 解锁
+              </Button>
+            )}
           </>
         )}
       />
@@ -690,6 +704,48 @@ export function UsersPage() {
         onClose={() => setRoleUser(null)}
         onSaved={() => void queryClient.invalidateQueries({ queryKey: ["user"] })}
       />
+
+      <Modal
+        open={Boolean(unlockTarget)}
+        onClose={() => {
+          if (!unlocking) setUnlockTarget(null);
+        }}
+        title="解锁账号"
+        description={
+          unlockTarget
+            ? `确定解锁「${unlockTarget.name}」？解锁原因会写入锁定日志。管理端只允许解锁，不允许手工锁定。`
+            : undefined
+        }
+        width="max-w-[460px]"
+        dismissable={false}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setUnlockTarget(null)} disabled={unlocking}>
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => void confirmUnlock()}
+              disabled={unlocking || !unlockReason.trim()}
+            >
+              {unlocking ? "解锁中…" : "解锁"}
+            </Button>
+          </>
+        }
+      >
+        <label className="block text-[12px] text-ink-soft">
+          解锁原因
+          <Input
+            className="mt-1.5"
+            value={unlockReason}
+            onChange={(event) => setUnlockReason(event.target.value)}
+            placeholder="必填，最多 100 字"
+            maxLength={100}
+            disabled={unlocking}
+            autoFocus
+          />
+        </label>
+      </Modal>
     </>
   );
 }

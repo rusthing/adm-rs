@@ -27,15 +27,18 @@
 //! 两边口径一致，改算法只改那一处。
 
 use crate::config::get_adm_config;
+use crate::dao::AdmLockLogDao;
 use crate::dto::{AdmUserAddDto, AdmUserModifyDto, AdmUserSaveDto, AdmUserSyncDto};
-use crate::mo::adm_user;
+use crate::mo::{adm_lock_log, adm_user};
 use crate::utils::{AdmPasswordUtils, normalize_id_card};
+use robotech::dao::DaoError;
 use robotech::db::get_db_conn;
 use robotech::macros::svc;
-use sea_orm::{ActiveValue, Set};
+use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use std::borrow::Cow;
 use validator::ValidationError;
 use wheel_rs::sm3_utils::sm3_hex;
+use wheel_rs::time_utils::now_ms;
 
 // `SvcError`、`ConnectionTrait`、`Validate` 等由 `#[svc]` 注入，这里不能再 use
 // 一遍（E0252 重复引入）。
@@ -120,6 +123,7 @@ pub async fn seal_passwords_on_add<C>(
 where
     C: ConnectionTrait,
 {
+    reject_manual_lock(dto.locked)?;
     let (login_pswd, login_pswd_salt) =
         seal_pswd_pair(dto.login_pswd.take(), dto.login_pswd_salt.take())?;
     // 新增时登录口令必须给出：库列 NOT NULL，缺了会在插入阶段报 500，
@@ -192,6 +196,94 @@ impl AdmUserSvc {
 
         Ok(Ro::success("口令已重置为默认值".to_string()))
     }
+
+    /// # 手工解锁账号
+    ///
+    /// 管理端只允许解锁、不允许加锁；解锁必须给出原因，写入 `adm_lock_log.unlock_reason`。
+    ///
+    /// ## 参数
+    /// * `user_id` - 被解锁的用户 ID
+    /// * `unlock_reason` - 解锁原因，必填（1~100 字）
+    /// * `operator_id` - 执行解锁的当前用户 ID（写审计列）
+    ///
+    /// ## 返回
+    /// * `Ok(Ro<()>)` - 解锁成功；账号本来未锁定时返回提示，不重复写流水
+    /// * `Err(SvcError)` - 原因为空 / 超长、用户不存在或数据库故障
+    #[allow(clippy::result_large_err)]
+    pub async fn unlock(
+        user_id: u64,
+        unlock_reason: String,
+        operator_id: u64,
+    ) -> Result<Ro<()>, SvcError> {
+        let reason = unlock_reason.trim().to_string();
+        if reason.is_empty() {
+            return Err(invalid_unlock_reason("解锁原因不能为空"));
+        }
+        if reason.chars().count() > 100 {
+            return Err(invalid_unlock_reason("解锁原因不能超过 100 个字符"));
+        }
+
+        let db = get_db_conn()?;
+        let user = AdmUserDao::get_by_id::<_, adm_user::Model>(U64(user_id), db.as_ref())
+            .await?
+            .ok_or_else(|| SvcError::NotFound(format!("用户 {user_id} 不存在")))?;
+        if !user.locked {
+            return Ok(Ro::warn("账号未锁定，无需解锁".to_string()));
+        }
+
+        let now = now_ms() as i64;
+        let tx = begin_transaction(db.as_ref()).await?;
+
+        let mut active: adm_user::ActiveModel = user.clone().into();
+        active.locked = Set(false);
+        active.lock_until_ms = Set(None);
+        active.fail_count = Set(0);
+        active.updater_id = Set(operator_id as i64);
+        active.update_ms = ActiveValue::NotSet;
+        AdmUserDao::update(active, &tx).await?;
+
+        // 定时锁会有未解开的流水，把解锁时间与原因回填到同一行；
+        // 没有流水的锁定（如历史脏数据）只解账号，不凭空补一条记录。
+        let pending = adm_lock_log::Entity::find()
+            .filter(adm_lock_log::Column::UserId.eq(user.id))
+            .filter(adm_lock_log::Column::UnlockMs.is_null())
+            .order_by_desc(adm_lock_log::Column::LockMs)
+            .one(&tx)
+            .await
+            .map_err(DaoError::parse_db_err)?;
+        if let Some(log) = pending {
+            let mut active: adm_lock_log::ActiveModel = log.into();
+            active.unlock_ms = Set(Some(now));
+            active.unlock_reason = Set(Some(reason));
+            active.updater_id = Set(operator_id as i64);
+            active.update_ms = ActiveValue::NotSet;
+            AdmLockLogDao::update(active, &tx).await?;
+        }
+
+        commit_transaction(tx).await?;
+        Ok(Ro::success("账号已解锁".to_string()))
+    }
+}
+
+/// # 解锁原因不合法
+fn invalid_unlock_reason(message: &str) -> SvcError {
+    let mut error = ValidationError::new("invalid_unlock_reason");
+    error.message = Some(Cow::Owned(message.to_string()));
+    SvcError::Validation(error)
+}
+
+/// # 拒绝手工加锁
+///
+/// 锁定只能由登录失败次数达到阈值触发；管理端写入接口只接受 `locked=false`（解锁走专用接口）。
+fn reject_manual_lock(locked: Option<bool>) -> Result<(), SvcError> {
+    if locked == Some(true) {
+        let mut error = ValidationError::new("manual_lock_forbidden");
+        error.message = Some(Cow::Owned(
+            "不能手工锁定账号，锁定只能由登录失败次数达到阈值触发".to_string(),
+        ));
+        return Err(SvcError::Validation(error));
+    }
+    Ok(())
 }
 
 /// # 修改时封存三套口令
@@ -205,6 +297,7 @@ pub async fn seal_passwords_on_modify<C>(
 where
     C: ConnectionTrait,
 {
+    reject_manual_lock(dto.locked)?;
     dto.id_card = normalize_id_card(dto.id_card)?;
     (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
     (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;
@@ -217,6 +310,7 @@ where
 /// `save` 的钩子不带连接（框架给的签名如此），本钩子也不需要。
 #[allow(clippy::result_large_err)]
 pub async fn seal_passwords_on_save(mut dto: AdmUserSaveDto) -> Result<AdmUserSaveDto, SvcError> {
+    reject_manual_lock(dto.locked)?;
     dto.id_card = normalize_id_card(dto.id_card)?;
     (dto.login_pswd, dto.login_pswd_salt) = seal_pswd_pair(dto.login_pswd, dto.login_pswd_salt)?;
     (dto.audit_pswd, dto.audit_pswd_salt) = seal_pswd_pair(dto.audit_pswd, dto.audit_pswd_salt)?;

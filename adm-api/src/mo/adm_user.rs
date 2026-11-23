@@ -31,7 +31,7 @@ pub struct Model {
     pub pay_pswd: String,
     pub pay_pswd_salt: String,
     pub expire_ms: Option<i64>,
-    pub status: i16,
+    pub locked: bool,
     pub fail_count: i16,
     pub lock_until_ms: Option<i64>,
     pub last_login_ms: Option<i64>,

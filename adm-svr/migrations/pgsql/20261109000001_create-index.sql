@@ -10,7 +10,7 @@
 
 -- CHECK 约束（PowerDesigner 9.x 模板不生成）
 
-ALTER TABLE adm_perm ADD CONSTRAINT ck_adm_perm_op_type CHECK (op_type_code::text = ANY (ARRAY['query'::character varying::text, 'add'::character varying::text, 'modify'::character varying::text, 'del'::character varying::text, 'reorder'::character varying::text, 'sync'::character varying::text, 'reset_password'::character varying::text]));
+ALTER TABLE adm_perm ADD CONSTRAINT ck_adm_perm_op_type CHECK (op_type_code::text = ANY (ARRAY['query'::character varying::text, 'add'::character varying::text, 'modify'::character varying::text, 'del'::character varying::text, 'reorder'::character varying::text, 'sync'::character varying::text, 'reset_password'::character varying::text, 'unlock'::character varying::text]));
 
 ALTER TABLE adm_user ADD CONSTRAINT ck_adm_user_real_name_paired CHECK ((real_name IS NULL) = (id_card IS NULL));
 

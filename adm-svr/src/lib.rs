@@ -26,7 +26,7 @@ pub mod web;
 /// adm_crud_router!("/adm/user", adm_user_ctrl);
 /// ```
 ///
-/// 不在本宏里的路由（登录、登出、`/me`、改密、reset-password）由各自处理器
+/// 不在本宏里的路由（登录、登出、`/me`、改密、reset-password、unlock）由各自处理器
 /// 手动校验令牌。
 #[macro_export]
 macro_rules! adm_crud_router {

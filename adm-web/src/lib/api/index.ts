@@ -102,6 +102,12 @@ export const userApi = {
   /** 把指定用户的登录口令重置为服务端配置的默认口令 */
   resetPassword: (id: string) =>
     request(`/adm/user/${encodeURIComponent(id)}/reset-password`, { method: "POST" }),
+  /** 手工解锁账号，必须给出解锁原因（写入锁定流水） */
+  unlock: (id: string, unlockReason: string) =>
+    request(`/adm/user/${encodeURIComponent(id)}/unlock`, {
+      method: "POST",
+      body: { unlockReason },
+    }),
 };
 export const roleApi = crudApi<AdmRoleVo>("/adm/role");
 export const roleGroupApi = crudApi<AdmRoleGroupVo>("/adm/role-group");

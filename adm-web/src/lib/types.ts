@@ -91,7 +91,7 @@ export interface AdmUserVo extends AuditFields {
   realName?: string;
   realNameVerified: boolean;
   expireMs?: string;
-  status: number;
+  locked: boolean;
   failCount: number;
   lockUntilMs?: string;
   lastLoginMs?: string;

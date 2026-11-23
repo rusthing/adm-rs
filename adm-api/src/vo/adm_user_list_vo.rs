@@ -67,14 +67,14 @@ pub struct AdmUserListVo {
     /// 账户到期时间；定时任务扫描到已过期时把 enabled 置 false
     #[builder(default, setter(into))]
     pub expire_ms: Option<U64>,
-    /// 状态
-    /// 1-正常 2-已停用 3-已锁定
-    pub status: i16,
+    /// 是否锁定
+    /// true 表示账号已被锁定，登录会被拒绝
+    pub locked: bool,
     /// 登录失败次数
-    /// 登录成功后清零；达到阈值时把 status 置 3 并写入 lock_until_ms
+    /// 登录成功后清零；达到阈值时把 locked 置 true 并写入 lock_until_ms
     pub fail_count: i16,
     /// 锁定到期时间戳（毫秒）
-    /// 为空或已过期表示未锁定
+    /// 为空表示永久锁，需管理员手工解锁
     #[builder(default, setter(into))]
     pub lock_until_ms: Option<U64>,
     /// 最近登录时间戳（毫秒）
@@ -115,7 +115,7 @@ impl From<crate::mo::adm_user::ModelEx> for AdmUserListVo {
             real_name: m.real_name.map(Into::into),
             real_name_verified: m.real_name_verified,
             expire_ms: m.expire_ms.map(Into::into),
-            status: m.status,
+            locked: m.locked,
             fail_count: m.fail_count,
             lock_until_ms: m.lock_until_ms.map(Into::into),
             last_login_ms: m.last_login_ms.map(Into::into),

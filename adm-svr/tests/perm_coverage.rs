@@ -212,7 +212,7 @@ fn collect_routes() -> (BTreeSet<Route>, BTreeSet<Route>) {
     let readonly_templates = macro_route_templates("adm_readonly_router");
     assert_eq!(
         crud_templates.len(),
-        23,
+        25,
         "adm_crud_router 宏的路由数量变了，种子与测试都要跟着核"
     );
     assert_eq!(
@@ -522,6 +522,7 @@ fn permission_rows_follow_contract() {
         "reorder",
         "sync",
         "reset_password",
+        "unlock",
     ]);
 
     let mut names = BTreeSet::new();
@@ -710,6 +711,7 @@ fn perm_type_is_not_null_and_constrained() {
         "reorder",
         "sync",
         "reset_password",
+        "unlock",
     ] {
         assert!(
             src.contains(&format!("'{code}'")),

@@ -13,10 +13,10 @@
 /// 账号存在。
 pub const ADM_CODE_LOGIN_FAILED: &str = "ADM00001";
 
-/// 账号已被锁定（连续口令错误触发）
+/// 账号已被锁定（连续口令错误触发，或管理员尚未解锁）
 pub const ADM_CODE_ACCOUNT_LOCKED: &str = "ADM00002";
 
-/// 账号已停用（`enabled=false` 或 `status=已停用`）
+/// 账号已停用（`enabled=false`）
 pub const ADM_CODE_ACCOUNT_DISABLED: &str = "ADM00003";
 
 /// 账号已过期（`expire_ms` 已到）

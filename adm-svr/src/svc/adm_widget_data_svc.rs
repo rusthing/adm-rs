@@ -5,7 +5,6 @@
 //! 这一张卡片。跨服务取数由前端经 gatex 并行直连，adm-svr 不参与编排。
 
 use super::adm_dashboard_svc::AdmDashboardSvc;
-use crate::dic::UserStatus;
 use crate::mo::{
     adm_login_log, adm_menu, adm_op_log, adm_org, adm_perm, adm_person, adm_realm, adm_role,
     adm_user,
@@ -261,11 +260,7 @@ impl AdmWidgetDataSvc {
             .map_err(robotech::dao::DaoError::parse_db_err)?;
         let locked = adm_user::Entity::find()
             .filter(scoped("adm_user"))
-            .filter(
-                Condition::any()
-                    .add(adm_user::Column::Status.eq(UserStatus::Locked as i16))
-                    .add(adm_user::Column::LockUntilMs.gt(now)),
-            )
+            .filter(adm_user::Column::Locked.eq(true))
             .count(db.as_ref())
             .await
             .map_err(robotech::dao::DaoError::parse_db_err)?;
@@ -277,11 +272,7 @@ impl AdmWidgetDataSvc {
             .map_err(robotech::dao::DaoError::parse_db_err)?;
         let disabled = adm_user::Entity::find()
             .filter(scoped("adm_user"))
-            .filter(
-                Condition::any()
-                    .add(adm_user::Column::Enabled.eq(false))
-                    .add(adm_user::Column::Status.eq(UserStatus::Disabled as i16)),
-            )
+            .filter(adm_user::Column::Enabled.eq(false))
             .count(db.as_ref())
             .await
             .map_err(robotech::dao::DaoError::parse_db_err)?;

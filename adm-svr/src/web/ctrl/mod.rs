@@ -27,3 +27,4 @@ pub mod adm_sort_ctrl;
 pub mod adm_tree_delete_ctrl;
 pub mod adm_user_ctrl;
 pub mod adm_user_password_ctrl;
+pub mod adm_user_unlock_ctrl;

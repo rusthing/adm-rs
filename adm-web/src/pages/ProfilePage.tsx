@@ -204,11 +204,11 @@ export function ProfilePage() {
               </div>
               <div>
                 <dt className="text-muted">账号状态</dt>
-                <dd className="mt-0.5">
+                <dd className="mt-0.5 inline-flex items-center gap-2">
                   <Badge tone={userQuery.data?.enabled ? "success" : "warn"}>
                     {userQuery.data?.enabled ? "启用" : "停用"}
                   </Badge>
-                  {userQuery.data && <span className="ml-2 text-[11.5px] text-muted">status = {userQuery.data.status}</span>}
+                  {userQuery.data?.locked && <Badge tone="danger">已锁定</Badge>}
                 </dd>
               </div>
               <div>
