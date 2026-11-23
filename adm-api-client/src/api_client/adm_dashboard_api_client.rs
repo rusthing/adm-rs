@@ -1,4 +1,4 @@
-use crate::dto::{AdmDashboardSaveDto, AdmWidgetDataReq};
+use crate::dto::{AdmDashboardSaveDto, AdmWidgetDataQuery};
 use crate::vo::{AdmDashboardVo, AdmWidgetDataVo, AdmWidgetServiceVo, AdmWidgetTypeVo};
 use reqwest::Method;
 use reqwest::header::{HeaderMap, HeaderValue};
@@ -46,15 +46,16 @@ impl AdmDashboardApiClient {
         endpoint: &str,
         current_user_id: u64,
         current_ms: Option<u64>,
-        req: &AdmWidgetDataReq,
+        query: &AdmWidgetDataQuery,
     ) -> Result<Ro<AdmWidgetDataVo>, ApiClientError> {
         let url = format!("/adm/widget-data/{endpoint}");
+        let query_map = widget_query(query);
         self.client
-            .request::<AdmWidgetDataReq, AdmWidgetDataVo>(
-                Method::POST,
+            .request::<HashMap<String, String>, AdmWidgetDataVo>(
+                Method::GET,
                 &url,
+                Some(&query_map),
                 None,
-                Some(req),
                 Some(&Self::build_headers(current_user_id, current_ms)?),
             )
             .await
@@ -194,4 +195,16 @@ fn role_query(role_id: Option<u64>) -> HashMap<String, String> {
         query.insert("roleId".to_string(), id.to_string());
     }
     query
+}
+
+/// widget 数据端点的查询串：`params` 是 JSON 对象字符串，`title` 可选。
+fn widget_query(query: &AdmWidgetDataQuery) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    if let Some(params) = query.params.as_deref().filter(|text| !text.trim().is_empty()) {
+        map.insert("params".to_string(), params.to_string());
+    }
+    if let Some(title) = query.title.as_deref().filter(|text| !text.trim().is_empty()) {
+        map.insert("title".to_string(), title.to_string());
+    }
+    map
 }

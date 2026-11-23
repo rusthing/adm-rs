@@ -11,7 +11,7 @@
 //! `adm_role_app_scope` 三张表：只管可见范围（白名单），不管功能权限；
 //! 强制过滤由 `crate::svc::adm_data_scope` 在 DAO 层统一注入。
 
-use crate::dto::{AdmDashboardSaveDto, AdmWidgetDataReq};
+use crate::dto::AdmDashboardSaveDto;
 use crate::mo::{
     adm_dashboard, adm_dashboard_widget, adm_menu, adm_perm, adm_role, adm_role_app_scope,
     adm_role_menu, adm_role_org_scope, adm_role_perm, adm_role_realm_scope, adm_role_user,
@@ -892,17 +892,18 @@ pub async fn me_dashboard(
 pub async fn execute_adm_widget(
     ctx: &AdmDashboardUserContext,
     endpoint: &str,
-    req: &AdmWidgetDataReq,
+    params: &Value,
+    title: Option<&str>,
 ) -> AdmWidgetDataVo {
     let started = now_ms();
-    match super::AdmWidgetDataSvc::exec(endpoint, &req.params, ctx.user_id).await {
+    let title = title
+        .filter(|text| !text.trim().is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| endpoint.to_string());
+    match super::AdmWidgetDataSvc::exec(endpoint, params, ctx.user_id).await {
         Ok(data) => AdmWidgetDataVo {
             widget_type: widget_type_of(endpoint).to_string(),
-            title: req
-                .title
-                .clone()
-                .filter(|text| !text.trim().is_empty())
-                .unwrap_or_else(|| endpoint.to_string()),
+            title: title.clone(),
             status: "ok".to_string(),
             data: Some(data),
             error: None,
@@ -910,11 +911,7 @@ pub async fn execute_adm_widget(
         },
         Err(error) => AdmWidgetDataVo {
             widget_type: widget_type_of(endpoint).to_string(),
-            title: req
-                .title
-                .clone()
-                .filter(|text| !text.trim().is_empty())
-                .unwrap_or_else(|| endpoint.to_string()),
+            title,
             status: "error".to_string(),
             data: None,
             error: Some(match error {

@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 /// # 单个 widget 编辑项
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -43,17 +43,16 @@ pub struct AdmDashboardSaveDto {
     pub widgets: Vec<AdmDashboardWidgetDto>,
 }
 
-/// # 调用 widget 数据端点
+/// # 调用 widget 数据端点（GET 查询契约）
 ///
-/// 各服务按同一契约接收：逻辑端点键在 URL 里，参数与可选标题在 body 里。
-/// 不传 token；用户身份沿用项目现有的 `X-User-Id` 请求头。
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+/// 各服务按同一契约接收：逻辑端点键在 URL 路径里，参数与可选标题在查询串里。
+/// `params` 是 JSON 对象字符串（如 `{"metric":"users"}`），服务端解析后按端点键
+/// 执行；为空时使用端点默认参数。不传 token；用户身份沿用项目现有的 `X-User-Id` 头。
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct AdmWidgetDataReq {
-    /// 端点参数（对象）
-    #[serde(default)]
-    #[schema(value_type = Object)]
-    pub params: Value,
+pub struct AdmWidgetDataQuery {
+    /// 端点参数（JSON 对象字符串）
+    pub params: Option<String>,
     /// 期望的卡片标题；服务可原样回填，前端也可用配置标题覆盖
     pub title: Option<String>,
 }

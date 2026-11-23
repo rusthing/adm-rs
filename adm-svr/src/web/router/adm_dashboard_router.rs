@@ -10,7 +10,7 @@
 use crate::web::ctrl::adm_dashboard_ctrl::*;
 use axum::Router;
 use axum::middleware::from_fn;
-use axum::routing::{delete, get, post, put};
+use axum::routing::{delete, get, put};
 use linkme::distributed_slice;
 use robotech::web::ROUTER_SLICE;
 
@@ -27,6 +27,6 @@ fn build_dashboard_router() -> Router {
         .route("/adm/dashboard/config", delete(delete_config))
         .route("/adm/dashboard/widget-type", get(widget_types))
         .route("/adm/dashboard/endpoints", get(endpoints))
-        .route("/adm/widget-data/{endpoint}", post(widget_data))
+        .route("/adm/widget-data/{endpoint}", get(widget_data))
         .layer(from_fn(crate::web::auth::require_auth))
 }

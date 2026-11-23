@@ -61,6 +61,19 @@ export async function fetchWidget(input: WidgetFetchInput): Promise<AdmWidgetDat
   const session = readSession();
   const url = `${serviceBase(input.service)}/${input.service}/widget-data/${encodeURIComponent(input.endpoint)}`;
 
+  // widget 数据端点是幂等查询，统一走 GET：参数是 JSON 对象，序列化后放进
+  // 查询串的 `params`，`title` 也作为查询参数，避免 GET 携带请求体。
+  const search = new URLSearchParams();
+  const params = input.params ?? {};
+  if (Object.keys(params).length > 0) {
+    search.set("params", JSON.stringify(params));
+  }
+  if (input.title) {
+    search.set("title", input.title);
+  }
+  const query = search.toString();
+  const fullUrl = query ? `${url}?${query}` : url;
+
   const fallback = (error: unknown): AdmWidgetDataVo => ({
     widgetType: input.widgetType,
     title: input.title,
@@ -74,7 +87,7 @@ export async function fetchWidget(input: WidgetFetchInput): Promise<AdmWidgetDat
     generatedMs: String(Date.now()),
   });
 
-  const headers = new Headers({ "Content-Type": "application/json" });
+  const headers = new Headers();
   if (session) {
     // 浏览器入口的令牌只用于网关鉴权；adm-svr 不向其它服务转发。
     headers.set("Authorization", `Bearer ${session.token}`);
@@ -82,10 +95,9 @@ export async function fetchWidget(input: WidgetFetchInput): Promise<AdmWidgetDat
   }
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
+    const response = await fetch(fullUrl, {
+      method: "GET",
       headers,
-      body: JSON.stringify({ params: input.params ?? {}, title: input.title }),
       signal: AbortSignal.timeout(8_000),
     });
 

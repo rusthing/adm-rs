@@ -7,7 +7,7 @@
 //! **不做跨服务聚合、不做 token 透传。** 鉴权、路由、限流与降级由 gatex
 //! 网关负责；这里只按项目既有约定从 `X-User-Id` 读取当前用户。
 
-use crate::dto::{AdmDashboardSaveDto, AdmWidgetDataReq};
+use crate::dto::{AdmDashboardSaveDto, AdmWidgetDataQuery};
 use crate::svc::{AdmDashboardSvc, execute_adm_widget, widget_type_of};
 use crate::vo::{
     AdmDashboardVo, AdmWidgetDataVo, AdmWidgetServiceVo, AdmWidgetTypeVo,
@@ -20,6 +20,7 @@ use axum::response::Json;
 use robotech::api::Ro;
 use robotech::web::CtrlError;
 use serde::Deserialize;
+use serde_json::Value;
 
 /// # 配置查询参数
 #[derive(Debug, Deserialize)]
@@ -193,13 +194,13 @@ pub async fn endpoints(
 /// 只回答 adm 自己的账号域数据；`X-User-Id` 决定可见范围。失败也返回
 /// HTTP 200 + `status=error` 的统一信封，前端只降级这一张卡片。
 #[utoipa::path(
-    post,
+    get,
     path = "/adm/widget-data/{endpoint}",
     params(
         ("endpoint" = String, Path, description = "逻辑端点键，如 stats.count"),
+        AdmWidgetDataQuery,
         ("X-User-Id" = String, Header, description = "当前用户 ID")
     ),
-    request_body = AdmWidgetDataReq,
     responses((status = OK, body = Ro<AdmWidgetDataVo>))
 )]
 #[debug_handler]
@@ -207,16 +208,21 @@ pub async fn endpoints(
 pub async fn widget_data(
     headers: HeaderMap,
     Path(endpoint): Path<String>,
-    Json(body): Json<AdmWidgetDataReq>,
+    Query(query): Query<AdmWidgetDataQuery>,
 ) -> Result<Json<Ro<AdmWidgetDataVo>>, CtrlError> {
     let user_id = require_user_id(&headers)?;
     let ctx = AdmDashboardSvc::load_user_context(user_id).await?;
+    let params = parse_widget_params(query.params.as_deref());
+    let title = query.title.as_deref();
     let envelope = if AdmDashboardSvc::endpoint_enabled("adm", &endpoint).await? {
-        execute_adm_widget(&ctx, &endpoint, &body).await
+        execute_adm_widget(&ctx, &endpoint, &params, title).await
     } else {
         AdmWidgetDataVo {
             widget_type: widget_type_of(&endpoint).to_string(),
-            title: body.title.clone().unwrap_or_else(|| endpoint.clone()),
+            title: title
+                .filter(|text| !text.trim().is_empty())
+                .map(str::to_string)
+                .unwrap_or_else(|| endpoint.clone()),
             status: "error".to_string(),
             data: None,
             error: Some(format!("端点 `adm/{endpoint}` 未登记或已停用")),
@@ -226,6 +232,14 @@ pub async fn widget_data(
     Ok(Json(
         Ro::success("获取 widget 数据成功".to_string()).extra(Some(envelope)),
     ))
+}
+
+/// `params` 查询参数是 JSON 对象字符串；缺失或解析失败时按空参数处理。
+fn parse_widget_params(raw: Option<&str>) -> Value {
+    raw.map(str::trim)
+        .filter(|text| !text.is_empty())
+        .map(|text| serde_json::from_str::<Value>(text).unwrap_or(Value::Null))
+        .unwrap_or(Value::Null)
 }
 
 /// `roleId` 解析：缺省 / `global` → 全局模板
