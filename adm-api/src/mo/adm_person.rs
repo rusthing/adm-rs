@@ -16,6 +16,7 @@ pub struct Model {
     pub name: String,
     pub name_pinyin_abbr: Option<String>,
     pub name_pinyin_full: Option<String>,
+    pub name_pinyin_custom: bool,
     pub mobile: Option<String>,
     #[sea_orm(unique)]
     pub email: Option<String>,

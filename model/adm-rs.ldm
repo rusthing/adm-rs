@@ -8087,6 +8087,22 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 <a:Length>200</a:Length>
 <a:GlobalObjectID/>
 </o:EntityAttribute>
+<o:EntityAttribute Id="o585">
+<a:ObjectID>40E5AFE6-8931-45D5-A9B3-E0B6E6BFB67B</a:ObjectID>
+<a:Name>名称拼音自定义</a:Name>
+<a:Code>name_pinyin_custom</a:Code>
+<a:CreationDate>1793504597</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795395000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>是否自定义拼音
+true 时新增 / 修改保留手工填写的简拼与全拼，不按姓名自动计算
+false（默认）时由服务端按姓名自动生成</a:Comment>
+<a:DefaultValue>false</a:DefaultValue>
+<a:DataType>BL</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
 <o:EntityAttribute Id="o279">
 <a:ObjectID>698C694D-9962-4FE9-8ECE-499C88F123CE</a:ObjectID>
 <a:Name>手机号</a:Name>

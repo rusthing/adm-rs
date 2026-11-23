@@ -189,6 +189,7 @@ export interface AdmPersonVo extends AuditFields {
   name: string;
   namePinyinAbbr?: string;
   namePinyinFull?: string;
+  namePinyinCustom: boolean;
   mobile?: string;
   email?: string;
   idCard?: string;

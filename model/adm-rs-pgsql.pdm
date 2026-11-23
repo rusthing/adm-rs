@@ -14072,6 +14072,24 @@ DAT 1793541529</a:History>
 <a:Length>200</a:Length>
 <a:GlobalObjectID/>
 </o:Column>
+<o:Column Id="o906">
+<a:ObjectID>FB1AECB5-08BD-468F-B0A9-C2856B20560C</a:ObjectID>
+<a:Name>名称拼音自定义</a:Name>
+<a:Code>name_pinyin_custom</a:Code>
+<a:CreationDate>1793541527</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795395000</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>是否自定义拼音
+true 时新增 / 修改保留手工填写的简拼与全拼，不按姓名自动计算
+false（默认）时由服务端按姓名自动生成</a:Comment>
+<a:History>ORG {40E5AFE6-8931-45D5-A9B3-E0B6E6BFB67B}
+DAT 1795395000</a:History>
+<a:DefaultValue>false</a:DefaultValue>
+<a:DataType>BOOL</a:DataType>
+<a:Column.Mandatory>1</a:Column.Mandatory>
+<a:GlobalObjectID/>
+</o:Column>
 <o:Column Id="o339">
 <a:ObjectID>EC9C18FD-7E00-413C-909D-E240A4288261</a:ObjectID>
 <a:Name>手机号</a:Name>

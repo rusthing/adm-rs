@@ -31,6 +31,10 @@ pub struct AdmPersonVo {
     /// 小写、音节间无分隔（张三 → zhangsan），用于快速检索
     /// @len 0..=200
     pub name_pinyin_full: Option<String>,
+    /// 是否自定义拼音
+    /// true 时新增 / 修改保留手工填写的简拼与全拼，不按姓名自动计算
+    /// false（默认）时由服务端按姓名自动生成
+    pub name_pinyin_custom: bool,
     /// 手机号（档案联系方式）
     /// 人员档案上的号码，可与账号登录手机号不同；不做唯一约束
     /// @check is_mobile_cn

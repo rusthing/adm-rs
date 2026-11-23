@@ -51,6 +51,10 @@ pub struct AdmPersonListVo {
     /// 小写、音节间无分隔（张三 → zhangsan），用于快速检索
     #[builder(default, setter(into))]
     pub name_pinyin_full: Option<String>,
+    /// 是否自定义拼音
+    /// true 时新增 / 修改保留手工填写的简拼与全拼，不按姓名自动计算
+    /// false（默认）时由服务端按姓名自动生成
+    pub name_pinyin_custom: bool,
     /// 手机号（档案联系方式，脱敏）
     /// 人员档案上的号码，可与账号登录手机号不同；不做唯一约束
     #[builder(default, setter(into))]
@@ -90,6 +94,7 @@ impl From<crate::mo::adm_person::ModelEx> for AdmPersonListVo {
             name: m.name.into(),
             name_pinyin_abbr: m.name_pinyin_abbr,
             name_pinyin_full: m.name_pinyin_full,
+            name_pinyin_custom: m.name_pinyin_custom,
             mobile: m.mobile.map(Into::into),
             email: m.email.map(Into::into),
             id_card: m.id_card.map(Into::into),

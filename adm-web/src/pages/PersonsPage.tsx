@@ -79,6 +79,30 @@ export function PersonsPage() {
   const fields: CrudField[] = [
     { name: "name", label: "姓名", required: true, placeholder: "真实姓名，可用间隔号连接长姓名" },
     {
+      name: "namePinyinCustom",
+      label: "拼音来源",
+      type: "select",
+      options: [
+        { value: "false", label: "按姓名自动生成" },
+        { value: "true", label: "手工填写" },
+      ],
+      fixedOptions: true,
+      defaultValue: "false",
+      hint: "默认按姓名自动生成；选择「手工填写」后，下面两列按填写值保存，不再自动计算。",
+    },
+    {
+      name: "namePinyinAbbr",
+      label: "拼音首字母",
+      placeholder: "ZS",
+      hint: "仅「手工填写」时生效：大写、无分隔，用于拼音首字母检索。",
+    },
+    {
+      name: "namePinyinFull",
+      label: "拼音全拼",
+      placeholder: "zhangsan",
+      hint: "仅「手工填写」时生效：小写、音节间无分隔，用于拼音检索。",
+    },
+    {
       name: "codeTypeId",
       label: "编码类型",
       type: "select",
@@ -96,49 +120,39 @@ export function PersonsPage() {
     { name: "mobile", label: "手机", placeholder: "档案联系方式，可与登录手机号不同" },
     { name: "email", label: "邮箱", placeholder: "全局唯一，一个邮箱对应一个人员" },
     { name: "idCard", label: "身份证", placeholder: "18 位，末位可为 X", hint: "全局唯一；列表里脱敏展示。" },
-    {
-      name: "namePinyinAbbr",
-      label: "拼音首字母",
-      placeholder: "ZS",
-      hint: "可选，大写无分隔，用于拼音首字母检索。",
-    },
-    {
-      name: "namePinyinFull",
-      label: "拼音全拼",
-      placeholder: "zhangsan",
-      hint: "可选，小写无分隔，用于拼音检索。",
-    },
     { name: "remark", label: "备注", type: "textarea" },
   ];
 
   const toForm = (row: AdmPersonVo): FormValues => ({
     name: row.name,
+    namePinyinCustom: row.namePinyinCustom ? "true" : "false",
+    namePinyinAbbr: row.namePinyinAbbr ?? "",
+    namePinyinFull: row.namePinyinFull ?? "",
     codeTypeId: row.codeTypeId ?? "",
     code: row.code ?? "",
     mobile: row.mobile ?? "",
     email: row.email ?? "",
     idCard: row.idCard ?? "",
-    namePinyinAbbr: row.namePinyinAbbr ?? "",
-    namePinyinFull: row.namePinyinFull ?? "",
     remark: row.remark ?? "",
   });
 
   const toPayload = (values: FormValues) => ({
     name: String(values.name ?? "").trim(),
+    namePinyinCustom: values.namePinyinCustom === "true",
+    namePinyinAbbr: optionalText(values.namePinyinAbbr),
+    namePinyinFull: optionalText(values.namePinyinFull),
     codeTypeId: optionalText(values.codeTypeId),
     code: optionalText(values.code),
     mobile: optionalText(values.mobile),
     email: optionalText(values.email),
     idCard: optionalText(values.idCard),
-    namePinyinAbbr: optionalText(values.namePinyinAbbr),
-    namePinyinFull: optionalText(values.namePinyinFull),
     remark: optionalText(values.remark),
   });
 
   return (
     <CrudPage<AdmPersonVo>
       title="人员管理"
-      subtitle="人员是自然人主数据（姓名 / 证件 / 联系方式），本身不能登录；登录账号在「用户管理」里建并回指人员。编码的含义由编码类型决定（工号 / 学号），没有工号的人员可以不选类型。列表对姓名 / 手机 / 邮箱 / 身份证做等长遮蔽，拼音两列只参与检索、不在列表展示——否则遮蔽就白做了。"
+      subtitle="人员是自然人主数据（姓名 / 证件 / 联系方式），本身不能登录；登录账号在「用户管理」里建并回指人员。编码的含义由编码类型决定（工号 / 学号），没有工号的人员可以不选类型。列表对姓名 / 手机 / 邮箱 / 身份证做等长遮蔽，拼音两列由后台按姓名自动生成、只参与检索、不在列表展示——否则遮蔽就白做了。"
       prefix="/adm/person"
       columns={columns}
       fields={fields}

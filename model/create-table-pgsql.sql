@@ -1321,6 +1321,7 @@ create table adm_person (
    name                 VARCHAR(200)         not null,
    name_pinyin_abbr     VARCHAR(200)         null,
    name_pinyin_full     VARCHAR(200)         null,
+   name_pinyin_custom   BOOL                 not null default false,
    mobile               VARCHAR(50)          null,
    email                VARCHAR(50)          null,
    id_card              VARCHAR(20)          null,
@@ -1372,6 +1373,11 @@ comment on column adm_person.name_pinyin_full is
 '姓名拼音全拼
 小写、音节间无分隔（张三 → zhangsan），用于快速检索
 @len 0..=200';
+
+comment on column adm_person.name_pinyin_custom is
+'是否自定义拼音
+true 时新增 / 修改保留手工填写的简拼与全拼，不按姓名自动计算
+false（默认）时由服务端按姓名自动生成';
 
 comment on column adm_person.mobile is
 '手机号（档案联系方式）
