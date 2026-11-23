@@ -635,11 +635,11 @@ export function AppShell() {
             </div>
           )}
 
-          <main className="mx-auto w-full max-w-[1480px] px-4 py-5 sm:px-6">
+          <main className="mx-auto w-full max-w-[1680px] px-4 py-5 sm:px-6">
             <Outlet />
           </main>
 
-          <footer className="mx-auto flex w-full max-w-[1480px] flex-wrap items-center justify-between gap-2 px-4 pb-6 text-[11px] text-muted sm:px-6">
+          <footer className="mx-auto flex w-full max-w-[1680px] flex-wrap items-center justify-between gap-2 px-4 pb-6 text-[11px] text-muted sm:px-6">
             <span>后台管理</span>
             <span>账号 · 角色 · 菜单 · 权限</span>
           </footer>
