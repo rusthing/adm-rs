@@ -33,6 +33,10 @@ const tree = (
   </QueryClientProvider>
 );
 
+// 独立站根节点带上联邦作用域类：vite-plugin-scope-utilities 把 Tailwind 工具类
+// 收进了 @scope (.adm-federated)，独立入口也必须落在这个作用域内，样式才生效。
+document.getElementById("root")!.classList.add("adm-federated");
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {useHashRouter ? <HashRouter>{tree}</HashRouter> : <BrowserRouter basename={basename}>{tree}</BrowserRouter>}
