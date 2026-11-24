@@ -554,7 +554,7 @@ export function AppShell() {
 
       <div
         className={cn(
-          "flex h-full min-h-0 flex-col transition-[padding] duration-200",
+          "flex h-full min-h-0 min-w-0 flex-1 flex-col transition-[padding] duration-200",
           collapsed ? "lg:pl-[64px]" : "lg:pl-[238px]",
         )}
       >
