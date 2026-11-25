@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Plus, Search, Trash2, X } from "lucide-react";
 import { crudApi } from "@/lib/api";
 import type { CrudApi } from "@/lib/api";
 import type { FormValues, PageQuery, TreeDeletePreview } from "@/lib/types";
@@ -1050,9 +1050,6 @@ export function CrudPage<T extends { id: string }>({
         actions={
           <>
             {toolbarExtra}
-            <Button variant="secondary" onClick={reload} disabled={query.isFetching}>
-              <RefreshCw size={14} className={query.isFetching ? "animate-spin" : ""} /> 刷新
-            </Button>
             {canCreate && (
               <Button variant="primary" onClick={() => openCreate()}>
                 <Plus size={15} /> {createLabel}
@@ -1119,9 +1116,11 @@ export function CrudPage<T extends { id: string }>({
         )}
         {sidePanel}
         <section className="min-w-0 flex-1 overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel">
-          {/* 搜索 / 筛选区 */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
-            <div className="relative min-w-[220px] max-w-[420px] flex-1">
+          {/* 搜索 / 筛选区：关键字输入即查（350ms 防抖、Enter 立即），所以这里不再
+              放「刷新」——它与查询打的是同一个接口，纯重复。整行不换行，
+              条件多到放不下时横向滚动，而不是把工具栏压成两三行。 */}
+          <div className="flex items-center gap-2 overflow-x-auto border-b border-line px-3 py-2.5">
+            <div className="relative w-[240px] shrink-0">
               <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
               <Input
                 value={keyword}
@@ -1181,7 +1180,7 @@ export function CrudPage<T extends { id: string }>({
               </Button>
             )}
 
-            <span className="ml-auto text-[11.5px] text-muted">
+            <span className="ml-auto shrink-0 whitespace-nowrap text-[11.5px] text-muted">
               {paginateByRoot ? `共 ${total} 个${rootLabel}` : `共 ${total} 条`}
             </span>
           </div>

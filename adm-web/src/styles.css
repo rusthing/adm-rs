@@ -25,12 +25,15 @@
   --color-accent: #1f4f9e;
   --color-accent-strong: #143a7a;
   --color-accent-soft: #eaf0fb;
+  /* 实心按钮上的字色：暗色下强调色是浅蓝，白色文字读不出来 */
+  --color-on-accent: #ffffff;
 
   --color-success: #157a4a;
   --color-success-soft: #e7f4ec;
 
   --color-danger: #b3392e;
   --color-danger-soft: #fbebe9;
+  --color-on-danger: #ffffff;
 
   --color-warn: #a2670a;
   --color-warn-soft: #fbf1e0;
@@ -48,21 +51,63 @@
 }
 
 @layer base {
-  html {
+  /* 独立入口才需要撑满 html/body：只有「#root 本身带联邦作用域类」才是独立站。
+     联邦窗口里 html/body 属于 uiam 宿主，这里不能再动它们——否则 adm 的
+     scrollbar-gutter / 底色会覆盖整个桌面。 */
+  html:has(#root.adm-federated),
+  body:has(#root.adm-federated),
+  #root.adm-federated {
+    height: 100%;
+  }
+
+  html:has(#root.adm-federated) {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
     scrollbar-gutter: stable;
   }
 
-  /* 外壳按容器高度铺满，滚动交给内容区：侧栏始终满高、不随右侧内容滚走。
-     联邦窗口的容器是宿主给的 .adm-federated（height:100%），独立站则是 #root。 */
-  html,
-  body,
-  #root {
-    height: 100%;
-  }
+  /* 亮色令牌在应用根节点上再挂一份。
+     七个 Tailwind 应用同处一个文档，各自 @theme 都往 :root 写 `--color-*`，
+     级联后生效的永远是最后注入的那份——窗口里的 accent / canvas 会串成别人的
+     配色。挂在 .adm-federated 上，窗口内才只有 adm 自己的一套值；暗色覆盖见
+     federation.css（选择器更具体，优先级更高）。 */
+  .adm-federated {
+    --color-canvas: #f4f5f7;
+    --color-surface: #ffffff;
+    --color-sunken: #fafbfc;
+    --color-line: #e3e6eb;
+    --color-line-strong: #cbd1da;
 
-  body {
+    --color-ink: #191c21;
+    --color-ink-soft: #4a505a;
+    --color-muted: #7c828d;
+
+    --color-accent: #1f4f9e;
+    --color-accent-strong: #143a7a;
+    --color-accent-soft: #eaf0fb;
+    /* 实心强调按钮上的字色：暗色的强调色是浅蓝，白字读不出来 */
+    --color-on-accent: #ffffff;
+
+    --color-success: #157a4a;
+    --color-success-soft: #e7f4ec;
+
+    --color-danger: #b3392e;
+    --color-danger-soft: #fbebe9;
+    --color-on-danger: #ffffff;
+
+    --color-warn: #a2670a;
+    --color-warn-soft: #fbf1e0;
+
+    --color-info: #2a5bd7;
+    --color-info-soft: #eaeffd;
+
+    --color-violet: #6344c6;
+    --color-violet-soft: #efeafc;
+
+    --radius-panel: 14px;
+    --shadow-panel: 0 1px 2px rgb(25 28 33 / 4%), 0 8px 24px -16px rgb(25 28 33 / 18%);
+    --shadow-float: 0 2px 6px rgb(25 28 33 / 6%), 0 24px 48px -24px rgb(25 28 33 / 28%);
+
     background-color: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
@@ -74,17 +119,18 @@
     display: contents;
   }
 
-  ::selection {
-    background: #cfdcf6;
-    color: var(--color-accent-strong);
+  .adm-federated ::selection {
+    /* 用强调色的透明混色：亮色是淡底深字，暗色自动变成深底浅字 */
+    background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+    color: var(--color-ink);
   }
 
-  :focus-visible {
+  .adm-federated :focus-visible {
     outline: 2px solid rgb(31 79 158 / 55%);
     outline-offset: 2px;
   }
 
-  .tnum {
+  .adm-federated .tnum {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
@@ -112,21 +158,26 @@
     cursor: not-allowed;
   }
 
-  ::-webkit-scrollbar {
+  /* 滚动条同时覆盖两种形态：独立站的文档根，以及联邦窗口内的内容区 */
+  html:has(#root.adm-federated) ::-webkit-scrollbar,
+  .adm-federated ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
-  ::-webkit-scrollbar-track {
+  html:has(#root.adm-federated) ::-webkit-scrollbar-track,
+  .adm-federated ::-webkit-scrollbar-track {
     background: transparent;
   }
-  ::-webkit-scrollbar-thumb {
-    background: #d5d9e0;
+  html:has(#root.adm-federated) ::-webkit-scrollbar-thumb,
+  .adm-federated ::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
     border: 3px solid transparent;
     border-radius: 999px;
     background-clip: content-box;
   }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #bcc3cd;
+  html:has(#root.adm-federated) ::-webkit-scrollbar-thumb:hover,
+  .adm-federated ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
     background-clip: content-box;
   }
 }

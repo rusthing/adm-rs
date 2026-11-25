@@ -13,12 +13,13 @@ type Size = "sm" | "md";
 
 const variantClass: Record<Variant, string> = {
   primary:
-    "bg-accent text-white border-transparent hover:bg-accent-strong disabled:bg-accent/50",
+    "bg-accent text-on-accent border-transparent hover:bg-accent-strong disabled:bg-accent/50",
   secondary:
     "bg-surface text-ink border-line-strong hover:bg-sunken disabled:text-muted",
   ghost: "bg-transparent text-ink-soft border-transparent hover:bg-sunken",
-  danger: "bg-danger text-white border-transparent hover:bg-danger/90 disabled:bg-danger/50",
-  soft: "bg-accent-soft text-accent-strong border-transparent hover:bg-[#dde8fa]",
+  danger:
+    "bg-danger text-on-danger border-transparent hover:bg-danger/90 disabled:bg-danger/50",
+  soft: "bg-accent-soft text-accent-strong border-transparent hover:bg-accent/15",
 };
 
 const sizeClass: Record<Size, string> = {
@@ -116,7 +117,7 @@ export function Switch({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors",
-          checked ? "border-accent bg-accent" : "border-line-strong bg-[#e9ecf1]",
+          checked ? "border-accent bg-accent" : "border-line-strong bg-line-strong/50",
         )}
       >
         <span

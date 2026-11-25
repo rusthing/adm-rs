@@ -222,7 +222,7 @@ export function DashboardPage() {
             }
             action={
               hasPerm("GET:/adm/dashboard/config") ? (
-                <Link to="/dashboard-config" className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3.5 text-[13px] font-medium text-white">
+                <Link to="/dashboard-config" className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3.5 text-[13px] font-medium text-on-accent">
                   <Settings2 size={14} /> 去配置首页
                 </Link>
               ) : undefined

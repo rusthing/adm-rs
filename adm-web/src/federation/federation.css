@@ -25,11 +25,13 @@
   --color-accent: #7fa8f5;
   --color-accent-strong: #a9c6ff;
   --color-accent-soft: #1c2c4a;
+  --color-on-accent: #101a2c;
 
   --color-success: #5ad39a;
   --color-success-soft: #17392a;
   --color-danger: #ff8e82;
   --color-danger-soft: #43211e;
+  --color-on-danger: #2a1210;
 
   --color-warn: #e8b45a;
   --color-warn-soft: #3d2f16;

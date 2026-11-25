@@ -158,22 +158,33 @@ export function ManagedPicker<T>({
     [filtered, currentPage, pageSize],
   );
 
-  /** 面板摆放：下方空间不足时翻到上方，宽度按视口收敛。 */
+  /**
+   * 面板摆放：优先放在字段下方，下方不够就翻到上方。
+   *
+   * 钳制范围取**应用根节点**而不是视口：嵌在 uiam 桌面里时，视口是整个屏幕，
+   * 按视口钳制会把面板推到窗口外面（表现为「下拉框跑到窗口外/和字段错位」）。
+   * 应用根节点在独立站里等于整页，在窗口里正好是窗口内容区，两种形态都对得上。
+   */
   const place = () => {
     const trigger = triggerRef.current;
     if (!trigger) return;
     const box = trigger.getBoundingClientRect();
-    const width = Math.min(Math.max(box.width, PANEL_WIDTH), window.innerWidth - 16);
-    const below = window.innerHeight - box.bottom - 12;
-    const above = box.top - 12;
+    const root = document.querySelector<HTMLElement>(".adm-federated:not(.adm-overlay-portal)");
+    const area = root?.getBoundingClientRect();
+    const minX = (area ? area.left : 0) + 8;
+    const maxX = (area ? area.right : window.innerWidth) - 8;
+    const minY = (area ? area.top : 0) + 8;
+    const maxY = (area ? area.bottom : window.innerHeight) - 8;
+    const width = Math.max(240, Math.min(Math.max(box.width, PANEL_WIDTH), maxX - minX));
+    const below = maxY - box.bottom - 6;
+    const above = box.top - minY - 6;
     const flip = below < 300 && above > below;
-    const height = Math.min(PANEL_HEIGHT, Math.max(260, flip ? above : below));
-    setRect({
-      left: Math.min(Math.max(8, box.left), window.innerWidth - width - 8),
-      top: flip ? Math.max(8, box.top - height - 6) : box.bottom + 6,
-      width,
-      height,
-    });
+    const height = Math.min(PANEL_HEIGHT, Math.max(240, flip ? above : below));
+    const left = Math.max(minX, Math.min(box.left, maxX - width));
+    const top = flip
+      ? Math.max(minY, box.top - height - 6)
+      : Math.min(box.bottom + 6, maxY - height);
+    setRect({ left, top, width, height });
   };
 
   const openPanel = () => {
@@ -213,11 +224,16 @@ export function ManagedPicker<T>({
     window.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
+    // 宿主窗口改大小时不会触发 window resize：跟着应用根节点一起重排
+    const root = document.querySelector<HTMLElement>(".adm-federated:not(.adm-overlay-portal)");
+    const observer = root ? new ResizeObserver(() => place()) : null;
+    if (root) observer?.observe(root);
     return () => {
       window.removeEventListener("mousedown", onPointerDown);
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
+      observer?.disconnect();
     };
     // place 只依赖 ref 与视口尺寸
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -453,7 +453,7 @@ export function AppShell() {
             collapsed && "lg:justify-center lg:gap-0 lg:px-0",
           )}
         >
-          <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white", collapsed && "lg:hidden")}>
+          <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-on-accent", collapsed && "lg:hidden")}>
             <ShieldCheck size={16} />
           </div>
           <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
