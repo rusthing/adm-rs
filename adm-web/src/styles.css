@@ -44,6 +44,12 @@
   --color-violet: #6344c6;
   --color-violet-soft: #efeafc;
 
+  /* 层次增强令牌（亮色）：分组淡底 / 层级引导线 / 焦点环 / 行 hover */
+  --color-group-head: #f1f4f9;
+  --color-guide: #d6dbe3;
+  --color-focus: #1f4f9e;
+  --color-row-hover: #eef2f8;
+
   --radius-panel: 14px;
 
   --shadow-panel: 0 1px 2px rgb(25 28 33 / 4%), 0 8px 24px -16px rgb(25 28 33 / 18%);
@@ -104,10 +110,19 @@
     --color-violet: #6344c6;
     --color-violet-soft: #efeafc;
 
+    /* 层次增强令牌（亮色）：联邦窗口内必须自带一份，否则工具类取 :root 的串色值 */
+    --color-group-head: #f1f4f9;
+    --color-guide: #d6dbe3;
+    --color-focus: #1f4f9e;
+    --color-row-hover: #eef2f8;
+
     --radius-panel: 14px;
     --shadow-panel: 0 1px 2px rgb(25 28 33 / 4%), 0 8px 24px -16px rgb(25 28 33 / 18%);
     --shadow-float: 0 2px 6px rgb(25 28 33 / 6%), 0 24px 48px -24px rgb(25 28 33 / 28%);
 
+    /* 高度链兜底：联邦根节点由宿主给定确定高度，独立站 #root 亦有同值；
+       写在 .adm-federated 上让两种环境共用同一条满高起点。 */
+    height: 100%;
     background-color: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
@@ -126,7 +141,7 @@
   }
 
   .adm-federated :focus-visible {
-    outline: 2px solid rgb(31 79 158 / 55%);
+    outline: 2px solid color-mix(in srgb, var(--color-focus) 62%, transparent);
     outline-offset: 2px;
   }
 

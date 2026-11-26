@@ -755,7 +755,7 @@ export function CrudPage<T extends { id: string }>({
     return (
       <td
         className={cn(
-          "sticky left-0 z-10 whitespace-nowrap border-r border-line bg-surface px-3 py-2.5 align-middle group-hover:bg-sunken/50",
+          "sticky left-0 z-10 whitespace-nowrap border-r border-line bg-surface px-3 py-2.5 align-middle group-hover:bg-row-hover",
           isTreeTable ? "w-[132px]" : "w-[112px]",
         )}
       >
@@ -1043,7 +1043,7 @@ export function CrudPage<T extends { id: string }>({
   const entityLabel = title.replace(/管理$/, "");
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       <PageHeader
         title={title}
         subtitle={subtitle}
@@ -1105,7 +1105,7 @@ export function CrudPage<T extends { id: string }>({
         </div>
       )}
 
-      <div className={cn("flex min-w-0 flex-col gap-4", (showScope || Boolean(sidePanel)) && "lg:flex-row lg:items-start")}>
+      <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col gap-4", (showScope || Boolean(sidePanel)) && "lg:flex-row")}>
         {showScope && scope && (
           <ScopePanel
             scope={scope}
@@ -1115,11 +1115,11 @@ export function CrudPage<T extends { id: string }>({
           />
         )}
         {sidePanel}
-        <section className="min-w-0 flex-1 overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel">
           {/* 搜索 / 筛选区：关键字输入即查（350ms 防抖、Enter 立即），所以这里不再
               放「刷新」——它与查询打的是同一个接口，纯重复。整行不换行，
               条件多到放不下时横向滚动，而不是把工具栏压成两三行。 */}
-          <div className="flex items-center gap-2 overflow-x-auto border-b border-line px-3 py-2.5">
+          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-line bg-sunken/40 px-3 py-2.5">
             <div className="relative w-[240px] shrink-0">
               <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
               <Input
@@ -1186,53 +1186,59 @@ export function CrudPage<T extends { id: string }>({
           </div>
 
           {query.isLoading ? (
-            <Spinner />
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
+              <Spinner />
+            </div>
           ) : query.isError ? (
-            <div className="px-4 py-10 text-center">
-              <p className="text-[13px] font-medium text-danger">列表加载失败</p>
-              <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted">
-                {query.error instanceof Error
-                  ? query.error.message
-                  : "请求没有返回具体原因，可检查登录状态与服务状态后重试。"}
-              </p>
-              <Button className="mt-4" variant="secondary" onClick={() => void query.refetch()}>
-                重试
-              </Button>
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
+              <div className="px-4 py-10 text-center">
+                <p className="text-[13px] font-medium text-danger">列表加载失败</p>
+                <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted">
+                  {query.error instanceof Error
+                    ? query.error.message
+                    : "请求没有返回具体原因，可检查登录状态与服务状态后重试。"}
+                </p>
+                <Button className="mt-4" variant="secondary" onClick={() => void query.refetch()}>
+                  重试
+                </Button>
+              </div>
             </div>
           ) : rows.length === 0 ? (
-            <EmptyState
-              title={hasActiveFilters || activeScopeLabel ? "没有匹配的记录" : "暂无数据"}
-              description={
-                hasActiveFilters
-                  ? [
-                      appliedKeyword ? `关键字「${appliedKeyword}」` : null,
-                      hasActiveFilterValues(filters, filterValues) ? "当前筛选条件" : null,
-                      activeScopeLabel ? `分组「${activeScopeLabel}」` : null,
-                    ]
-                      .filter(Boolean)
-                      .join("与") + "下没有记录；可清空关键字、重置筛选或切换到「全部」。"
-                  : activeScopeLabel
-                    ? `分组「${activeScopeLabel}」下还没有记录；可以切到「全部」查看其它分组，或在这里直接新建。`
-                    : emptyDescription ??
-                      "服务端还没有返回任何记录；可稍后刷新，或确认当前账号是否有该实体的数据权限。"
-              }
-              action={
-                activeScopeLabel ? (
-                  <Button variant="secondary" onClick={() => selectScope(null)}>
-                    查看全部分组
-                  </Button>
-                ) : undefined
-              }
-            />
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
+              <EmptyState
+                title={hasActiveFilters || activeScopeLabel ? "没有匹配的记录" : "暂无数据"}
+                description={
+                  hasActiveFilters
+                    ? [
+                        appliedKeyword ? `关键字「${appliedKeyword}」` : null,
+                        hasActiveFilterValues(filters, filterValues) ? "当前筛选条件" : null,
+                        activeScopeLabel ? `分组「${activeScopeLabel}」` : null,
+                      ]
+                        .filter(Boolean)
+                        .join("与") + "下没有记录；可清空关键字、重置筛选或切换到「全部」。"
+                    : activeScopeLabel
+                      ? `分组「${activeScopeLabel}」下还没有记录；可以切到「全部」查看其它分组，或在这里直接新建。`
+                      : emptyDescription ??
+                        "服务端还没有返回任何记录；可稍后刷新，或确认当前账号是否有该实体的数据权限。"
+                }
+                action={
+                  activeScopeLabel ? (
+                    <Button variant="secondary" onClick={() => selectScope(null)}>
+                      查看全部分组
+                    </Button>
+                  ) : undefined
+                }
+              />
+            </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <table aria-label={`${title}列表`} className="w-full min-w-[760px] border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-line bg-sunken">
+                  <tr className="border-b border-line-strong bg-sunken">
                     {sortable && (
                       <th
                         className={cn(
-                          "sticky left-0 z-10 whitespace-nowrap border-r border-line bg-sunken px-3 py-2 text-right text-[11.5px] font-medium text-muted",
+                          "sticky left-0 top-0 z-20 whitespace-nowrap border-r border-line bg-sunken px-3 py-2 text-right text-[11px] font-semibold text-ink-soft",
                           isTreeTable ? "w-[132px]" : "w-[112px]",
                         )}
                       >
@@ -1243,16 +1249,16 @@ export function CrudPage<T extends { id: string }>({
                       <th
                         key={column.key}
                         className={cn(
-                          "whitespace-nowrap px-3 py-2 text-[11.5px] font-medium text-muted",
+                          "sticky top-0 z-10 whitespace-nowrap bg-sunken px-3 py-2 text-[11px] font-semibold text-ink-soft",
                           (column.align === "right" || column.type === "number") && "text-right",
-                          !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-sunken",
+                          !sortable && index === 0 && "left-0 z-20 border-r border-line",
                         )}
                       >
                         {column.label}
                       </th>
                     ))}
                     {(canEdit || canDelete || rowActions) && (
-                      <th className="w-px whitespace-nowrap px-3 py-2 text-right text-[11.5px] font-medium text-muted">
+                      <th className="sticky top-0 z-10 w-px whitespace-nowrap bg-sunken px-3 py-2 text-right text-[11px] font-semibold text-ink-soft">
                         操作
                       </th>
                     )}
@@ -1264,7 +1270,7 @@ export function CrudPage<T extends { id: string }>({
                       key={row.id}
                       data-sort-row-id={row.id}
                       className={cn(
-                        "group border-b border-line/80 last:border-b-0 hover:bg-sunken/50",
+                        "group border-b border-line/80 last:border-b-0 transition-colors duration-150 hover:bg-row-hover",
                         dragState?.id === row.id && "bg-sunken/70 opacity-70",
                       )}
                     >
@@ -1277,7 +1283,7 @@ export function CrudPage<T extends { id: string }>({
                             className={cn(
                               "px-3 py-2.5 align-middle text-[12.5px] text-ink-soft",
                               (column.align === "right" || column.type === "number") && "text-right tabular-nums",
-                              !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-surface group-hover:bg-sunken/50",
+                              !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-surface group-hover:bg-row-hover",
                               column.className,
                             )}
                           >
@@ -1349,16 +1355,19 @@ export function CrudPage<T extends { id: string }>({
             </div>
           )}
 
-          <Pagination
-            page={page}
-            size={size}
-            total={total}
-            onChange={setPage}
-            onSizeChange={(next) => {
-              setSize(next);
-              setPage(1);
-            }}
-          />
+          {/* 分页固定在卡片底部，不随表格区滚动 */}
+          <div className="shrink-0">
+            <Pagination
+              page={page}
+              size={size}
+              total={total}
+              onChange={setPage}
+              onSizeChange={(next) => {
+                setSize(next);
+                setPage(1);
+              }}
+            />
+          </div>
         </section>
       </div>
 

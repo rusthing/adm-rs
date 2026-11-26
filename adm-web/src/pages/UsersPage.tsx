@@ -149,7 +149,7 @@ function UserRolesDrawer({
           renderItem={(role) => (
             <span className="flex flex-wrap items-baseline gap-x-2">
               {role.name}
-              {!role.enabled && <span className="text-[10px] text-warn">停用</span>}
+              {!role.enabled && <Badge tone="warn">停用</Badge>}
               <code className="font-mono text-[10.5px] text-muted">{role.sortOrder}</code>
             </span>
           )}

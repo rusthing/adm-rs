@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Badge, Spinner } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Layers3 } from "lucide-react";
+import { ChevronDown, ChevronRight, CornerDownRight, FolderOpen, Layers3 } from "lucide-react";
 import { scopeIndent } from "./scope";
 import type { CrudScopeDef } from "./scope";
 
@@ -57,24 +57,26 @@ export function ScopePanel({
     });
   return (
     <aside
-      className={cn("overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel", className)}
+      className={cn("flex flex-col overflow-hidden rounded-[14px] border border-line bg-surface shadow-panel", className)}
       aria-label={scope.title}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-line px-3.5 py-2.5">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3.5 py-2.5">
         <h2 className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
           <Layers3 size={13} className="text-muted" /> {scope.title}
         </h2>
         <Badge tone="neutral">{scope.options.length}</Badge>
       </div>
 
-      <div className="max-h-[540px] overflow-y-auto p-1.5">
+      <div className="min-h-0 max-h-[540px] flex-1 overflow-y-auto p-1.5">
         <button
           type="button"
           onClick={() => onSelect(null)}
           aria-pressed={allActive}
           className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors",
-            allActive ? "bg-accent-soft text-accent-strong" : "text-ink-soft hover:bg-sunken hover:text-ink",
+            "flex w-full items-center gap-2 rounded-lg border-l-2 px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors",
+            allActive
+              ? "border-l-accent bg-accent-soft text-accent-strong"
+              : "border-l-transparent text-ink-soft hover:bg-row-hover hover:text-ink",
           )}
         >
           全部
@@ -112,7 +114,7 @@ export function ScopePanel({
                       {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     </button>
                   ) : (
-                    <span className="w-[16px] shrink-0" />
+                    <span className="w-[16px] shrink-0 border-l border-guide pl-1" />
                   )}
                   <button
                     type="button"
@@ -120,12 +122,19 @@ export function ScopePanel({
                     aria-pressed={active}
                     title={option.description ? `${option.label} · ${option.description}` : option.label}
                     className={cn(
-                      "flex min-w-0 flex-1 items-center gap-1.5 rounded-lg py-1.5 pr-2 text-left text-[12.5px] transition-colors",
+                      "flex min-w-0 flex-1 items-center gap-1.5 rounded-lg border-l-2 py-1.5 pl-1.5 pr-2 text-left text-[12.5px] transition-colors",
                       active
-                        ? "bg-accent-soft font-medium text-accent-strong"
-                        : "text-ink-soft hover:bg-sunken hover:text-ink",
+                        ? "border-l-accent bg-accent-soft font-semibold text-accent-strong"
+                        : isParent
+                          ? "border-l-transparent font-semibold text-ink hover:bg-row-hover"
+                          : "border-l-transparent font-normal text-ink-soft hover:bg-row-hover hover:text-ink",
                     )}
                   >
+                    {isParent ? (
+                      <FolderOpen size={12} className="shrink-0 text-accent" aria-hidden />
+                    ) : (
+                      <CornerDownRight size={12} className="shrink-0 text-muted" aria-hidden />
+                    )}
                     <span className="min-w-0 flex-1 truncate">{option.label}</span>
                     {option.disabled && <Badge tone="warn">停用</Badge>}
                     {option.description && (
@@ -139,7 +148,7 @@ export function ScopePanel({
         )}
       </div>
 
-      <div className="border-t border-line px-3.5 py-2 text-[11px] leading-relaxed text-muted">
+      <div className="shrink-0 border-t border-line px-3.5 py-2 text-[11px] leading-relaxed text-muted">
         {scope.hint ?? "选中分组后，列表只显示该分组的数据，新建时也会自动归入该分组。"}
       </div>
     </aside>

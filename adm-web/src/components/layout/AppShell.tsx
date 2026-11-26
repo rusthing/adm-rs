@@ -136,11 +136,11 @@ function AppSectionHeader({ label, collapsed }: { label: string; collapsed: bool
       )}
       title={label}
     >
-      <AppWindow size={12} className="shrink-0 text-muted" />
-      <span className={cn("truncate text-[10.5px] font-semibold tracking-wide text-muted", collapsed && "lg:hidden")}>
+      <AppWindow size={12} className="shrink-0 text-accent/70" />
+      <span className={cn("truncate text-[10.5px] font-semibold tracking-wide text-ink-soft", collapsed && "lg:hidden")}>
         {label}
       </span>
-      <span className={cn("h-px flex-1 bg-line", collapsed && "lg:hidden")} />
+      <span className={cn("h-px flex-1 bg-line-strong", collapsed && "lg:hidden")} />
     </div>
   );
 }
@@ -217,8 +217,8 @@ function NavTree({
         if (hasChildren) {
           const isOpen = expanded.has(node.id);
           const groupClass = cn(
-            "flex min-h-[34px] flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium transition-colors",
-            active ? "text-accent-strong" : "text-muted hover:bg-sunken hover:text-ink",
+            "flex min-h-[34px] flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold transition-colors",
+            active ? "text-accent-strong" : "text-ink-soft hover:bg-row-hover hover:text-ink",
             collapsed && "lg:h-10 lg:justify-center lg:gap-0 lg:px-0 lg:py-0",
           );
           const groupInner = (
@@ -612,10 +612,12 @@ export function AppShell() {
           />
         </header>
 
-        {/* 只让这一列滚动：顶栏与侧栏都留在原位 */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* 内容区只排布提示条与 main；滚动收敛到 main 内部，footer 作为右列固定
+            底栏常驻，长页面内容不再穿透底栏。flex-1/min-h-0 继续给 Outlet 传递
+            确定高度，列表页表格仍在卡片内部滚动。 */}
+        <div className="flex min-h-0 flex-1 flex-col">
           {session?.loginPswdDefault && (
-            <div className="border-b border-warn/30 bg-warn-soft px-4 py-2 text-[12px] text-warn">
+            <div className="shrink-0 border-b border-warn/30 bg-warn-soft px-4 py-2 text-[12px] text-warn">
               当前账号仍在使用初始口令，请尽快到
               <Link to="/profile" className="mx-1 underline underline-offset-2">
                 个人中心
@@ -625,7 +627,7 @@ export function AppShell() {
           )}
 
           {authzError && (
-            <div className="flex flex-wrap items-center gap-2 border-b border-danger/25 bg-danger-soft px-4 py-2 text-[12px] text-danger">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-danger/25 bg-danger-soft px-4 py-2 text-[12px] text-danger">
               <AlertTriangle size={14} />
               权限信息加载失败：{authzError}。
               {authz ? "当前沿用上次缓存的菜单与权限，刷新成功后自动更新。" : "菜单与页面暂不可用，可重试或重新登录。"}
@@ -635,15 +637,16 @@ export function AppShell() {
             </div>
           )}
 
-          <main className="mx-auto w-full max-w-[1680px] px-4 py-5 sm:px-6">
+          <main className="mx-auto flex min-h-0 w-full max-w-[1680px] flex-1 flex-col overflow-y-auto px-4 pt-5 pb-2 sm:px-6">
             <Outlet />
           </main>
-
-          <footer className="mx-auto flex w-full max-w-[1680px] flex-wrap items-center justify-between gap-2 px-4 pb-6 text-[11px] text-muted sm:px-6">
-            <span>后台管理</span>
-            <span>账号 · 角色 · 菜单 · 权限</span>
-          </footer>
         </div>
+
+        {/* 右列固定底栏：不进入 main 的滚动流，也不会被 flex 压缩 */}
+        <footer className="mx-auto flex w-full max-w-[1680px] shrink-0 flex-wrap items-center justify-between gap-2 border-t border-line px-4 pb-3 pt-2 text-[11px] text-muted sm:px-6">
+          <span>后台管理</span>
+          <span>账号 · 角色 · 菜单 · 权限</span>
+        </footer>
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import type { AdmMenuVo, AdmPermGroupVo, AdmPermVo, AdmRoleGroupVo } from "@/lib/types";
-import { shortId } from "@/lib/utils";
+import { cn, shortId } from "@/lib/utils";
 import { Badge, Checkbox } from "@/components/ui/primitives";
-import { ChevronDown, ChevronRight, FolderTree } from "lucide-react";
+import { ChevronDown, ChevronRight, CornerDownRight, Folder, FolderOpen, FolderTree, KeyRound } from "lucide-react";
 import { useAppOptions, usePermGroupOptions, useRoleGroupOptions } from "@/lib/queries";
 import { subjectTreeCode } from "@/lib/perm-subject";
 import { buildTree, flattenTreeIds } from "./tree-utils";
@@ -104,7 +104,11 @@ function TreeRow<T extends TreeNode>({
   return (
     <div>
       <div
-        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sunken"
+        className={cn(
+          "flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-row-hover",
+          children.length > 0 && "border-l-2 bg-group-head",
+          children.length > 0 && (depth === 0 ? "border-l-accent/70" : "border-l-guide"),
+        )}
         style={{ paddingLeft: `${12 + depth * depthIndent}px` }}
       >
         {children.length > 0 ? (
@@ -128,8 +132,19 @@ function TreeRow<T extends TreeNode>({
             label={undefined}
           />
         )}
-        <FolderTree size={14} className={depth === 0 ? "text-accent" : "text-muted/70"} />
-        <span className="flex-1 truncate text-[12.5px] text-ink-soft">{item.name}</span>
+        {children.length > 0 ? (
+          <FolderTree size={14} className={cn("shrink-0", depth === 0 ? "text-accent" : "text-guide")} />
+        ) : (
+          <KeyRound size={13} className="shrink-0 text-muted" aria-hidden />
+        )}
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-[12.5px]",
+            children.length > 0 ? "font-semibold text-ink" : "font-normal text-ink-soft",
+          )}
+        >
+          {item.name}
+        </span>
         {!item.enabled && <Badge tone="warn">停用</Badge>}
       </div>
       {open &&
@@ -239,9 +254,12 @@ function GroupHeader({
           label={undefined}
         />
       )}
-      <span className="truncate text-[11.5px] font-medium text-muted">{label}</span>
+      <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] font-medium text-ink-soft">
+        <Folder size={12} className="shrink-0 text-muted" aria-hidden />
+        <span className="truncate">{label}</span>
+      </span>
       {treeCode && <code className="shrink-0 font-mono text-[10px] text-muted/70">{treeCode}</code>}
-      <span className="ml-auto shrink-0 text-[10.5px] text-muted/70">
+      <span className="ml-auto shrink-0 font-mono text-[10.5px] text-ink-soft">
         {checked}/{total}
       </span>
     </div>
@@ -370,7 +388,7 @@ export function PermCheckList({
         const open = isOpen(section.key, checked);
         return (
           <div key={section.key}>
-            <div className="flex items-center gap-2 rounded-md bg-sunken/70 px-2 py-1.5">
+            <div className="flex items-center gap-2 rounded-md border-l-2 border-guide bg-group-head px-2 py-1.5">
               <button
                 type="button"
                 onClick={() => setOpen(section.key, !open)}
@@ -380,6 +398,7 @@ export function PermCheckList({
               >
                 {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
               </button>
+              <FolderOpen size={13} className="shrink-0 text-accent" aria-hidden />
               {onSetMany ? (
                 <Checkbox
                   checked={ids.length > 0 && checked === ids.length}
@@ -388,11 +407,11 @@ export function PermCheckList({
                   label={undefined}
                 />
               ) : null}
-              <span className="truncate text-[12px] font-medium text-ink">{section.label}</span>
+              <span className="min-w-0 truncate text-[12.5px] font-semibold text-ink">{section.label}</span>
               {section.treeCode !== "\uffff" && (
                 <code className="shrink-0 font-mono text-[10px] text-muted/70">{section.treeCode}</code>
               )}
-              <span className="ml-auto shrink-0 text-[10.5px] text-muted/70">
+              <span className="ml-auto shrink-0 font-mono text-[10.5px] text-ink-soft">
                 {checked}/{ids.length}
               </span>
             </div>
@@ -419,19 +438,19 @@ export function PermCheckList({
                         {type.rows.map((perm) => (
                           <label
                             key={perm.id}
-                            className="flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sunken"
+                            className="flex items-start gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-row-hover"
                           >
                             <Checkbox
                               checked={selected.has(perm.id)}
                               onChange={() => onToggle(perm.id)}
-                              label={
-                                <span className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] text-ink-soft">
-                                  {perm.name}
-                                  <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
-                                  {!perm.enabled && <Badge tone="warn">停用</Badge>}
-                                </span>
-                              }
+                              label={undefined}
                             />
+                            <CornerDownRight size={12} className="mt-0.5 shrink-0 text-muted" aria-hidden />
+                            <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-[12.5px] font-normal text-ink-soft">
+                              {perm.name}
+                              <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
+                              {!perm.enabled && <Badge tone="warn">停用</Badge>}
+                            </span>
                           </label>
                         ))}
                       </div>

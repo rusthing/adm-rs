@@ -6,9 +6,9 @@
  */
 import { useMemo } from "react";
 import type { AdmAppVo, AdmMenuVo } from "@/lib/types";
-import { Checkbox } from "@/components/ui/primitives";
+import { Badge, Checkbox } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
-import { Layers3, ListTree } from "lucide-react";
+import { Folder, Layers3, ListTree } from "lucide-react";
 import { TreeCheckboxGroup } from "./tree";
 import { buildTree } from "./tree-utils";
 
@@ -65,8 +65,10 @@ export function LinkedMenuSelector({
                   <div
                     key={app.id}
                     className={cn(
-                      "flex min-w-0 items-center gap-2 rounded-lg py-1.5 pl-2 pr-1.5",
-                      isActive && "bg-accent-soft",
+                      "flex min-w-0 items-center gap-2 rounded-lg border-l-2 py-1.5 pl-2 pr-1.5 transition-colors",
+                      isActive
+                        ? "border-l-accent bg-accent-soft"
+                        : "border-l-transparent hover:bg-row-hover",
                     )}
                   >
                     <Checkbox
@@ -85,9 +87,10 @@ export function LinkedMenuSelector({
                         isActive ? "font-medium text-accent-strong" : "text-ink-soft hover:text-ink",
                       )}
                     >
+                      <Folder size={13} className="shrink-0 text-accent" aria-hidden />
                       <span className="truncate">{app.name}</span>
-                      {!app.enabled && <span className="shrink-0 text-[10px] text-warn">停用</span>}
-                      <span className="ml-auto shrink-0 text-[10.5px] text-muted/70">
+                      {!app.enabled && <Badge tone="warn">停用</Badge>}
+                      <span className="ml-auto shrink-0 font-mono text-[10.5px] text-ink-soft">
                         {count}/{ids.length}
                       </span>
                     </button>

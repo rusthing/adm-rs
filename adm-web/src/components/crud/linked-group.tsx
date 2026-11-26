@@ -11,9 +11,9 @@
  * 两栏都是 `flex min-h-0 flex-1 overflow-y-auto`，由抽屉的弹性布局把高度撑满。
  */
 import { useMemo, useState, type ReactNode } from "react";
-import { Checkbox, Spinner } from "@/components/ui/primitives";
+import { Badge, Checkbox, Spinner } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Layers3, ListChecks } from "lucide-react";
+import { ChevronDown, ChevronRight, CornerDownRight, Folder, FolderOpen, Layers3, ListChecks } from "lucide-react";
 import { buildTree } from "./tree-utils";
 import type { TreeItem, TreeNode } from "./tree-utils";
 
@@ -150,8 +150,20 @@ export function LinkedGroupSelector<T extends SelectableItem>({
       <div key={node.id}>
         <div
           className={cn(
-            "flex min-w-0 items-center gap-1.5 rounded-md py-1 pr-1.5 hover:bg-sunken",
-            navigable && activeGroupId === node.id && "bg-accent-soft",
+            "flex min-w-0 items-center gap-1.5 rounded-md py-1.5 pr-2 transition-colors",
+            // 左栏可导航分组：激活态用强调色左竖条 + 淡底；未激活保持轻量。
+            navigable
+              ? cn(
+                  "border-l-2",
+                  activeGroupId === node.id
+                    ? "border-l-accent bg-accent-soft"
+                    : "border-l-transparent hover:bg-row-hover",
+                )
+              : cn(
+                  // 右栏勾选容器：常驻淡底 + 左引导线，与透明底的叶子行一眼可辨。
+                  "border-l-2 bg-group-head hover:bg-row-hover",
+                  depth === 0 ? "border-l-accent/70" : "border-l-guide",
+                ),
           )}
           style={{ paddingLeft: `${6 + depth * 16}px` }}
         >
@@ -187,13 +199,16 @@ export function LinkedGroupSelector<T extends SelectableItem>({
                   : "text-ink-soft hover:text-ink",
               )}
             >
+              {open ? <FolderOpen size={13} className="shrink-0 text-accent" /> : <Folder size={13} className="shrink-0 text-accent" />}
               <span className="truncate">{node.name}</span>
-              {!node.enabled && <span className="shrink-0 text-[10px] text-warn">停用</span>}
+              {!node.enabled && <Badge tone="warn">停用</Badge>}
             </button>
           ) : (
-            <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[12px] text-ink">
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[12.5px] font-semibold text-ink">
+              {open ? <FolderOpen size={13} className="shrink-0 text-accent" /> : <Folder size={13} className="shrink-0 text-accent" />}
               <span className="truncate">{node.name}</span>
-              <span className="ml-auto shrink-0 text-[10.5px] text-muted/70">
+              {!node.enabled && <Badge tone="warn">停用</Badge>}
+              <span className="ml-auto shrink-0 font-mono text-[10.5px] text-ink-soft">
                 {state.count}/{ids.length}
               </span>
             </span>
@@ -208,13 +223,14 @@ export function LinkedGroupSelector<T extends SelectableItem>({
   const itemRows = (rows: T[]) => (
     <div className="flex flex-col gap-0.5">
       {rows.map((item) => (
-        <label key={item.id} className="flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sunken">
+        <label key={item.id} className="flex items-start gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-row-hover">
           <Checkbox
             checked={selectedIds.has(item.id)}
             onChange={() => onToggle(item.id)}
             label={undefined}
           />
-          <span className="min-w-0 flex-1 text-[12.5px] text-ink-soft">{renderItem(item)}</span>
+          <CornerDownRight size={12} className="mt-0.5 shrink-0 text-muted" aria-hidden />
+          <span className="min-w-0 flex-1 text-[12.5px] font-normal text-ink-soft">{renderItem(item)}</span>
         </label>
       ))}
     </div>
@@ -267,8 +283,10 @@ export function LinkedGroupSelector<T extends SelectableItem>({
             <div className="flex flex-col gap-0.5">
               <div
                 className={cn(
-                  "flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5",
-                  !activeGroupId && "bg-accent-soft",
+                  "flex min-w-0 items-center gap-1.5 rounded-lg border-l-2 px-2 py-1.5 transition-colors",
+                  !activeGroupId
+                    ? "border-l-accent bg-accent-soft"
+                    : "border-l-transparent hover:bg-row-hover",
                 )}
               >
                 <Checkbox
@@ -288,7 +306,7 @@ export function LinkedGroupSelector<T extends SelectableItem>({
                   )}
                 >
                   全部
-                  <span className="ml-auto text-[10.5px] font-normal text-muted/70">
+                  <span className="ml-auto text-[10.5px] font-normal text-ink-soft">
                     {allState.count}/{items.length}
                   </span>
                 </button>

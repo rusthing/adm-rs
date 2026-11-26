@@ -6,7 +6,7 @@ import { CrudPage } from "@/components/crud/CrudPage";
 import { LinkedGroupSelector } from "@/components/crud/linked-group";
 import { LinkedMenuSelector } from "@/components/crud/linked-menu";
 import { treeGroupQuery } from "@/components/crud/scope";
-import { Button, Spinner } from "@/components/ui/primitives";
+import { Badge, Button, Spinner } from "@/components/ui/primitives";
 import { Drawer, useToast } from "@/components/ui/overlay";
 import { useAuth } from "@/auth/AuthContext";
 import type { AdmRoleVo, FormValues } from "@/lib/types";
@@ -155,7 +155,7 @@ function RolePermsDrawer({
             <span className="flex flex-wrap items-baseline gap-x-2">
               {perm.name}
               <code className="font-mono text-[11px] text-muted">{perm.urn}</code>
-              {!perm.enabled && <span className="text-[10px] text-warn">停用</span>}
+              {!perm.enabled && <Badge tone="warn">停用</Badge>}
             </span>
           )}
           leftTitle="权限分组"
