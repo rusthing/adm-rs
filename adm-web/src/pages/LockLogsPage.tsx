@@ -34,7 +34,7 @@ export function LockLogsPage() {
   return (
     <CrudPage<AdmLockLogVo>
       title="锁定日志"
-      subtitle="只读审计视图：登录失败触发账号锁定时写一条，到期或人工解锁后回填解锁时间与原因；解锁时间为空即仍未解锁。前端不提供新增/编辑/删除入口。"
+      subtitle="登录失败导致账号锁定时会记录一条，解锁后显示解锁时间。"
       prefix="/adm/lock-log"
       columns={columns}
       fields={[]}

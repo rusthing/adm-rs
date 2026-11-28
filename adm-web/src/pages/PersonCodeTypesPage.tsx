@@ -42,7 +42,7 @@ export function PersonCodeTypesPage() {
   return (
     <CrudPage<AdmPersonCodeTypeVo>
       title="人员编码类型"
-      subtitle="编码类型说明人员档案里的编号是什么号（工号 / 学号 / 外协编号…）。人员在同一类型下编码唯一，没有工号的人员可以不选类型。"
+      subtitle="维护人员编号的类型，如工号、学号、外协编号。"
       prefix="/adm/person-code-type"
       columns={columns}
       fields={fields}

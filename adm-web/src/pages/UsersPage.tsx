@@ -120,7 +120,7 @@ function UserRolesDrawer({
       open={open}
       onClose={onClose}
       title={`分配角色 · ${user?.name ?? ""}`}
-      description="左栏角色分组可整组勾选、点名称切换右栏；右栏按该级以下的真实分组树展示，叶子分组直接平铺角色。两栏双向联动，保存只提交差异。"
+      description="左侧选角色分组，右侧勾选该组及其下级的角色；保存时只提交改动。"
       width="w-full max-w-[880px]"
       footer={
         <>
@@ -646,7 +646,7 @@ export function UsersPage() {
     <>
       <CrudPage<AdmUserVo>
         title="用户管理"
-        subtitle="账号是登录用的凭据；人员档案对应自然人（在「人员管理」维护），一个人可以有多个账号，不关联人员的即纯账号。领域多于一个时用顶部标签切换；组织非空时，左侧选中组织后只列出该组织及下级组织的用户。列表里的手机号、邮箱、身份证号和姓名都做了隐藏处理，编辑时会显示完整内容。"
+        subtitle="账号用于登录，人员档案在「人员管理」维护，一个人可以有多个账号。列表中的手机号、邮箱、证件号和姓名默认隐藏，编辑时显示完整内容。"
         prefix="/adm/user"
         columns={columns}
         fields={fields}

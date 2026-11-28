@@ -40,7 +40,7 @@ export function LoginLogsPage() {
   return (
     <CrudPage<AdmLoginLogVo>
       title="登录日志"
-      subtitle="只读审计视图：登录成功时写一条，登出时回填 logoutMs；「进行中」只表示还没登出，不等于实时在线。前端不提供新增/编辑/删除入口。"
+      subtitle="记录每次登录；「进行中」表示尚未登出，不代表当前在线。"
       prefix="/adm/login-log"
       columns={columns}
       fields={[]}

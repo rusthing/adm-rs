@@ -58,7 +58,7 @@ export function PersonTagTypesPage() {
   return (
     <CrudPage<AdmPersonTagTypeVo>
       title="人员标签类型"
-      subtitle="人员标签的分类口径（技能 / 岗位 / 安全…）。人员档案里的标签仍按名称自由写入，字典只统一口径，不建外键。"
+      subtitle="维护人员标签的分类，如技能、岗位、安全。"
       prefix="/adm/person-tag-type"
       columns={columns}
       fields={fields}

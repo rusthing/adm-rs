@@ -64,7 +64,7 @@ export function OpLogsPage() {
   return (
     <CrudPage<AdmOpLogVo>
       title="操作日志"
-      subtitle="只读审计视图，记录谁在什么时候做了什么操作。这里不能新增、编辑或删除。"
+      subtitle="记录谁在什么时间做了什么操作，仅供查看。"
       prefix="/adm/op-log"
       columns={columns}
       fields={[]}

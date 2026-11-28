@@ -146,7 +146,7 @@ export function DashboardPage() {
         title={`你好，${session?.nickName || session?.name || "管理员"}`}
         subtitle={
           dashboard
-            ? `${sourceText ?? dashboard.name}，共 ${configWidgets.length} 个 widget；数据由各服务按统一契约返回，前端经网关并行获取。`
+            ? `${sourceText ?? dashboard.name}，共 ${configWidgets.length} 个组件`
             : "正在根据你的角色加载首页配置。"
         }
         actions={

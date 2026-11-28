@@ -57,7 +57,7 @@ export function OrgTypesPage() {
   return (
     <CrudPage<AdmOrgTypeVo>
       title="组织类型"
-      subtitle="组织类型是组织档案的分类字典（集团 / 分公司 / 部门…）。组织在「组织管理」里选一个类型，类型本身不参与鉴权，与领域无关。"
+      subtitle="维护组织类型，如集团、分公司、部门；新建组织时从这里选择。"
       prefix="/adm/org-type"
       columns={columns}
       fields={fields}

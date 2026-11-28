@@ -40,7 +40,7 @@ export function AppsPage() {
   return (
     <CrudPage<AdmAppVo>
       title="应用管理"
-      subtitle="菜单树归属于应用：应用是全局配置，平台、前台、移动端各一棵菜单树，与领域无关。菜单一级的顺序决定侧栏顺序。"
+      subtitle="应用是菜单和页面的入口，每个应用有一棵独立的菜单树。"
       prefix="/adm/app"
       columns={columns}
       fields={fields}

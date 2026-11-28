@@ -175,7 +175,7 @@ export function PermissionsPage() {
   return (
     <CrudPage<AdmPermVo>
       title="权限管理"
-      subtitle="权限点按「作用对象 + 操作」归类：名称只写操作（如「删除」），作用对象用一个编码记录，权限标识由请求方法和访问路径组成。左侧按分组树切换，选中父分组会连同子分组一起展示。目前会校验登录身份，按访问路径的授权将在网关中逐步启用。"
+      subtitle="权限点由一个名称和对应的操作组成，左侧按分组切换查看。"
       prefix="/adm/perm"
       columns={columns}
       fields={fields}

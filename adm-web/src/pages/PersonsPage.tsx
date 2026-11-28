@@ -216,7 +216,7 @@ export function PersonsPage() {
   return (
     <CrudPage<AdmPersonVo>
       title="人员管理"
-      subtitle="人员是自然人主数据（姓名 / 证件 / 联系方式），本身不能登录；登录账号在「用户管理」里建并回指人员。编码的含义由编码类型决定（工号 / 学号），没有工号的人员可以不选类型。列表对姓名 / 手机 / 邮箱 / 身份证做等长遮蔽，拼音两列由后台按姓名自动生成、只参与检索、不在列表展示——否则遮蔽就白做了。"
+      subtitle="人员档案保存姓名、证件和联系方式；登录账号请在「用户管理」里添加。列表中的敏感信息默认隐藏，编辑时显示完整内容。"
       prefix="/adm/person"
       columns={columns}
       fields={fields}

@@ -529,7 +529,7 @@ export function DashboardConfigPage() {
     <div>
       <PageHeader
         title="首页配置"
-        subtitle="按角色维护首页组件；一个账号有多个角色时，取优先级最高的那份，都没有则用全局默认。"
+        subtitle="按角色配置首页内容；账号有多个角色时，使用优先级最高的一份。"
         actions={
           <>
             {dirty && <Badge tone="warn">未保存</Badge>}
@@ -550,7 +550,7 @@ export function DashboardConfigPage() {
 
       <Panel
         title="配置目标"
-        description="全局模板始终存在且不可删除；角色配置删除后自动回落。"
+        description="全局模板不可删除；角色配置删除后改用全局模板。"
         className="mb-4"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -624,7 +624,7 @@ export function DashboardConfigPage() {
 
       <Panel
         title="组件列表"
-        description="按住行左侧手柄拖动（鼠标与触屏均可），或使用上移 / 下移调整顺序；保存时按当前顺序重算 sortOrder。"
+        description="拖动左侧手柄或使用上移、下移调整顺序。"
         actions={
           <div className="flex items-center gap-2">
             <Select
@@ -673,7 +673,7 @@ export function DashboardConfigPage() {
         {!configQuery.isLoading && !configQuery.isError && draft.widgets.length === 0 && (
           <EmptyState
             title="还没有组件"
-            description="从上方选择组件类型后点击「添加组件」，或先保存一份空配置。"
+            description="先选组件类型，再点「添加组件」。"
           />
         )}
 
@@ -852,7 +852,7 @@ export function DashboardConfigPage() {
           if (!deleting) setDeleteOpen(false);
         }}
         title="删除角色首页配置"
-        description="删除后该角色将回落到全局兜底模板，当前草稿中的未保存修改也会一并丢弃。"
+        description="删除后该角色改用全局模板，未保存的修改也会丢失。"
         width="max-w-[460px]"
         dismissable={false}
         footer={
@@ -883,7 +883,7 @@ export function DashboardConfigPage() {
         open={preview !== null}
         onClose={() => setPreview(null)}
         title="配置预览"
-        description="预览效果与首页一致，只是不保存；按配置直接取数，不受当前账号的权限限制。"
+        description="预览效果与首页一致，不会保存。"
         width="max-w-[1040px]"
         footer={
           <Button variant="secondary" onClick={() => setPreview(null)}>

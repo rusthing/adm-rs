@@ -125,7 +125,7 @@ function RolePermsDrawer({
       open={open}
       onClose={onClose}
       title={`授权 · ${role?.name ?? ""}`}
-      description="左侧分组树可勾选「本组及全部子孙」的权限；点分组名切换右侧展示范围，右侧按该级以下的真实分组树展示，叶子分组直接平铺权限。两侧勾选同一份数据，双向联动；保存只提交差异。"
+      description="左侧选分组，右侧勾选权限；勾选父级会连同下级一起选中。"
       width="w-full max-w-[900px]"
       footer={
         <>
@@ -245,7 +245,7 @@ function RoleMenusDrawer({
       open={open}
       onClose={onClose}
       title={`菜单 · ${role?.name ?? ""}`}
-      description="左栏应用可整组勾选并切换，右栏按选中应用展示完整菜单树、父子级联勾选；保存只提交差异，菜单变更对所属账号立即生效。"
+      description="左侧选应用，右侧勾选可见菜单；保存后立即生效。"
       width="w-full max-w-[820px]"
       footer={
         <>
@@ -362,7 +362,7 @@ export function RolesPage() {
     <>
       <CrudPage<AdmRoleVo>
         title="角色管理"
-        subtitle="角色是权限与菜单的集合，按分组树组织。左侧按分组切换（含子分组）；「授权」与「菜单」是两个独立操作：授权按权限分组树勾选权限点，菜单按应用勾选可见菜单，配合可见范围决定「能做什么 / 能看哪些」。"
+        subtitle="角色决定账号能做什么、能看哪些页面，按分组管理。"
         prefix="/adm/role"
         columns={columns}
         fields={fields}

@@ -55,7 +55,7 @@ export function AuditPasswordField({
       label="审核口令（未设置时使用登录口令）"
       htmlFor={id}
       required
-      hint="删除属于高危操作，需输入本人审核口令确认；未设置审核口令时请直接输入登录口令，口令只用于本次校验。"
+      hint="删除属于高风险操作，需要输入审核口令确认；没有设置审核口令时，输入登录口令即可。"
       error={error}
     >
       <Input

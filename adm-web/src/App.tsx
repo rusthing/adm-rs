@@ -25,10 +25,10 @@ function UnregisteredPage({ menu }: { menu: AdmMenuVo }) {
     <div>
       <PageHeader
         title={menu.name}
-        subtitle="这条菜单指向的页面在当前前端版本里尚未开放。"
+        subtitle="这个页面暂时还打不开。"
         actions={<Badge tone="warn">未登记页面</Badge>}
       />
-      <Panel title="页面暂不可用" description="这条菜单指向的页面没有在当前前端版本里登记。">
+      <Panel title="页面暂不可用" description="这个页面暂时打不开，请联系管理员。">
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warn-soft text-warn">
             <Puzzle size={22} />
@@ -53,7 +53,7 @@ function NoMenuPage() {
   return (
     <EmptyState
       title="没有可见菜单"
-      description="当前账号没有分配任何可见菜单或菜单尚未启用。请联系管理员在「角色 → 菜单授权」里配置。"
+      description="当前账号还没有可用的菜单，请联系管理员开通。"
     />
   );
 }

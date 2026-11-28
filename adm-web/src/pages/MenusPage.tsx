@@ -207,7 +207,7 @@ export function MenusPage() {
   return (
     <CrudPage<AdmMenuVo>
       title="菜单管理"
-      subtitle="菜单树按应用分开，每层用一个短编码表示层级。应用多于一个时用顶部标签切换；整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会自动填好所属应用和上级节点；层级编码由系统生成，没登记的页面不会出现在侧栏。"
+      subtitle="菜单按应用分开维护，排列顺序决定侧栏的显示顺序。"
       prefix="/adm/menu"
       columns={columns}
       fields={fields}

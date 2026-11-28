@@ -61,7 +61,7 @@ export function PersonTypesPage() {
   return (
     <CrudPage<AdmPersonTypeVo>
       title="人员类型"
-      subtitle="人员类型说明人员档案的归属（内部员工 / 第三方施工人员 / 访客 / 其他人员）。取值沿用原有系统的编码，人员档案只记录类型，不保存字典编号。"
+      subtitle="维护人员类型，如内部员工、外包人员、访客。"
       prefix="/adm/person-type"
       columns={columns}
       fields={fields}

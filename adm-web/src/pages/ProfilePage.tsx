@@ -184,7 +184,7 @@ export function ProfilePage() {
     <div>
       <PageHeader
         title="个人中心"
-        subtitle="查看当前账号信息、角色与权限视图；修改昵称/联系方式与登录口令。"
+        subtitle="查看账号信息与权限，修改资料和登录口令。"
         actions={<Badge tone={roleNames.length > 0 ? "info" : "neutral"}>{roleNames.length > 0 ? `${roleNames.length} 个角色` : "未分配角色"}</Badge>}
       />
 
@@ -232,7 +232,7 @@ export function ProfilePage() {
 
           <Panel
             title="角色与权限"
-            description="角色、权限和菜单按你当前的授权汇总展示。"
+            description="这里汇总你当前拥有的角色、权限和菜单。"
             actions={<ShieldCheck size={15} className="text-muted" />}
           >
             {authzLoading ? (
@@ -321,9 +321,9 @@ export function ProfilePage() {
             )}
           </Panel>
 
-          <Panel title="修改资料" description="只提交这里修改过的内容，其余信息保持原样。">
+          <Panel title="修改资料" description="只保存你改动过的内容。">
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              <Field label="登录名" hint="登录名是唯一标识，个人中心不提供修改。">
+              <Field label="登录名" hint="登录名用于识别账号，不能修改。">
                 <Input value={userQuery.data?.name ?? ""} disabled />
               </Field>
               <Field label="昵称">
@@ -396,12 +396,12 @@ export function ProfilePage() {
 
           <Panel
             title="修改登录口令"
-            description="修改口令要先验证旧口令；提交后系统会生成新的 6 位口令组合码。"
+            description="修改口令需先验证旧口令，保存后生成新的口令。"
             actions={<KeyRound size={15} className="text-muted" />}
           >
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Field label="当前口令" required hint="用于校验身份；明文不会离开浏览器。">
+                <Field label="当前口令" required hint="用于确认是你本人操作。">
                   <Input
                     type="password"
                     value={oldPassword}
@@ -410,7 +410,7 @@ export function ProfilePage() {
                   />
                 </Field>
               </div>
-              <Field label="新口令" required hint="至少 6 位；明文不会离开浏览器。">
+              <Field label="新口令" required hint="至少 6 位。">
                 <Input
                   type="password"
                   value={newPassword}

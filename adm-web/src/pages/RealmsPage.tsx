@@ -37,7 +37,7 @@ export function RealmsPage() {
   return (
     <CrudPage<AdmRealmVo>
       title="领域管理"
-      subtitle="领域是用户与组织的数据域划分单位：决定用户/组织归属与角色的数据可见范围；应用、菜单、角色、权限是全局配置，与领域无关。"
+      subtitle="领域用于划分用户和组织的数据范围。"
       prefix="/adm/realm"
       columns={columns}
       fields={fields}
