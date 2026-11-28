@@ -365,6 +365,7 @@ fn perms() -> Vec<Perm> {
 fn expected_subject(path: &str) -> (&'static str, &'static str) {
     let mut subjects: Vec<(&str, &'static str, &'static str)> = vec![
         ("/adm/person-code-type", "person_code_type", "人员编码类型"),
+        ("/adm/person-tag-type", "person_tag_type", "人员标签类型"),
         ("/adm/person-type", "person_type", "人员类型"),
         ("/adm/menu-perm", "menu_perm", "菜单绑定"),
         ("/adm/perm-group", "perm_group", "权限分组"),

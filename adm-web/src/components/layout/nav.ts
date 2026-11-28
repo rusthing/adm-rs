@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   AppWindow,
+  BookOpen,
   Building2,
   FileText,
   FolderTree,
@@ -19,6 +20,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  Tag,
   ShieldCheck,
   UserCog,
   UserCircle,
@@ -106,6 +108,8 @@ const ICONS: Record<string, LucideIcon> = {
   hierarchy: ListTree,
   profile: UserRound,
   "id-card": IdCard,
+  "book-open": BookOpen,
+  tags: Tag,
 };
 
 /** 图标名白名单：菜单表单的图标下拉只能从这些值里选，避免自由文本写出无效图标。 */

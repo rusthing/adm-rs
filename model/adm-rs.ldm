@@ -12765,6 +12765,215 @@ false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与�
 </o:EntityAttribute>
 </c:Attributes>
 </o:Entity>
+<o:Entity Id="o603">
+<a:ObjectID>F20AF336-96C3-4095-BCC8-092599D83E65</a:ObjectID>
+<a:Name>人员标签类型</a:Name>
+<a:Code>person_tag_type</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>人员标签类型
+人员标签（adm_person.tags）的分类字典：技能、岗位、安全等标签类型；
+标签本身仍按名称自由写入（不建外键），字典只用于统一口径与页面维护</a:Comment>
+<a:GlobalObjectID/>
+<c:Identifiers>
+<o:Identifier Id="o604">
+<a:ObjectID>699AA2CA-0E4B-456F-8B10-19A237D93ECD</a:ObjectID>
+<a:Name>Identifier_1</a:Name>
+<a:Code>Identifier_1</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Identifier.Attributes>
+<o:EntityAttribute Ref="o605"/>
+</c:Identifier.Attributes>
+</o:Identifier>
+<o:Identifier Id="o606">
+<a:ObjectID>66363D8D-EA92-4896-89E3-98D01ADB40ED</a:ObjectID>
+<a:Name>编码</a:Name>
+<a:Code>code</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Identifier.Attributes>
+<o:EntityAttribute Ref="o607"/>
+</c:Identifier.Attributes>
+</o:Identifier>
+<o:Identifier Id="o608">
+<a:ObjectID>9BA17BF3-74A1-4034-A381-26600D665D6D</a:ObjectID>
+<a:Name>名称</a:Name>
+<a:Code>name</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:GlobalObjectID/>
+<c:Identifier.Attributes>
+<o:EntityAttribute Ref="o609"/>
+</c:Identifier.Attributes>
+</o:Identifier>
+</c:Identifiers>
+<c:PrimaryIdentifier>
+<o:Identifier Ref="o604"/>
+</c:PrimaryIdentifier>
+<c:Attributes>
+<o:EntityAttribute Id="o605">
+<a:ObjectID>ECAC676C-4942-46BF-941F-A04F79435F6F</a:ObjectID>
+<a:Name>ID</a:Name>
+<a:Code>id</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>主键
+代理键，由框架生成（雪花 ID），业务层不需要关心取值</a:Comment>
+<a:DataType>LI</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o607">
+<a:ObjectID>8A69E877-DFBD-4183-BDD2-BC69E67C6B82</a:ObjectID>
+<a:Name>编码</a:Name>
+<a:Code>code</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>编码
+标签类型编码，全局唯一（AK）
+@len 1..=50
+@check is_code</a:Comment>
+<a:DataType>VA50</a:DataType>
+<a:Length>50</a:Length>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o609">
+<a:ObjectID>AAF258F3-EEC7-4F6C-8DB2-C812AC5FBB99</a:ObjectID>
+<a:Name>名称</a:Name>
+<a:Code>name</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>名称
+标签类型名称，全局唯一（AK）
+@len 1..=50</a:Comment>
+<a:DataType>VA50</a:DataType>
+<a:Length>50</a:Length>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o610">
+<a:ObjectID>A8211807-BA03-4689-8808-06AED3565635</a:ObjectID>
+<a:Name>排序值</a:Name>
+<a:Code>sort_order</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>排序值
+越小越靠前
+@range 0..=9999</a:Comment>
+<a:DataType>I</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o611">
+<a:ObjectID>4A4E084A-9B92-4FF9-B740-7571EFE29849</a:ObjectID>
+<a:Name>备注</a:Name>
+<a:Code>remark</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>备注
+@len 0..=50</a:Comment>
+<a:DataType>VA50</a:DataType>
+<a:Length>50</a:Length>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o612">
+<a:ObjectID>923810A6-F353-4B04-8DE1-D1E5E95575FC</a:ObjectID>
+<a:Name>启用</a:Name>
+<a:Code>enabled</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>是否启用
+false 时不可再被选择，不参与鉴权与菜单渲染，历史数据与关联全部保留
+与删除的区别：删除是物理删除（外键 restrict 会挡住），停用只影响后续使用</a:Comment>
+<a:DefaultValue>true</a:DefaultValue>
+<a:DataType>BL</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o613">
+<a:ObjectID>3E7C92E4-6E22-4CA3-BE38-1F6BAE3AD343</a:ObjectID>
+<a:Name>创建者ID</a:Name>
+<a:Code>creater_id</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建人 ID
+由框架在 insert 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>LI</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o614">
+<a:ObjectID>82D3E8E6-5982-42A1-ADDD-600C50F55B05</a:ObjectID>
+<a:Name>创建时间戳</a:Name>
+<a:Code>create_ms</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>创建时间戳
+由框架在 insert 时写入服务端时间，不接受调用方传入
+@unit ms</a:Comment>
+<a:DataType>LI</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o615">
+<a:ObjectID>6C2AB155-7170-4ED7-9B45-B917FFBFE96A</a:ObjectID>
+<a:Name>更新者ID</a:Name>
+<a:Code>updater_id</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改人 ID
+由框架在 update 时写入当前操作者；无登录态的系统任务写 0</a:Comment>
+<a:DataType>LI</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+<o:EntityAttribute Id="o616">
+<a:ObjectID>92FD6054-1001-41B7-A086-6A2D0B11B9AC</a:ObjectID>
+<a:Name>更新时间戳</a:Name>
+<a:Code>update_ms</a:Code>
+<a:CreationDate>1795858414</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795858414</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>最后修改时间戳
+由框架在 update 时写入服务端时间；间隔/窗口类判断以此为准，不用事件时间
+@unit ms</a:Comment>
+<a:DataType>LI</a:DataType>
+<a:LogicalAttribute.Mandatory>1</a:LogicalAttribute.Mandatory>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
+</c:Attributes>
+</o:Entity>
 </c:Entities>
 <c:Relationships>
 <o:Relationship Id="o8">

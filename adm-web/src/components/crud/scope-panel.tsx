@@ -67,7 +67,7 @@ export function ScopePanel({
         <Badge tone="neutral">{scope.options.length}</Badge>
       </div>
 
-      <div className="min-h-0 max-h-[540px] flex-1 overflow-y-auto p-1.5">
+      <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
         <button
           type="button"
           onClick={() => onSelect(null)}

@@ -182,6 +182,15 @@ export interface AdmPersonCodeTypeVo extends AuditFields {
   enabled: boolean;
 }
 
+export interface AdmPersonTagTypeVo extends AuditFields {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number;
+  remark?: string;
+  enabled: boolean;
+}
+
 export interface AdmPersonTypeVo extends AuditFields {
   id: string;
   code: string;

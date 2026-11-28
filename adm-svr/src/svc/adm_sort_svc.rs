@@ -30,6 +30,8 @@ pub const SORT_OP_TYPE: FlatSort = FlatSort::new("adm_op_type");
 pub const SORT_ORG_TYPE: FlatSort = FlatSort::new("adm_org_type");
 /// 人员编码类型：全局一组
 pub const SORT_PERSON_CODE_TYPE: FlatSort = FlatSort::new("adm_person_code_type");
+/// 人员标签类型：全局一组
+pub const SORT_PERSON_TAG_TYPE: FlatSort = FlatSort::new("adm_person_tag_type");
 
 /// 菜单：按应用隔离的树
 pub const SORT_MENU: TreeSort = TreeSort::new("adm_menu").with_scope("app_id");

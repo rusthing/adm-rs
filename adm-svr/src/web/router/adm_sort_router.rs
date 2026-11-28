@@ -29,6 +29,10 @@ fn build_sort_router() -> Router {
             "/adm/person-code-type/reorder",
             post(reorder_person_code_type),
         )
+        .route(
+            "/adm/person-tag-type/reorder",
+            post(reorder_person_tag_type),
+        )
         .route("/adm/menu/reorder", post(reorder_menu))
         .route("/adm/role-group/reorder", post(reorder_role_group))
         .route("/adm/perm-group/reorder", post(reorder_perm_group))

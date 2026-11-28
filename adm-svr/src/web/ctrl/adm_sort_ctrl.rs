@@ -8,7 +8,8 @@
 
 use crate::svc::{
     reorder_flat, reorder_tree, SORT_APP, SORT_MENU, SORT_OP_TYPE, SORT_ORG, SORT_ORG_TYPE,
-    SORT_PERM, SORT_PERM_GROUP, SORT_PERSON_CODE_TYPE, SORT_REALM, SORT_ROLE, SORT_ROLE_GROUP,
+    SORT_PERM, SORT_PERM_GROUP, SORT_PERSON_CODE_TYPE, SORT_PERSON_TAG_TYPE,
+    SORT_REALM, SORT_ROLE, SORT_ROLE_GROUP,
 };
 use crate::web::auth::USER_ID_HEADER_NAME;
 use axum::debug_handler;
@@ -188,6 +189,23 @@ pub async fn reorder_person_code_type(
     Json(body): Json<AdmReorderBody>,
 ) -> Result<Json<Ro<u64>>, CtrlError> {
     flat_response(&SORT_PERSON_CODE_TYPE, headers, body).await
+}
+
+/// # 人员标签类型重排
+#[utoipa::path(
+    post,
+    path = "/adm/person-tag-type/reorder",
+    request_body = Vec<U64>,
+    params(("X-User-Id" = String, Header, description = "当前用户 ID")),
+    responses((status = OK, body = Ro<u64>))
+)]
+#[debug_handler]
+#[allow(clippy::result_large_err)]
+pub async fn reorder_person_tag_type(
+    headers: HeaderMap,
+    Json(body): Json<AdmReorderBody>,
+) -> Result<Json<Ro<u64>>, CtrlError> {
+    flat_response(&SORT_PERSON_TAG_TYPE, headers, body).await
 }
 
 /// # 菜单重排（按应用 + 父节点）

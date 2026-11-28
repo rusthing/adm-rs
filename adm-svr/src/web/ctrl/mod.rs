@@ -14,6 +14,7 @@ pub mod adm_org_user_ctrl;
 pub mod adm_perm_ctrl;
 pub mod adm_perm_group_ctrl;
 pub mod adm_person_code_type_ctrl;
+pub mod adm_person_tag_type_ctrl;
 pub mod adm_person_type_ctrl;
 pub mod adm_person_ctrl;
 pub mod adm_realm_ctrl;

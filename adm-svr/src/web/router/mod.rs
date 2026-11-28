@@ -14,6 +14,7 @@ mod adm_org_user_router;
 mod adm_perm_group_router;
 mod adm_perm_router;
 mod adm_person_code_type_router;
+mod adm_person_tag_type_router;
 mod adm_person_type_router;
 mod adm_person_router;
 mod adm_realm_org_router;
