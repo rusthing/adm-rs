@@ -75,7 +75,7 @@ export function RoleGroupsPage() {
   return (
     <CrudPage<AdmRoleGroupVo>
       title="角色分组"
-      subtitle="角色分组是全局的多层树，角色挂在分组下，与领域无关。行内「添加子级」会预填父分组；treeCode 全局唯一，由服务端按 parentCode 生成。"
+      subtitle="角色分组是全局的多层树，角色挂在分组下，与领域无关。整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会预填父分组；treeCode 全局唯一，由服务端按 parentCode 生成。"
       prefix="/adm/role-group"
       columns={columns}
       fields={fields}

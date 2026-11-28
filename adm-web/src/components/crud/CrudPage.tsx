@@ -1,7 +1,19 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  GripVertical,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { crudApi } from "@/lib/api";
 import type { CrudApi } from "@/lib/api";
 import type { FormValues, PageQuery, TreeDeletePreview } from "@/lib/types";
@@ -166,15 +178,11 @@ interface CrudPageProps<T extends { id: string }> {
   sidePanel?: ReactNode;
   /** 新建表单的额外预填值（如当前 tab 选中的应用），优先级低于行内「添加子级」带来的预填。 */
   createDefaults?: FormValues;
-  /** 树形表格默认收起：只显示一级节点，展开后才露出子孙。搜索 / 筛选激活时自动展开以免藏住命中行。 */
-  treeDefaultCollapsed?: boolean;
   /**
-   * 按一级节点分页（仅树形实体）：先取全量命中行，再按一级节点数切页，
-   * 每页含若干一级节点及其全部子孙。`total` 即一级节点数。
+   * 树形表格默认收起：只显示一级节点，展开后才露出子孙。搜索 / 筛选激活时自动展开以免藏住命中行。
+   * 默认开启，树形列表不需要逐页声明。
    */
-  paginateByRoot?: boolean;
-  /** `paginateByRoot` 时计数单位文案，默认「一级节点」，组织页传「一级组织」。 */
-  rootLabel?: string;
+  treeDefaultCollapsed?: boolean;
 }
 
 /**
@@ -359,11 +367,11 @@ export function CrudPage<T extends { id: string }>({
   tabs,
   sidePanel,
   createDefaults,
-  treeDefaultCollapsed = false,
-  paginateByRoot = false,
-  rootLabel = "一级节点",
+  treeDefaultCollapsed = true,
 }: CrudPageProps<T>) {
   const api = useMemo<CrudApi<T>>(() => crudApi<T>(prefix), [prefix]);
+  /** 树形表一次取全量、默认收起、不分页；分页只服务于平铺列表。 */
+  const isTreeTable = sortable?.kind === "tree";
   const queryClient = useQueryClient();
   const toast = useToast();
   const formId = useId();
@@ -460,7 +468,7 @@ export function CrudPage<T extends { id: string }>({
     ...scopeParams,
   });
 
-  /** 按一级节点分页时取全量命中行（不带 _page/_size），切页在前端做。 */
+  /** 树形表取全量命中行：不带 _page/_size，后端同一套检索运算符。 */
   const buildListQuery = (): PageQuery => ({
     [keywordName]: appliedKeyword || undefined,
     _orderBy: defaultOrderBy,
@@ -471,14 +479,14 @@ export function CrudPage<T extends { id: string }>({
 
   const query = useQuery({
     queryKey: [
-      prefix, paginateByRoot ? "root-list" : "page",
-      ...(paginateByRoot ? [] : [page, size]),
+      prefix, isTreeTable ? "tree-list" : "page",
+      ...(isTreeTable ? [] : [page, size]),
       appliedKeyword, defaultOrderBy,
       extraKey, filterKey, scopeKey, reloadTick,
     ],
     // search/page 与 search/list 是后端已暴露的检索接口，支持 `字段-op` 运算符（日期范围等）。
     queryFn: async () => {
-      if (paginateByRoot) {
+      if (isTreeTable) {
         return { list: await api.searchList(buildListQuery()), total: 0 };
       }
       const rx = await api.searchPage(buildQuery());
@@ -530,38 +538,11 @@ export function CrudPage<T extends { id: string }>({
     [rows, sortable, sortPreview],
   );
 
-  // ---- 按一级节点分页：total 是一级节点数，每页含若干一级节点及其全部子孙 ----
-  const rootKeyOf = (row: T) =>
-    `${String(sortable?.scope?.(row) ?? "")}#${(sortable?.treeCode?.(row) ?? "").slice(0, 3)}`;
+  const total = isTreeTable ? rows.length : Number(query.data?.total ?? 0);
+  const pageCount = isTreeTable ? 1 : Math.max(1, Math.ceil(total / size));
 
-  /** 一级节点键按出现顺序去重（列表已按 treeCode 升序，顺序即树序）。 */
-  const rootKeys = useMemo(() => {
-    if (!paginateByRoot) return [] as string[];
-    const seen = new Set<string>();
-    const ordered: string[] = [];
-    for (const row of displayRows) {
-      const key = rootKeyOf(row);
-      if (!seen.has(key)) {
-        seen.add(key);
-        ordered.push(key);
-      }
-    }
-    return ordered;
-    // rootKeyOf 只依赖 sortable，随 sortable 一起变化
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paginateByRoot, displayRows, sortable]);
-
-  const total = paginateByRoot ? rootKeys.length : Number(query.data?.total ?? 0);
-  const pageCount = Math.max(1, Math.ceil(total / size));
-
-  /** 当前页应展示的行：按一级节点切页后取该页一级节点下的全部行。 */
-  const pageRows = useMemo(() => {
-    if (!paginateByRoot) return displayRows;
-    const start = (page - 1) * size;
-    const allowed = new Set(rootKeys.slice(start, start + size));
-    return displayRows.filter((row) => allowed.has(rootKeyOf(row)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paginateByRoot, displayRows, rootKeys, page, size, sortable]);
+  /** 树形表已经是全量行；平铺表按服务端分页直接展示当前页。 */
+  const pageRows = displayRows;
 
   // 删除/筛选导致总数缩水时，把越界的页码拉回最后一页；用 isSuccess 避免
   // 加载中 total=0 把用户刚点的第 3 页立刻重置成第 1 页。
@@ -570,7 +551,6 @@ export function CrudPage<T extends { id: string }>({
   }, [query.isSuccess, page, pageCount]);
 
   // ---- 树形表格折叠：与左侧分组栏、授权树保持同一套交互 ----
-  const isTreeTable = sortable?.kind === "tree";
   /** 默认收起只在无搜索/筛选时生效；一旦检索就展开，避免把命中行藏在收起的父节点下。 */
   const effectiveDefaultCollapsed = treeDefaultCollapsed && !hasActiveFilters;
   /** 有下级的节点集合（用全量列表判断，避免页码变动导致箭头闪烁）。 */
@@ -629,6 +609,20 @@ export function CrudPage<T extends { id: string }>({
     };
     if (effectiveDefaultCollapsed) setExpandedTree(flip);
     else setCollapsedTree(flip);
+  };
+
+  /**
+   * 一键展开 / 收起整棵树。默认收起模式写 expandedTree（存在＝展开），
+   * 检索态（自动展开）写 collapsedTree（存在＝收起），两套状态互不串味。
+   */
+  const allTreeKeys = useMemo(() => [...treeParents], [treeParents]);
+  const isTreeKeyOpen = (key: string) =>
+    effectiveDefaultCollapsed ? expandedTree.has(key) : !collapsedTree.has(key);
+  const allTreeOpen = allTreeKeys.length > 0 && allTreeKeys.every(isTreeKeyOpen);
+  const toggleAllTree = () => {
+    const next = allTreeOpen ? new Set<string>() : new Set(allTreeKeys);
+    if (effectiveDefaultCollapsed) setExpandedTree(next);
+    else setCollapsedTree(next);
   };
 
   // 有筛选条件时禁止排序：避免只对筛选后的子集提交完整顺序。
@@ -1180,8 +1174,24 @@ export function CrudPage<T extends { id: string }>({
               </Button>
             )}
 
-            <span className="ml-auto shrink-0 whitespace-nowrap text-[11.5px] text-muted">
-              {paginateByRoot ? `共 ${total} 个${rootLabel}` : `共 ${total} 条`}
+            {isTreeTable && allTreeKeys.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleAllTree}
+                title={allTreeOpen ? "收起所有节点" : "展开所有节点"}
+                className="ml-auto inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-[11.5px] text-muted transition-colors hover:bg-sunken hover:text-ink"
+              >
+                {allTreeOpen ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
+                {allTreeOpen ? "全部收起" : "全部展开"}
+              </button>
+            )}
+            <span
+              className={cn(
+                "shrink-0 whitespace-nowrap text-[11.5px] text-muted",
+                !isTreeTable && "ml-auto",
+              )}
+            >
+              共 {total} 条
             </span>
           </div>
 
@@ -1355,19 +1365,21 @@ export function CrudPage<T extends { id: string }>({
             </div>
           )}
 
-          {/* 分页固定在卡片底部，不随表格区滚动 */}
-          <div className="shrink-0">
-            <Pagination
-              page={page}
-              size={size}
-              total={total}
-              onChange={setPage}
-              onSizeChange={(next) => {
-                setSize(next);
-                setPage(1);
-              }}
-            />
-          </div>
+          {/* 分页固定在卡片底部，不随表格区滚动；树形表整棵树常驻，不分页 */}
+          {!isTreeTable && (
+            <div className="shrink-0">
+              <Pagination
+                page={page}
+                size={size}
+                total={total}
+                onChange={setPage}
+                onSizeChange={(next) => {
+                  setSize(next);
+                  setPage(1);
+                }}
+              />
+            </div>
+          )}
         </section>
       </div>
 

@@ -48,7 +48,7 @@ export interface CrudApi<T> {
   searchPage: (query?: PageQuery) => Promise<PageRx<T>>;
   /**
    * 检索列表（不分页）：`{prefix}/search/list`，与 search/page 同一套 Bean Searcher
-   * 运算符，但一次返回全部命中行。树形实体按一级节点分页时，前端先取全量再自行切页。
+   * 运算符，但一次返回全部命中行。树形列表用它整棵树取出，前端只做收起 / 展开。
    */
   searchList: (query?: PageQuery) => Promise<T[]>;
   list: (query?: PageQuery) => Promise<T[]>;

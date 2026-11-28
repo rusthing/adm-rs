@@ -5,6 +5,7 @@ import {
   buildNavTree,
   findNavTrail,
   flattenNav,
+  groupNodeIds,
   ICON_NAMES,
   iconOf,
   pruneNav,
@@ -150,6 +151,23 @@ describe("findNavTrail", () => {
     expect(findNavTrail(tree, "/not-exist")).toBeNull();
     // 只有精确根路径才命中 "/"，否则所有页面都会被根菜单抢走
     expect(findNavTrail(tree, "/")).toBeNull();
+  });
+});
+
+describe("groupNodeIds", () => {
+  it("只收集有子级的分组，叶子不参与全部展开/收起判定", () => {
+    const tree = buildNavTree([
+      menu({ id: "g1", treeCode: "001", name: "系统", path: "/system" }),
+      menu({ id: "g2", treeCode: "001001", name: "权限", path: "/system/perm" }),
+      menu({ id: "leaf", treeCode: "001001001", name: "用户", path: "/system/perm/user", component: "users" }),
+      menu({ id: "solo", treeCode: "002", name: "工作台", path: "/dashboard", component: "dashboard" }),
+    ]);
+    expect(groupNodeIds(tree)).toEqual(["g1", "g2"]);
+  });
+
+  it("空树和全是叶子的树返回空数组", () => {
+    expect(groupNodeIds([])).toEqual([]);
+    expect(groupNodeIds(buildNavTree([menu({ id: "p", treeCode: "001", name: "页面", path: "/p", component: "users" })]))).toEqual([]);
   });
 });
 

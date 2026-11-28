@@ -321,16 +321,13 @@ export function OrgsPage() {
   return (
     <CrudPage<AdmOrgVo>
       title="组织管理"
-      subtitle="组织是全局一棵树：treeCode 表达层级，类型来自组织类型字典，与领域多对多（领域只决定「哪些组织属于我」）。领域多于一个时按顶部 tab 切换；树默认收起，分页按一级组织数量计。行内「添加子级」会预填上级组织。"
+      subtitle="组织是全局一棵树：treeCode 表达层级，类型来自组织类型字典，与领域多对多（领域只决定「哪些组织属于我」）。领域多于一个时按顶部 tab 切换；整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会预填上级组织。"
       prefix="/adm/org"
       columns={columns}
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="tree_code:asc"
       sortable={{ kind: "tree", treeCode: (row) => row.treeCode }}
-      treeDefaultCollapsed
-      paginateByRoot
-      rootLabel="一级组织"
       extraQuery={extraQuery}
       tabs={
         showRealmTabs

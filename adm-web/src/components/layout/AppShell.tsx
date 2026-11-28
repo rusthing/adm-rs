@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
-import { buildNavSections, findNavTrail, sectionNodes } from "@/components/layout/nav";
+import { buildNavSections, findNavTrail, groupNodeIds, sectionNodes } from "@/components/layout/nav";
 import type { NavNode, NavSection } from "@/components/layout/nav";
 import { useAppOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,8 @@ import {
   AppWindow,
   ChevronDown,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   ExternalLink,
   LoaderCircle,
   LogOut,
@@ -376,6 +378,9 @@ export function AppShell() {
   const navTree = useMemo(() => sectionNodes(sections), [sections]);
   const matched = useMemo(() => findNavTrail(navTree, location.pathname), [navTree, location.pathname]);
   const hasVisibleEntries = navTree.length > 0;
+  /** 菜单默认全部展开；只有分组节点有折叠状态，叶子不参与。 */
+  const groupIds = useMemo(() => groupNodeIds(navTree), [navTree]);
+  const expandedInitRef = useRef(false);
   const roleNames = authz?.roles.map((role) => role.name) ?? [];
 
   useEffect(() => {
@@ -387,7 +392,14 @@ export function AppShell() {
     setTooltip(null);
   }, [collapsed]);
 
-  // 深链进来时自动展开当前页面所在的整条分支。
+  // 菜单异步返回后初始化一次：只做一次，不能覆盖用户之后的手动收起。
+  useEffect(() => {
+    if (expandedInitRef.current || groupIds.length === 0) return;
+    expandedInitRef.current = true;
+    setExpanded(new Set(groupIds));
+  }, [groupIds]);
+
+  // 深链进来时自动展开当前页面所在的整条分支（默认全展开后通常已是恒等操作）。
   useEffect(() => {
     if (!matched || matched.ancestorIds.length === 0) return;
     setExpanded((current) => {
@@ -402,6 +414,9 @@ export function AppShell() {
       return changed ? next : current;
     });
   }, [matched]);
+
+  const allGroupsExpanded = groupIds.length > 0 && groupIds.every((id) => expanded.has(id));
+  const toggleAllGroups = () => setExpanded(allGroupsExpanded ? new Set() : new Set(groupIds));
 
   const showTooltip = (label: string, group: string, element: HTMLElement) => {
     if (!collapsed) return;
@@ -489,17 +504,32 @@ export function AppShell() {
               当前账号没有可见菜单。
             </div>
           ) : (
-            <NavSections
-              sections={sections}
-              collapsed={collapsed}
-              expanded={expanded}
-              matchedId={matched?.node.id}
-              onToggle={toggleNode}
-              onExpandFromCollapsed={expandFromCollapsed}
-              onNavigate={() => setMobileOpen(false)}
-              showTooltip={showTooltip}
-              hideTooltip={hideTooltip}
-            />
+            <>
+              {groupIds.length > 0 && (
+                <div className={cn("flex justify-end px-1 pb-1", collapsed && "lg:hidden")}>
+                  <button
+                    type="button"
+                    onClick={toggleAllGroups}
+                    title={allGroupsExpanded ? "收起所有菜单分组" : "展开所有菜单分组"}
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted transition-colors hover:bg-sunken hover:text-ink"
+                  >
+                    {allGroupsExpanded ? <ChevronsDownUp size={12} /> : <ChevronsUpDown size={12} />}
+                    {allGroupsExpanded ? "全部收起" : "全部展开"}
+                  </button>
+                </div>
+              )}
+              <NavSections
+                sections={sections}
+                collapsed={collapsed}
+                expanded={expanded}
+                matchedId={matched?.node.id}
+                onToggle={toggleNode}
+                onExpandFromCollapsed={expandFromCollapsed}
+                onNavigate={() => setMobileOpen(false)}
+                showTooltip={showTooltip}
+                hideTooltip={hideTooltip}
+              />
+            </>
           )}
         </nav>
 

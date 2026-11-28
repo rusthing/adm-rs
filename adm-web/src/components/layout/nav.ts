@@ -286,6 +286,22 @@ export function flattenNav(nodes: NavNode[]): NavNode[] {
   return result;
 }
 
+/**
+ * 所有「有子级、可折叠」的分组 id，供侧栏「全部展开 / 全部收起」使用。
+ * 叶子不参与：它们没有折叠状态，塞进去只会让按钮误判为「尚未全部展开」。
+ */
+export function groupNodeIds(nodes: NavNode[]): string[] {
+  const ids: string[] = [];
+  const walk = (list: NavNode[]) => {
+    for (const node of list) {
+      if (node.children.length > 0) ids.push(node.id);
+      walk(node.children);
+    }
+  };
+  walk(nodes);
+  return ids;
+}
+
 function pathMatches(path: string, pathname: string): boolean {
   return path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
 }

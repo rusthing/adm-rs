@@ -207,7 +207,7 @@ export function MenusPage() {
   return (
     <CrudPage<AdmMenuVo>
       title="菜单管理"
-      subtitle="菜单树按应用隔离，用 treeCode（每层 3 位）表达层级。应用多于一个时顶部 tab 分应用，行内「添加子级」会预填所属应用与父节点；treeCode 由服务端生成，未登记组件的菜单不会出现在侧栏。"
+      subtitle="菜单树按应用隔离，用 treeCode（每层 3 位）表达层级。应用多于一个时顶部 tab 分应用；整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会预填所属应用与父节点；treeCode 由服务端生成，未登记组件的菜单不会出现在侧栏。"
       prefix="/adm/menu"
       columns={columns}
       fields={fields}

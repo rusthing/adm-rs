@@ -132,7 +132,7 @@ export function PermissionGroupsPage() {
   return (
     <CrudPage<AdmPermGroupVo>
       title="权限分组"
-      subtitle="权限分组是全局一棵树，固定四层语义：平台 → 菜单一级 → 主体 → 操作类型，权限点挂在最末层。行内「添加子级」会预填父分组；授权时按「主体 → 类型」展示，主体段可一键全选。"
+      subtitle="权限分组是全局一棵树，固定四层语义：平台 → 菜单一级 → 主体 → 操作类型，权限点挂在最末层。整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会预填父分组；授权时按「主体 → 类型」展示，主体段可一键全选。"
       prefix="/adm/perm-group"
       columns={columns}
       fields={fields}
