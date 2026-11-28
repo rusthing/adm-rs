@@ -129,17 +129,17 @@ export function MenusPage() {
       createOnly: true,
       options: parentOptions,
       resetOn: ["appId"],
-      hint: "只列出同一应用下的菜单；不选则创建根节点，treeCode 由服务端生成。",
+      hint: "只列出同一应用下的菜单；不选上级则创建根节点，层级编码由系统生成。",
     },
     { name: "code", label: "编码", required: true, placeholder: "同一应用内唯一，如 system:user" },
     { name: "name", label: "名称", required: true, placeholder: "同一应用内唯一" },
     { name: "path", label: "路径", required: true, placeholder: "内链以 / 开头；外链/iframe 填完整 URL" },
     {
       name: "component",
-      label: "页面组件",
+      label: "对应页面",
       type: "select",
       options: Object.keys(PAGE_COMPONENTS).map((key) => ({ value: key, label: key })),
-      hint: "留空表示目录节点。只能选当前前端已登记的页面，未登记的组件不会出现在侧栏。",
+      hint: "留空表示这是一个目录节点。只能选系统里已登记的页面；没登记的页面不会出现在侧栏。",
     },
     {
       name: "linkType",
@@ -169,7 +169,7 @@ export function MenusPage() {
       options: ICON_NAMES.map((name) => ({ value: name, label: name })),
       hint: "从当前前端图标表里选择；留空则用默认图标。",
     },
-    { name: "keepAlive", label: "缓存页面", type: "switch", defaultValue: false },
+    { name: "keepAlive", label: "页面缓存", type: "switch", defaultValue: false },
     { name: "remark", label: "备注", type: "textarea" },
   ];
 
@@ -207,7 +207,7 @@ export function MenusPage() {
   return (
     <CrudPage<AdmMenuVo>
       title="菜单管理"
-      subtitle="菜单树按应用隔离，用 treeCode（每层 3 位）表达层级。应用多于一个时顶部 tab 分应用；整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会预填所属应用与父节点；treeCode 由服务端生成，未登记组件的菜单不会出现在侧栏。"
+      subtitle="菜单树按应用分开，每层用一个短编码表示层级。应用多于一个时用顶部标签切换；整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会自动填好所属应用和上级节点；层级编码由系统生成，没登记的页面不会出现在侧栏。"
       prefix="/adm/menu"
       columns={columns}
       fields={fields}

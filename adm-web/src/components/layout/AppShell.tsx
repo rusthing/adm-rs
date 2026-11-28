@@ -660,7 +660,7 @@ export function AppShell() {
             <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-danger/25 bg-danger-soft px-4 py-2 text-[12px] text-danger">
               <AlertTriangle size={14} />
               权限信息加载失败：{authzError}。
-              {authz ? "当前沿用上次缓存的菜单与权限，刷新成功后自动更新。" : "菜单与页面暂不可用，可重试或重新登录。"}
+              {authz ? "暂时显示上次保存的菜单和权限，刷新成功后会自动更新。" : "菜单与页面暂不可用，可重试或重新登录。"}
               <Button size="sm" variant="ghost" onClick={() => void refreshAuthz()}>
                 重试
               </Button>

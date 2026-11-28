@@ -95,6 +95,12 @@ export interface CrudColumn<T> {
   truncateClassName?: string;
 }
 
+/** 右固定列宽度：开关列按声明顺序叠在操作列左侧，偏移由这两个常量推算。 */
+const TOGGLE_COLUMN_WIDTH = 104;
+const ACTION_COLUMN_WIDTH = 160;
+/** 右固定列投向左边的阴影，分隔可滚动区与固定区。 */
+const PIN_RIGHT_SHADOW = "shadow-[-8px_0_10px_-8px_#00000040]";
+
 /** 顶部 tab 的一个选项（领域 / 应用）。`value` 为具体 id；「全部」由组件固定渲染，不在 options 里。 */
 export interface CrudTabOption {
   value: string;
@@ -349,7 +355,7 @@ export function CrudPage<T extends { id: string }>({
   fields,
   itemLabel,
   defaultOrderBy,
-  searchPlaceholder = "按关键字搜索（后端按可检索字段模糊匹配）",
+  searchPlaceholder = "输入关键字搜索，支持模糊匹配",
   createLabel = "新建",
   toolbarExtra,
   extraQuery,
@@ -599,6 +605,20 @@ export function CrudPage<T extends { id: string }>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageRows, sortable, collapsedTree, expandedTree, effectiveDefaultCollapsed]);
 
+  // 列顺序：排序 → 名称/普通列（首列左固定）→ 开关列（右固定）→ 操作列（右固定）。
+  // 页面 columns 中开关列的位置不一，这里统一挪到操作列之前，不改各页面的声明顺序。
+  const regularColumns = columns.filter((column) => !column.toggle);
+  const toggleColumns = columns.filter((column) => column.toggle);
+  const showActions = canEdit || canDelete || Boolean(rowActions);
+  /** 越靠前的开关列离右边越远：最后一个紧贴操作列，其余依次往左叠 104px。 */
+  const toggleRight = (index: number) =>
+    ACTION_COLUMN_WIDTH + (toggleColumns.length - 1 - index) * TOGGLE_COLUMN_WIDTH;
+  /** 单元格渲染顺序与表头一致；附带的固定信息由列在渲染序列中的位置决定。 */
+  const dataColumns = [
+    ...regularColumns.map((column, index) => ({ column, pinnedLeft: index === 0, right: undefined as number | undefined })),
+    ...toggleColumns.map((column, index) => ({ column, pinnedLeft: false, right: toggleRight(index) })),
+  ];
+
   const toggleTree = (row: T) => {
     const key = treeKeyOf(row);
     const flip = (prev: Set<string>) => {
@@ -654,7 +674,7 @@ export function CrudPage<T extends { id: string }>({
       });
       await sortListQuery.refetch();
       await query.refetch();
-      toast.error(error instanceof Error ? error.message : "排序保存失败，已恢复为服务端顺序");
+      toast.error(error instanceof Error ? error.message : "排序没有保存成功，已恢复为原来的顺序");
     } finally {
       setSortSaving(false);
       sortBusyRef.current = false;
@@ -896,7 +916,7 @@ export function CrudPage<T extends { id: string }>({
       reload();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "保存失败，服务端未返回具体原因";
+        error instanceof Error ? error.message : "保存失败，请稍后重试；持续失败请联系管理员";
       setFormError(message);
       toast.error(message);
     } finally {
@@ -927,7 +947,7 @@ export function CrudPage<T extends { id: string }>({
     try {
       const preview = await api.deletePreview(row.id);
       if (previewRequestRef.current !== requestId) return;
-      if (!preview) throw new Error("删除预检未返回数据");
+      if (!preview) throw new Error("暂时无法确认这条记录能否删除，请稍后重试");
       setDeleteTarget({ row, preview, loading: false });
     } catch (error) {
       if (previewRequestRef.current !== requestId) return;
@@ -1206,7 +1226,7 @@ export function CrudPage<T extends { id: string }>({
                 <p className="mt-1 max-w-lg text-[12px] leading-relaxed text-muted">
                   {query.error instanceof Error
                     ? query.error.message
-                    : "请求没有返回具体原因，可检查登录状态与服务状态后重试。"}
+                    : "操作没有成功，也没有给出原因；请确认登录是否已过期，稍后再试。"}
                 </p>
                 <Button className="mt-4" variant="secondary" onClick={() => void query.refetch()}>
                   重试
@@ -1229,7 +1249,7 @@ export function CrudPage<T extends { id: string }>({
                     : activeScopeLabel
                       ? `分组「${activeScopeLabel}」下还没有记录；可以切到「全部」查看其它分组，或在这里直接新建。`
                       : emptyDescription ??
-                        "服务端还没有返回任何记录；可稍后刷新，或确认当前账号是否有该实体的数据权限。"
+                        "暂时没有查到记录。可能数据还没产生，也可能你的账号没有查看这类数据的权限。"
                 }
                 action={
                   activeScopeLabel ? (
@@ -1255,20 +1275,39 @@ export function CrudPage<T extends { id: string }>({
                         排序
                       </th>
                     )}
-                    {columns.map((column, index) => (
+                    {regularColumns.map((column, index) => (
                       <th
                         key={column.key}
                         className={cn(
                           "sticky top-0 z-10 whitespace-nowrap bg-sunken px-3 py-2 text-[11px] font-semibold text-ink-soft",
                           (column.align === "right" || column.type === "number") && "text-right",
-                          !sortable && index === 0 && "left-0 z-20 border-r border-line",
+                          // 首列即身份/名称列：无论有无排序列都左固定，层级低于排序列、高于普通表头。
+                          index === 0 && "left-0 z-[15] border-r border-line",
                         )}
                       >
                         {column.label}
                       </th>
                     ))}
-                    {(canEdit || canDelete || rowActions) && (
-                      <th className="sticky top-0 z-10 w-px whitespace-nowrap bg-sunken px-3 py-2 text-right text-[11px] font-semibold text-ink-soft">
+                    {toggleColumns.map((column, index) => (
+                      <th
+                        key={column.key}
+                        style={{ right: toggleRight(index), width: TOGGLE_COLUMN_WIDTH }}
+                        className={cn(
+                          "sticky top-0 z-[15] whitespace-nowrap border-l border-line bg-sunken px-3 py-2 text-[11px] font-semibold text-ink-soft",
+                          PIN_RIGHT_SHADOW,
+                        )}
+                      >
+                        {column.label}
+                      </th>
+                    ))}
+                    {showActions && (
+                      <th
+                        style={{ width: ACTION_COLUMN_WIDTH }}
+                        className={cn(
+                          "sticky right-0 top-0 z-[15] whitespace-nowrap border-l border-line bg-sunken px-3 py-2 text-right text-[11px] font-semibold text-ink-soft",
+                          PIN_RIGHT_SHADOW,
+                        )}
+                      >
                         操作
                       </th>
                     )}
@@ -1285,15 +1324,21 @@ export function CrudPage<T extends { id: string }>({
                       )}
                     >
                       {renderSortCell(row)}
-                      {columns.map((column, index) => {
+                      {dataColumns.map(({ column, pinnedLeft, right }) => {
                         const text = (row as Record<string, unknown>)[column.key];
                         return (
                           <td
                             key={column.key}
+                            style={right === undefined ? undefined : { right, width: TOGGLE_COLUMN_WIDTH }}
                             className={cn(
                               "px-3 py-2.5 align-middle text-[12.5px] text-ink-soft",
                               (column.align === "right" || column.type === "number") && "text-right tabular-nums",
-                              !sortable && index === 0 && "sticky left-0 z-10 border-r border-line bg-surface group-hover:bg-row-hover",
+                              pinnedLeft && "sticky left-0 z-[15] border-r border-line bg-surface group-hover:bg-row-hover",
+                              right !== undefined &&
+                                cn(
+                                  "sticky z-[15] border-l border-line bg-surface group-hover:bg-row-hover",
+                                  PIN_RIGHT_SHADOW,
+                                ),
                               column.className,
                             )}
                           >
@@ -1328,8 +1373,14 @@ export function CrudPage<T extends { id: string }>({
                           </td>
                         );
                       })}
-                      {(canEdit || canDelete || rowActions) && (
-                        <td className="whitespace-nowrap px-3 py-2 text-right">
+                      {showActions && (
+                        <td
+                          style={{ width: ACTION_COLUMN_WIDTH }}
+                          className={cn(
+                            "sticky right-0 z-[15] whitespace-nowrap border-l border-line bg-surface px-3 py-2 text-right group-hover:bg-row-hover",
+                            PIN_RIGHT_SHADOW,
+                          )}
+                        >
                           <div className="flex items-center justify-end gap-1.5">
                             {rowActions?.(row, {
                               reload,

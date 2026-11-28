@@ -144,7 +144,7 @@ export async function login(input: LoginInput): Promise<AdmLoginVo> {
     body: input,
     userHeader: false,
   });
-  if (!data) throw new Error("登录接口未返回令牌");
+  if (!data) throw new Error("登录没有成功，请重试");
   return data;
 }
 

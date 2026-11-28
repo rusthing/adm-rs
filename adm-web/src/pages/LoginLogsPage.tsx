@@ -34,7 +34,7 @@ export function LoginLogsPage() {
       render: (row) => <span className="text-[11.5px]">{duration(row)}</span>,
     },
     { key: "logoutMs", label: "登出时间", type: "datetime" },
-    { key: "id", label: "日志 ID", type: "id" },
+    { key: "id", label: "日志编号", type: "id" },
   ];
 
   return (

@@ -472,7 +472,7 @@ export function ManagedPicker<T>({
                       ref={searchRef}
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
-                      placeholder="搜索名称、工号或 ID"
+                      placeholder="搜索姓名、工号或登录名"
                       className="h-6 min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-muted/80"
                     />
                   </div>

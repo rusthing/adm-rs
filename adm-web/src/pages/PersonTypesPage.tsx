@@ -10,6 +10,12 @@ function optionalText(value: FormValues[string]): string | null {
 
 const columns: CrudColumn<AdmPersonTypeVo>[] = [
   {
+    key: "name",
+    label: "类型名称",
+    className: "whitespace-nowrap",
+    render: (row) => <span className="font-medium text-ink">{row.name}</span>,
+  },
+  {
     key: "value",
     label: "值",
     type: "number",
@@ -21,12 +27,6 @@ const columns: CrudColumn<AdmPersonTypeVo>[] = [
     label: "编码",
     className: "whitespace-nowrap",
     render: (row) => <code className="font-mono text-[11.5px] text-ink-soft">{row.code}</code>,
-  },
-  {
-    key: "name",
-    label: "类型名称",
-    className: "whitespace-nowrap",
-    render: (row) => <span className="font-medium text-ink">{row.name}</span>,
   },
   { key: "remark", label: "备注", truncate: true },
   { key: "enabled", label: "启用", className: "whitespace-nowrap", toggle: {} },
@@ -61,7 +61,7 @@ export function PersonTypesPage() {
   return (
     <CrudPage<AdmPersonTypeVo>
       title="人员类型"
-      subtitle="人员类型说明人员档案的归属（内部员工 / 第三方施工人员 / 访客 / 其他人员）。字典值与旧 ADM 的 DTW_LOCATION_LOGO_TYPE 保持一致，人员档案只存值，不存字典主键。"
+      subtitle="人员类型说明人员档案的归属（内部员工 / 第三方施工人员 / 访客 / 其他人员）。取值沿用原有系统的编码，人员档案只记录类型，不保存字典编号。"
       prefix="/adm/person-type"
       columns={columns}
       fields={fields}

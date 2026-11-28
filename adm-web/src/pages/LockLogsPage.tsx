@@ -28,7 +28,7 @@ export function LockLogsPage() {
       truncate: true,
       truncateClassName: "max-w-[260px] max-[1400px]:max-w-[150px]",
     },
-    { key: "id", label: "日志 ID", type: "id", className: "whitespace-nowrap" },
+    { key: "id", label: "日志编号", type: "id", className: "whitespace-nowrap" },
   ];
 
   return (

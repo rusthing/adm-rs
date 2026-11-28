@@ -51,7 +51,7 @@ export function RoleGroupsPage() {
       type: "select",
       createOnly: true,
       options: parentOptions,
-      hint: "不选则创建根分组，treeCode 由服务端按 parentCode 在全局树内生成。",
+      hint: "不选上级分组则创建根分组；层级编码由系统自动生成。",
     },
     { name: "name", label: "名称", required: true, placeholder: "同一父节点下允许重名，靠 treeCode 区分" },
     { name: "remark", label: "备注", type: "textarea" },
@@ -75,7 +75,7 @@ export function RoleGroupsPage() {
   return (
     <CrudPage<AdmRoleGroupVo>
       title="角色分组"
-      subtitle="角色分组是全局的多层树，角色挂在分组下，与领域无关。整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会预填父分组；treeCode 全局唯一，由服务端按 parentCode 生成。"
+      subtitle="角色分组是一棵全局多层树，角色挂在分组下，与领域无关。整棵树一次列出、默认收起，可用工具栏「全部展开 / 全部收起」快速切换。行内「添加子级」会自动填好上级分组；层级编码全局唯一，由系统生成，不需要手填。"
       prefix="/adm/role-group"
       columns={columns}
       fields={fields}

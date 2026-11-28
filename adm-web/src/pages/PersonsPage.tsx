@@ -50,7 +50,7 @@ export function PersonsPage() {
       label: "姓名",
       className: "whitespace-nowrap",
       render: (row) => (
-        <span className="font-medium text-ink" title="列表返回的是服务端遮蔽值，编辑时回显完整姓名">
+        <span className="font-medium text-ink" title="列表中姓名已做隐藏处理，编辑时会显示完整姓名">
           {row.name}
         </span>
       ),

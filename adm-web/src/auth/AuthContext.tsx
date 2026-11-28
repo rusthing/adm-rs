@@ -40,9 +40,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  */
 async function loadAuthz(expectedUserId: string): Promise<Authz> {
   const me: AdmMeVo = (await authApi.me()) as AdmMeVo;
-  if (!me) throw new Error("鉴权接口未返回数据");
+  if (!me) throw new Error("没有取到账号权限信息，请重新登录");
   if (me.user?.id !== expectedUserId) {
-    throw new Error("鉴权返回的用户与当前会话不一致，请重新登录");
+    throw new Error("账号信息与当前登录状态不一致，请重新登录");
   }
   return {
     userId: me.user.id,

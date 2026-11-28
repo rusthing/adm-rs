@@ -113,7 +113,7 @@ export function PermissionsPage() {
         ? "按「菜单一级 / 主体 / 类型」四层选择，末层才挂权限；权限名在同一分组内唯一。"
         : "还没有权限分组，请先到「权限分组」创建。",
     },
-    { name: "name", label: "名称", required: true, placeholder: "只写动作，如「按 ID 删除」，1-50 字" },
+    { name: "name", label: "名称", required: true, placeholder: "只写动作，如「按编号删除」，1-50 字" },
     {
       name: "subjectCode",
       label: "主体",
@@ -175,7 +175,7 @@ export function PermissionsPage() {
   return (
     <CrudPage<AdmPermVo>
       title="权限管理"
-      subtitle="权限点按「主体 + 操作类型」归类：名称只写动作，主体用 subject_code 记录作用对象，URN 表达「HTTP 方法 + 路径」。左侧按分组树切换，选中父分组会连同子分组一起展示；后端当前只校验 Bearer 身份，接口级 URN 授权后续在 gatex-rs 实现。"
+      subtitle="权限点按「作用对象 + 操作」归类：名称只写操作（如「删除」），作用对象用一个编码记录，权限标识由请求方法和访问路径组成。左侧按分组树切换，选中父分组会连同子分组一起展示。目前会校验登录身份，按访问路径的授权将在网关中逐步启用。"
       prefix="/adm/perm"
       columns={columns}
       fields={fields}
@@ -211,7 +211,7 @@ export function PermissionsPage() {
         },
         { type: "boolean", name: "enabled", label: "启用" },
       ]}
-      emptyDescription="该分组下还没有权限行。先到「权限分组」建好分组，再按接口逐个录入 URN。"
+      emptyDescription="这个分组下还没有权限。先到「权限分组」建好分组，再按访问路径逐个添加。"
       toForm={toForm}
       toPayload={toPayload}
     />

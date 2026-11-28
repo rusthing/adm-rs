@@ -104,7 +104,7 @@ function parseParams(text: string): { ok: true; value: Record<string, unknown> }
     }
     return { ok: true, value: parsed as Record<string, unknown> };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "JSON 解析失败" };
+    return { ok: false, error: error instanceof Error ? error.message : "JSON 格式不正确，请检查括号与引号" };
   }
 }
 
@@ -517,7 +517,7 @@ export function DashboardConfigPage() {
       toast.error(error instanceof Error ? error.message : "预览失败");
       setPreview(
         placeholders.map((item) =>
-          item.status === "loading" ? { ...item, status: "error" as const, error: "预览请求失败" } : item,
+          item.status === "loading" ? { ...item, status: "error" as const, error: "预览失败，请稍后重试" } : item,
         ),
       );
     } finally {
@@ -529,7 +529,7 @@ export function DashboardConfigPage() {
     <div>
       <PageHeader
         title="首页配置"
-        subtitle="按角色维护 widget 列表；多角色用户取角色优先级最高的第一份，未命中时回落到全局模板。"
+        subtitle="按角色维护首页组件；一个账号有多个角色时，取优先级最高的那份，都没有则用全局默认。"
         actions={
           <>
             {dirty && <Badge tone="warn">未保存</Badge>}
@@ -623,7 +623,7 @@ export function DashboardConfigPage() {
       </Panel>
 
       <Panel
-        title="Widget 列表"
+        title="组件列表"
         description="按住行左侧手柄拖动（鼠标与触屏均可），或使用上移 / 下移调整顺序；保存时按当前顺序重算 sortOrder。"
         actions={
           <div className="flex items-center gap-2">
@@ -662,7 +662,7 @@ export function DashboardConfigPage() {
               读取配置失败：
               {configQuery.error instanceof Error
                 ? configQuery.error.message
-                : "接口没有返回具体原因，请确认 adm-svr 已启动。"}
+                : "没有取到数据，请稍后重试；若一直失败，请联系管理员。"}
             </span>
             <Button variant="secondary" size="sm" onClick={() => void configQuery.refetch()}>
               <RefreshCw size={13} /> 重试
@@ -672,8 +672,8 @@ export function DashboardConfigPage() {
 
         {!configQuery.isLoading && !configQuery.isError && draft.widgets.length === 0 && (
           <EmptyState
-            title="还没有 widget"
-            description="从上方选择 widget 类型后点击「添加 widget」，或保存一份空配置。"
+            title="还没有组件"
+            description="从上方选择组件类型后点击「添加组件」，或先保存一份空配置。"
           />
         )}
 
@@ -734,7 +734,7 @@ export function DashboardConfigPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      title="删除 widget"
+                      title="删除组件"
                       onClick={() =>
                         patchDraft({ widgets: draft.widgets.filter((item) => item.key !== widget.key) })
                       }
@@ -745,7 +745,7 @@ export function DashboardConfigPage() {
                 </div>
 
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <Field label="widget 类型">
+                  <Field label="组件类型">
                     <Select
                       value={widget.widgetType}
                       onChange={(event) => applyWidgetType(widget, event.target.value)}
@@ -883,7 +883,7 @@ export function DashboardConfigPage() {
         open={preview !== null}
         onClose={() => setPreview(null)}
         title="配置预览"
-        description="与首页同一路径：按 service/endpoint 并行请求各服务；不落库，且不按当前账号权限过滤。"
+        description="预览效果与首页一致，只是不保存；按配置直接取数，不受当前账号的权限限制。"
         width="max-w-[1040px]"
         footer={
           <Button variant="secondary" onClick={() => setPreview(null)}>
@@ -893,7 +893,7 @@ export function DashboardConfigPage() {
       >
         {previewLoading && <Spinner label="正在并行请求各服务…" />}
         {preview && preview.length === 0 && (
-          <EmptyState title="没有可预览的 widget" description="启用的 widget 会在这里展示。" />
+          <EmptyState title="没有可预览的组件" description="启用的组件会在这里展示。" />
         )}
         {preview && preview.length > 0 && (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

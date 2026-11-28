@@ -47,7 +47,7 @@ export function OpLogsPage() {
     },
     {
       key: "opUrn",
-      label: "接口",
+      label: "访问路径",
       type: "code",
       truncate: true,
       truncateClassName: "max-w-[240px] max-[1400px]:max-w-[140px]",
@@ -58,20 +58,20 @@ export function OpLogsPage() {
       truncate: true,
       truncateClassName: "max-w-[240px] max-[1400px]:max-w-[140px]",
     },
-    { key: "id", label: "日志 ID", type: "id", className: "whitespace-nowrap" },
+    { key: "id", label: "日志编号", type: "id", className: "whitespace-nowrap" },
   ];
 
   return (
     <CrudPage<AdmOpLogVo>
       title="操作日志"
-      subtitle="只读审计视图：由服务端在写操作后统一落库，记录谁在什么时候调用了哪个接口。前端不提供新增/编辑/删除入口。"
+      subtitle="只读审计视图，记录谁在什么时候做了什么操作。这里不能新增、编辑或删除。"
       prefix="/adm/op-log"
       columns={columns}
       fields={[]}
       itemLabel={(row) => row.id}
       defaultOrderBy="create_ms:desc"
       filters={[
-        { type: "keyword", placeholder: "搜索操作标题 / 接口 / 备注" },
+        { type: "keyword", placeholder: "搜索操作标题、访问路径或备注" },
         { type: "date-range", name: "create_ms", label: "操作时间" },
         { type: "entity", name: "op_type_code", label: "类型", loadOptions: loadOpTypeOptions },
         { type: "entity", name: "user_id", label: "用户", loadOptions: loadUserOptions },

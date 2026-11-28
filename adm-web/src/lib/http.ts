@@ -105,12 +105,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     });
   }
   if (!payload) {
-    throw new ApiError("接口返回空响应", { status: response.status });
+    throw new ApiError("服务器没有返回内容，请稍后重试", { status: response.status });
   }
   if (payload.result !== 1) {
     // 少数认证接口在 HTTP 200 里用 ADM00005 表达令牌失效，语义与 401 一致。
     if (payload.code === "ADM00005") handleUnauthorized();
-    throw new ApiError(payload.msg || "业务处理失败，服务端未返回具体原因", {
+    throw new ApiError(payload.msg || "操作没有成功，请稍后重试", {
       status: response.status,
       result: payload.result,
       code: payload.code,

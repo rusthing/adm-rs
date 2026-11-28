@@ -108,7 +108,7 @@ export function PermissionGroupsPage() {
       type: "select",
       createOnly: true,
       options: parentOptions,
-      hint: "不选则创建根分组，treeCode 由服务端按 parentCode 在全局树内生成。",
+      hint: "不选上级分组则创建根分组；层级编码由系统自动生成。",
     },
     { name: "name", label: "名称", required: true, placeholder: "同一父节点下允许重名，靠 treeCode 区分" },
     { name: "remark", label: "备注", type: "textarea" },

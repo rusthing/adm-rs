@@ -192,7 +192,7 @@ export function ProfilePage() {
         <Spinner />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr]">
-          <Panel title="账号信息" description="数据来自 GET /adm/user/{id}。" actions={<UserCircle size={15} className="text-muted" />}>
+          <Panel title="账号信息" description="这些信息来自你的账号档案。" actions={<UserCircle size={15} className="text-muted" />}>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-[12.5px] sm:grid-cols-2">
               <div>
                 <dt className="text-muted">登录名</dt>
@@ -232,7 +232,7 @@ export function ProfilePage() {
 
           <Panel
             title="角色与权限"
-            description="角色、权限与菜单均由 GET /adm/auth/me 聚合返回。"
+            description="角色、权限和菜单按你当前的授权汇总展示。"
             actions={<ShieldCheck size={15} className="text-muted" />}
           >
             {authzLoading ? (
@@ -321,7 +321,7 @@ export function ProfilePage() {
             )}
           </Panel>
 
-          <Panel title="修改资料" description="只提交这里可见的字段；后端 ModifyDto 的其余字段保持原值。">
+          <Panel title="修改资料" description="只提交这里修改过的内容，其余信息保持原样。">
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
               <Field label="登录名" hint="登录名是唯一标识，个人中心不提供修改。">
                 <Input value={userQuery.data?.name ?? ""} disabled />
@@ -396,7 +396,7 @@ export function ProfilePage() {
 
           <Panel
             title="修改登录口令"
-            description="独立改密接口 POST /adm/auth/change-password：旧/新口令在浏览器内各做一次 SM3，服务端再生成新的 6 位组合码。"
+            description="修改口令要先验证旧口令；提交后系统会生成新的 6 位口令组合码。"
             actions={<KeyRound size={15} className="text-muted" />}
           >
             <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">

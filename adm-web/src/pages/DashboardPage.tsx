@@ -185,7 +185,7 @@ export function DashboardPage() {
 
       {(authzLoading || effectiveQuery.isLoading) && !dashboard && (
         <Panel>
-          <Spinner label="正在加载首页配置与 widget 数据…" />
+          <Spinner label="正在加载首页…" />
         </Panel>
       )}
 
@@ -214,11 +214,11 @@ export function DashboardPage() {
       {!effectiveQuery.isLoading && !effectiveQuery.isError && views.length === 0 && (
         <Panel>
           <EmptyState
-            title="当前配置没有可用 widget"
+            title="首页还没有可用组件"
             description={
               dashboard
-                ? "配置存在，但所有 widget 都被停用，或当前账号缺少对应权限。"
-                : "后端没有返回任何首页配置，请检查全局兜底模板。"
+                ? "首页已配置，但组件都被停用，或你的账号没有查看权限。"
+                : "还没有任何首页配置，请联系管理员设置默认首页。"
             }
             action={
               hasPerm("GET:/adm/dashboard/config") ? (
