@@ -332,14 +332,56 @@ fn seed_rows(table: &str) -> Vec<Vec<String>> {
 }
 
 fn perm_groups() -> Vec<PermGroup> {
-    seed_rows("adm_perm_group")
+    let mut groups: Vec<PermGroup> = seed_rows("adm_perm_group")
         .iter()
         .map(|v| PermGroup {
             id: v[0].parse().expect("分组 id"),
             tree_code: unquote(&v[1]),
             name: unquote(&v[2]),
         })
-        .collect()
+        .collect();
+    apply_perm_group_updates(&mut groups);
+    groups
+}
+
+/// 把迁移里的 `UPDATE public.adm_perm_group SET tree_code = ...` 应用到种子快照。
+///
+/// 分组迁移靠改 tree_code 表达（父子关系是编码前缀），只解析 INSERT 会把迁移
+/// 之后的形状当成迁移之前的，白名单断言就失去意义。这里只支持实际用到的两种
+/// 写法：按 id 改单行、以及 `replace(tree_code, '旧前缀', '新前缀')` 批量改子树。
+fn apply_perm_group_updates(groups: &mut [PermGroup]) {
+    for line in seed_sql().lines() {
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("UPDATE public.adm_perm_group SET tree_code = ") else {
+            continue;
+        };
+        if let Some(tail) = rest.strip_prefix("replace(tree_code, '") {
+            let Some((old, tail)) = tail.split_once("', '") else {
+                continue;
+            };
+            let Some((new, _)) = tail.split_once("')") else {
+                continue;
+            };
+            for group in groups.iter_mut().filter(|g| g.tree_code.starts_with(old)) {
+                group.tree_code = format!("{new}{}", &group.tree_code[old.len()..]);
+            }
+        } else if let Some(tail) = rest.strip_prefix('\'') {
+            let Some((new, tail)) = tail.split_once('\'') else {
+                continue;
+            };
+            let Some((_, id_text)) = tail.split_once("WHERE id = ") else {
+                continue;
+            };
+            let id: i64 = id_text
+                .trim_end_matches(';')
+                .trim()
+                .parse()
+                .expect("UPDATE 的 id");
+            if let Some(group) = groups.iter_mut().find(|g| g.id == id) {
+                group.tree_code = new.to_string();
+            }
+        }
+    }
 }
 
 fn perms() -> Vec<Perm> {
@@ -495,7 +537,7 @@ fn permission_group_tree_is_expected() {
     assert_eq!(roots[0].tree_code, "001");
     assert_eq!(roots[0].name, "平台管理");
 
-    // 二级是菜单一级：四个名字一个都不能错
+    // 二级是菜单一级：五个名字一个都不能错（基础字典与菜单 006 同步新增）
     let second: BTreeSet<&str> = groups
         .iter()
         .filter(|g| g.tree_code.len() == 6)
@@ -503,8 +545,14 @@ fn permission_group_tree_is_expected() {
         .collect();
     assert_eq!(
         second,
-        BTreeSet::from(["组织与人员", "角色与授权", "系统配置", "审计日志"]),
-        "四个二级分组名称不符"
+        BTreeSet::from([
+            "组织与人员",
+            "角色与授权",
+            "系统配置",
+            "审计日志",
+            "基础字典",
+        ]),
+        "五个二级分组名称不符"
     );
 
     // 三级是主体，四级是操作类型：主体下必须有操作分组，操作分组必须挂在主体下
