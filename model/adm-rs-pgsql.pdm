@@ -14418,6 +14418,24 @@ DAT 1795500000</a:History>
 <a:Length>2</a:Length>
 <a:GlobalObjectID/>
 </o:Column>
+<o:Column Id="o907">
+<a:ObjectID>8F8C39FC-0D2E-4C4D-80CF-BAFFACEAC86C</a:ObjectID>
+<a:Name>人员标签</a:Name>
+<a:Code>tags</a:Code>
+<a:CreationDate>1795843444</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795843444</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>人员标签
+|标签A|标签B| 形式（管道分隔、只存标签名，不携带 dtw_region.tags 的 #色值）；NULL 表示无标签
+接口原样写库，切分/去重/字典校验由调用方负责
+@len 0..=255</a:Comment>
+<a:History>ORG {C23F8DB4-3A15-4A37-8DD5-059E9516A9AA}
+DAT 1795843444</a:History>
+<a:DataType>VARCHAR(255)</a:DataType>
+<a:Length>255</a:Length>
+<a:GlobalObjectID/>
+</o:Column>
 <o:Column Id="o336">
 <a:ObjectID>38539584-CEB7-4F54-AB3B-81289DBF542B</a:ObjectID>
 <a:Name>名称</a:Name>

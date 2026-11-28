@@ -23,6 +23,9 @@ pub struct AdmPersonVo {
     /// 存 person_type.value（0 内部员工、1 第三方施工人员、2 访客、3 其他人员）；为空表示未分类
     /// @range 0..=999
     pub person_type: Option<i16>,
+    /// 人员标签
+    /// `|标签A|标签B|` 形式；NULL 表示无标签
+    pub tags: Option<String>,
     /// 姓名
     /// 人员的真实姓名；长度 200 是为了容纳少数民族长姓名（多个间隔号拼接）
     /// @len 1..=200

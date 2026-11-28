@@ -196,6 +196,8 @@ export interface AdmPersonVo extends AuditFields {
   codeTypeId?: string;
   code?: string;
   personType?: number;
+  /** 人员标签：`|标签A|标签B|`，空值为无标签 */
+  tags?: string | null;
   name: string;
   namePinyinAbbr?: string;
   namePinyinFull?: string;

@@ -35,6 +35,25 @@ export function boolText(value: boolean | null | undefined, on = "是", off = "�
   return value ? on : off;
 }
 
+/** `|标签A|标签B|` → `["标签A","标签B"]`；兼容逗号分隔的手工输入。 */
+export function splitTags(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[|,，]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+/** 标签数组 → `|标签A|标签B|`；空数组返回 null，让后端显式清空。 */
+export function joinTags(values: string[]): string | null {
+  const seen = new Set<string>();
+  for (const value of values) {
+    const name = value.trim().replace(/\|/g, "");
+    if (name) seen.add(name);
+  }
+  return seen.size ? `|${[...seen].join("|")}|` : null;
+}
+
 export function copyText(text: string): Promise<boolean> {
   return navigator.clipboard
     .writeText(text)

@@ -3,7 +3,8 @@ import type { CrudColumn, CrudField } from "@/components/crud/CrudPage";
 import { CrudPage } from "@/components/crud/CrudPage";
 import type { AdmPersonVo, FormValues } from "@/lib/types";
 import { usePersonCodeTypeOptions, usePersonTypeOptions } from "@/lib/queries";
-import { shortId } from "@/lib/utils";
+import { joinTags, shortId, splitTags } from "@/lib/utils";
+import { Badge } from "@/components/ui/primitives";
 
 function optionalText(value: FormValues[string]): string | null {
   const text = typeof value === "string" ? value.trim() : "";
@@ -81,6 +82,24 @@ export function PersonsPage() {
           <span>{personTypeName.get(row.personType) ?? String(row.personType)}</span>
         ),
     },
+    {
+      key: "tags",
+      label: "标签",
+      render: (row) => {
+        const tags = splitTags(row.tags);
+        return tags.length ? (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <Badge key={tag} tone="neutral">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted">—</span>
+        );
+      },
+    },
     { key: "email", label: "邮箱", truncate: true, truncateClassName: "max-w-[200px]" },
     {
       key: "idCard",
@@ -138,6 +157,12 @@ export function PersonsPage() {
         : "还没有人员类型，可先到「人员类型」维护。",
     },
     {
+      name: "tags",
+      label: "标签",
+      placeholder: "例如：施工, 参观",
+      hint: "多个标签用逗号分隔；保存时归一化为 `|施工|参观|`，留空即清空。",
+    },
+    {
       name: "codeTypeId",
       label: "编码类型",
       type: "select",
@@ -166,6 +191,7 @@ export function PersonsPage() {
     codeTypeId: row.codeTypeId ?? "",
     code: row.code ?? "",
     personType: row.personType === undefined ? "" : String(row.personType),
+    tags: splitTags(row.tags).join(", "),
     mobile: row.mobile ?? "",
     email: row.email ?? "",
     idCard: row.idCard ?? "",
@@ -180,6 +206,7 @@ export function PersonsPage() {
     codeTypeId: optionalText(values.codeTypeId),
     code: optionalText(values.code),
     personType: optionalNumber(values.personType),
+    tags: joinTags(String(values.tags ?? "").split(/[,，|]/)),
     mobile: optionalText(values.mobile),
     email: optionalText(values.email),
     idCard: optionalText(values.idCard),
@@ -195,7 +222,7 @@ export function PersonsPage() {
       fields={fields}
       itemLabel={(row) => row.name}
       defaultOrderBy="update_ms:desc"
-      searchPlaceholder="搜索姓名 / 编码 / 手机 / 邮箱 / 拼音"
+      searchPlaceholder="搜索姓名 / 编码 / 手机 / 邮箱 / 拼音 / 标签"
       filters={[
         {
           type: "entity",

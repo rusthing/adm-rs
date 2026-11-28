@@ -1319,6 +1319,7 @@ create table adm_person (
    code_type_id         INT8                 null,
    code                 VARCHAR(50)          null,
    person_type          INT2                 null,
+   tags                 VARCHAR(255)         null,
    name                 VARCHAR(200)         not null,
    name_pinyin_abbr     VARCHAR(200)         null,
    name_pinyin_full     VARCHAR(200)         null,
@@ -1365,6 +1366,12 @@ comment on column adm_person.person_type is
 存 person_type.value（0 内部员工、1 第三方施工人员、2 访客、3 其他人员）；为空表示未分类
 字典为弱引用，不建外键
 @range 0..=999';
+
+comment on column adm_person.tags is
+'人员标签
+|标签A|标签B| 形式（管道分隔、只存标签名，不携带 dtw_region.tags 的 #色值）；NULL 表示无标签
+接口原样写库，切分/去重/字典校验由调用方负责
+@len 0..=255';
 
 comment on column adm_person.name is
 '姓名

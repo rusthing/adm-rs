@@ -24,6 +24,11 @@ pub struct AdmPersonDto {
     /// 存 person_type.value（0 内部员工、1 第三方施工人员、2 访客、3 其他人员）；为空表示未分类
     /// @range 0..=999
     pub person_type: Option<i16>,
+    /// 人员标签
+    /// `|标签A|标签B|` 形式（管道分隔、只存标签名，不携带 `dtw_region.tags` 的 `#色值`）；NULL 表示无标签
+    /// 接口原样写库，切分/去重/字典校验由调用方负责
+    /// @len 0..=255
+    pub tags: Option<String>,
     /// 姓名
     /// 人员的真实姓名；长度 200 是为了容纳少数民族长姓名（多个间隔号拼接）
     /// @len 1..=200

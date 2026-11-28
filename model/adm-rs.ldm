@@ -8274,6 +8274,22 @@ false 时不可再被选择，历史数据与关联全部保留
 <a:DataType>BT</a:DataType>
 <a:GlobalObjectID/>
 </o:EntityAttribute>
+<o:EntityAttribute Id="o602">
+<a:ObjectID>C23F8DB4-3A15-4A37-8DD5-059E9516A9AA</a:ObjectID>
+<a:Name>人员标签</a:Name>
+<a:Code>tags</a:Code>
+<a:CreationDate>1795843444</a:CreationDate>
+<a:Creator>张柏子</a:Creator>
+<a:ModificationDate>1795843444</a:ModificationDate>
+<a:Modifier>张柏子</a:Modifier>
+<a:Comment>人员标签
+|标签A|标签B| 形式（管道分隔、只存标签名，不携带 dtw_region.tags 的 #色值）；NULL 表示无标签
+接口原样写库，切分/去重/字典校验由调用方负责
+@len 0..=255</a:Comment>
+<a:DataType>VA255</a:DataType>
+<a:Length>255</a:Length>
+<a:GlobalObjectID/>
+</o:EntityAttribute>
 <o:EntityAttribute Id="o276">
 <a:ObjectID>34E60D2E-4304-4FF2-A6BA-8D3BF298DA7A</a:ObjectID>
 <a:Name>名称</a:Name>

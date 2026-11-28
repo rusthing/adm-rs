@@ -28,6 +28,7 @@ use robotech::macros::dao;
         Column::Email,
         Column::IdCard,
         Column::Remark,
+        Column::Tags,
     ],
 )]
 pub struct AdmPersonDao;
